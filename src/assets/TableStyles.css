@@ -1,0 +1,97 @@
+/* Контейнер для страницы с таблицей */
+.table-page-container {
+  width: 100%;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.table-header h2 {
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  gap: 1rem;
+}
+
+.search-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Кнопки */
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Контейнер таблицы с прокруткой */
+.table-container {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  /* Добавляем горизонтальную прокрутку, если таблица не помещается */
+  overflow-x: auto; 
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse; /* Убираем двойные рамки */
+  min-width: 1000px; /* Минимальная ширина, чтобы прокрутка появилась */
+}
+
+th, td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap; /* Запрещаем перенос строк в ячейках */
+}
+
+thead th {
+  background-color: #f9fafb;
+  color: #555;
+  font-weight: 600;
+}
+
+tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+/* Статусы */
+.status-online {
+  color: #28a745;
+  font-weight: 700;
+}
+.status-offline {
+  color: #6c757d;
+  font-weight: 700;
+}
