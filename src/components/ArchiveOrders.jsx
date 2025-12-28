@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getArchivedOrders, searchArchiveByPhone } from '../services/orderService';
-// Мы используем стили из TableStyles.css, которые уже подключены
+import '../assets/TableStyles.css';
 
 const ArchiveOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -8,7 +8,6 @@ const ArchiveOrders = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 1. Функция для загрузки всего архива
   const fetchArchive = async () => {
     try {
       setLoading(true);
@@ -22,16 +21,14 @@ const ArchiveOrders = () => {
     }
   };
 
-  // 2. Загружаем архив при первом рендере
   useEffect(() => {
     fetchArchive();
-  }, []); // [] = один раз при монтировании
+  }, []);
 
-  // 3. Обработчик поиска
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchTerm) {
-      fetchArchive(); // Если поиск пуст, загрузить весь архив
+      fetchArchive();
       return;
     }
     try {
@@ -46,23 +43,21 @@ const ArchiveOrders = () => {
     }
   };
 
-  if (loading && orders.length === 0) {
-    return <div>Загрузка архива...</div>;
-  }
+  if (loading && orders.length === 0) return <div>Завантаження архіву...</div>;
 
   return (
     <div className="table-page-container">
       <div className="table-header">
-        <h2>Архив Заказов ({orders.length})</h2>
+        <h2>Архів Замовлень ({orders.length})</h2>
         <form className="controls" onSubmit={handleSearch}>
           <input
             type="text"
-            placeholder="Поиск по телефону..."
+            placeholder="Пошук за телефоном..."
             className="search-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button type="submit" className="btn-primary">Поиск</button>
+          <button type="submit" className="btn-primary">Пошук</button>
         </form>
       </div>
 
@@ -74,12 +69,15 @@ const ArchiveOrders = () => {
             <tr>
               <th>ID</th>
               <th>Статус</th>
-              <th>Клиент (Тел)</th>
-              <th>Водитель (Тел)</th>
-              <th>Откуда</th>
-              <th>Куда</th>
-              <th>Создан</th>
-              <th>Завершен</th>
+              <th>Клієнт</th>
+              <th>Водій</th>
+              <th>Звідки</th>
+              <th>Маршрут / Дод. точки</th> 
+              <th>Куди</th>
+              <th>Ціна</th>
+              {/* === КОЛОНКА КОМЕНТАРЯ === */}
+              <th>Коментар</th>
+              <th>Оплата</th> 
             </tr>
           </thead>
           <tbody>
@@ -88,25 +86,47 @@ const ArchiveOrders = () => {
                 <tr key={order.id}>
                   <td>{order.id}</td>
                   <td>
-                    <span style={{ color: order.status === 'CANCELLED' ? 'red' : 'green', fontWeight: 'bold' }}>
-                      {order.status}
+                    <span style={{ 
+                      color: order.status === 'CANCELLED' ? 'red' : 'green', 
+                      fontWeight: 'bold',
+                      fontSize: '0.9em'
+                    }}>
+                      {order.status === 'CANCELLED' ? 'СКАСОВАНО' : 'ВИКОНАНО'}
                     </span>
                   </td>
-                  <td>{`${order.client.fullName} (${order.client.phoneNumber})`}</td>
-                  <td>
-                    {order.driver ? 
-                      `${order.driver.fullName} (${order.driver.phoneNumber})` : 
-                      'N/A'}
-                  </td>
+                  <td>{order.client.phoneNumber}</td>
+                  <td>{order.driver ? order.driver.fullName : '—'}</td>
+                  
                   <td>{order.fromAddress}</td>
+                  
+                  <td style={{fontStyle: 'italic', color: '#555'}}>
+                    {order.formattedWaypoints ? (
+                        <span>{order.formattedWaypoints}</span>
+                    ) : (
+                        <span style={{color: '#ccc'}}>—</span>
+                    )}
+                  </td>
+                  
                   <td>{order.toAddress}</td>
-                  <td>{new Date(order.createdAt).toLocaleString()}</td>
-                  <td>{new Date(order.completedAt).toLocaleString()}</td>
+                  <td><strong>{order.price} ₴</strong></td>
+
+                  {/* === ЯЧЕЙКА КОМЕНТАРЯ === */}
+                  <td style={{ maxWidth: '150px', fontStyle: 'italic', color: '#666', fontSize: '0.9em' }}>
+                     {order.comment ? order.comment : <span style={{color: '#ccc'}}>—</span>}
+                  </td>
+                  <td>
+        {order.paymentMethod === 'CARD' ? (
+          <span style={{color: 'blue'}}>💳 Картка</span>
+        ) : (
+          <span style={{color: 'green'}}>💵 Готівка</span>
+        )}
+      </td>
+                  {/* ========================= */}
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8">Заказы в архиве не найдены.</td>
+                <td colSpan="9" style={{textAlign: 'center'}}>Архів порожній</td>
               </tr>
             )}
           </tbody>

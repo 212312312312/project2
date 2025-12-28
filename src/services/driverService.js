@@ -14,14 +14,25 @@ export const getAllDrivers = async () => {
 };
 
 /**
- * (Create) Создает нового водителя
+ * (Create) Создает нового водителя (с поддержкой фото)
  * @param {object} driverData - DTO 'RegisterDriverRequest'
+ * @param {File} [file] - Файл фото водителя (необязательно)
  * @returns {Promise<object>} - Сообщение об успехе
  */
-export const createDriver = async (driverData) => {
+export const createDriver = async (driverData, file) => {
   try {
-    // driverData = { phoneNumber, password, fullName, make, model, ... }
-    const response = await api.post('/admin/drivers', driverData);
+    // Используем FormData для отправки JSON + Файла
+    const formData = new FormData();
+    // Бэкенд ждет JSON в поле "request" (строкой)
+    formData.append('request', JSON.stringify(driverData));
+    
+    // Если файл есть, добавляем его
+    if (file) {
+      formData.append('file', file);
+    }
+
+    // Axios сам выставит Content-Type: multipart/form-data
+    const response = await api.post('/admin/drivers', formData);
     return response.data; // { message: "..." }
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Ошибка при создании водителя');
@@ -29,15 +40,22 @@ export const createDriver = async (driverData) => {
 };
 
 /**
- * (Update) Обновляет данные водителя
+ * (Update) Обновляет данные водителя (с поддержкой фото)
  * @param {number} id - ID водителя
  * @param {object} driverData - DTO 'UpdateDriverRequest'
+ * @param {File} [file] - Новый файл фото (необязательно)
  * @returns {Promise<object>} - Обновленный объект DriverDto
  */
-export const updateDriver = async (id, driverData) => {
+export const updateDriver = async (id, driverData, file) => {
   try {
-    // driverData = { fullName, make, model, ... } (БЕЗ пароля)
-    const response = await api.put(`/admin/drivers/${id}`, driverData);
+    const formData = new FormData();
+    formData.append('request', JSON.stringify(driverData));
+    
+    if (file) {
+      formData.append('file', file);
+    }
+
+    const response = await api.put(`/admin/drivers/${id}`, formData);
     return response.data; // Обновленный DriverDto
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Ошибка при обновлении водителя');

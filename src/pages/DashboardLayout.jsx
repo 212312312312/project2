@@ -7,7 +7,11 @@ import OrdersPage from './OrdersPage';
 import DriversPage from './DriversPage'; 
 import ClientsPage from './ClientsPage';
 import TariffsPage from './TariffsPage'; 
-import DispatchersPage from './DispatchersPage'; // <-- НОВЫЙ ИМПОРТ
+import DispatchersPage from './DispatchersPage';
+import PromosPage from './PromosPage';         // Акции (Задания за поездки)
+import PromoCodesPage from './PromoCodesPage'; // Текстовые коды
+import NewsPage from './NewsPage';             // Сповіщення
+import ServicesPage from './Services';         // <-- НОВАЯ СТРАНИЦА (Доп. послуги)
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -34,8 +38,17 @@ const DashboardLayout = () => {
         {/* Вкладки ТОЛЬКО ДЛЯ АДМИНА */}
         {isAdmin && (
           <>
+            <NavLink to="/news">Сповіщення</NavLink> 
+            
+            {/* --- НОВАЯ КНОПКА В МЕНЮ --- */}
+            <NavLink to="/services">Дод. послуги</NavLink>
+            {/* --------------------------- */}
+
             <NavLink to="/tariffs">Тарифы</NavLink>
             <NavLink to="/dispatchers">Диспетчеры</NavLink>
+            
+            <NavLink to="/promos">Акції (Завдання)</NavLink>
+            <NavLink to="/promocodes">Промокоди</NavLink>
           </>
         )}
       </nav>
@@ -50,14 +63,31 @@ const DashboardLayout = () => {
           {/* Роуты ТОЛЬКО ДЛЯ АДМИНА */}
           {isAdmin ? (
             <>
+              <Route path="/news" element={<NewsPage />} />
+              
+              {/* --- НОВЫЙ РОУТ --- */}
+              <Route path="/services" element={<ServicesPage />} />
+              {/* ------------------ */}
+
               <Route path="/tariffs" element={<TariffsPage />} />
               <Route path="/dispatchers" element={<DispatchersPage />} />
+              
+              <Route path="/promos" element={<PromosPage />} />
+              <Route path="/promocodes" element={<PromoCodesPage />} />
             </>
           ) : (
             <>
-              {/* Если обычный Диспетчер попытается зайти на /tariffs, его перекинет на главную */}
+              {/* Если обычный Диспетчер попытается зайти на закрытые страницы */}
+              <Route path="/news" element={<Navigate to="/" replace />} />
+              
+              {/* --- ЗАЩИТА НОВОГО РОУТА --- */}
+              <Route path="/services" element={<Navigate to="/" replace />} />
+              {/* --------------------------- */}
+
               <Route path="/tariffs" element={<Navigate to="/" replace />} />
               <Route path="/dispatchers" element={<Navigate to="/" replace />} />
+              <Route path="/promos" element={<Navigate to="/" replace />} />
+              <Route path="/promocodes" element={<Navigate to="/" replace />} />
             </>
           )}
           

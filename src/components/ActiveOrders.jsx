@@ -27,7 +27,7 @@ const destIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
 });
-// !!! НОВАЯ ИКОНКА ДЛЯ ЗУПИНОК (Желтая) !!!
+// Зупинка (Желтая)
 const waypointIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
@@ -65,7 +65,7 @@ const MapFocusController = ({ selectedOrder }) => {
 };
 
 
-// --- Компонент Карты (ОБНОВЛЕН) ---
+// --- Компонент Карты ---
 const DriverMap = ({ drivers, selectedOrder }) => {
   const position = [50.45, 30.52]; 
   
@@ -113,7 +113,7 @@ const DriverMap = ({ drivers, selectedOrder }) => {
             <Popup><b>Точка А (Откуда):</b><br/>{selectedOrder.fromAddress}</Popup>
           </Marker>
           
-          {/* !!! ЗУПИНКИ (Waypoints) !!! */}
+          {/* Зупинки (Waypoints) */}
           {selectedOrder.stops && selectedOrder.stops.map((stop, index) => (
              <Marker 
                 key={`wp-${index}`}
@@ -161,11 +161,10 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
           <div className="order-card-body">
             <p><strong>Клиент:</strong> {order.client.fullName} ({order.client.phoneNumber})</p>
             
-            {/* !!! ОТОБРАЖЕНИЕ МАРШРУТА С ЗУПИНКАМИ !!! */}
+            {/* ОТОБРАЖЕНИЕ МАРШРУТА С ЗУПИНКАМИ */}
             <div className="route-details" style={{marginTop: '5px', marginBottom: '10px'}}>
                 <div>🟢 <b>Откуда:</b> {order.fromAddress}</div>
                 
-                {/* Если есть зупинки - показываем их */}
                 {order.stops && order.stops.length > 0 && order.stops.map((stop, i) => (
                     <div key={i} style={{marginLeft: '15px', color: '#666'}}>
                         📍 <i>Заезд: {stop.address}</i>
@@ -175,7 +174,37 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
                 <div>🔴 <b>Куда:</b> {order.toAddress}</div>
             </div>
 
+            {/* --- БЛОК ЦЕНЫ И НАДБАВКИ --- */}
             <p><strong>Цена:</strong> {order.price.toFixed(2)} грн</p>
+            
+            {/* Если есть надбавка, показываем её красным */}
+            {order.addedValue > 0 && (
+                <p style={{ color: '#d32f2f', marginTop: '-5px', marginBottom: '10px', fontWeight: 'bold' }}>
+                    🔥 Надбавка: +{order.addedValue.toFixed(2)} грн
+                </p>
+            )}
+            {/* --------------------------- */}
+                  
+            <p>
+            <strong>Оплата:</strong> 
+            {order.paymentMethod === 'CARD' ? ' 💳 Картка' : ' 💵 Готівка'}
+            </p>
+
+            {/* === БЛОК КОММЕНТАРИЯ === */}
+            {order.comment && (
+              <div style={{
+                marginTop: '8px',
+                marginBottom: '8px',
+                padding: '10px',
+                borderRadius: '6px',
+                color: '#000000ff',
+                fontSize: '0.95em'
+              }}>
+                <strong>Коментар:</strong> {order.comment}
+              </div>
+            )}
+            {/* ======================== */}
+
             <p><strong>Водитель:</strong> {order.driver ? 
                 `${order.driver.fullName} (${order.driver.carPlateNumber})` : 
                 '--- Назначение ---'}
@@ -204,7 +233,7 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
 };
 
 
-// ... (Компонент ActiveOrders - БЕЗ ИЗМЕНЕНИЙ) ...
+// --- Компонент ActiveOrders ---
 const ActiveOrders = () => {
   const [orders, setOrders] = useState([]);
   const [mapDrivers, setMapDrivers] = useState([]);

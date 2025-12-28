@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import '../assets/Form.css'; // <-- НОВЫЙ CSS ДЛЯ ФОРМЫ
+import '../assets/Form.css';
 
-// availableTariffs - список всех тарифов из БД
 const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
-    // User data
     fullName: '',
     phoneNumber: '',
     password: '',
-    // Car data
     make: '',
     model: '',
+    color: '', // <-- НОВОЕ ПОЛЕ
     plateNumber: '',
     vin: '',
     year: 2010,
-    // Tariffs
-    tariffIds: [], // Список ID (напр. [1, 3])
+    tariffIds: [],
   });
-  
+
+  const [selectedFile, setSelectedFile] = useState(null);
   const isEditMode = initialData !== null;
 
   useEffect(() => {
@@ -28,37 +26,39 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
         password: '', 
         make: initialData.car?.make || '',
         model: initialData.car?.model || '',
+        color: initialData.car?.color || '', // <-- Загружаем цвет
         plateNumber: initialData.car?.plateNumber || '',
         vin: initialData.car?.vin || '',
         year: initialData.car?.year || 2010,
-        // Превращаем List<CarTariffDto> в List<ID>
         tariffIds: initialData.allowedTariffs.map(t => t.id),
       });
     } else {
-      // Сброс
       setFormData({
         fullName: '', phoneNumber: '', password: '',
-        make: '', model: '', plateNumber: '', vin: '', year: 2010,
+        make: '', model: '', color: '', plateNumber: '', vin: '', year: 2010,
         tariffIds: [],
       });
     }
+    setSelectedFile(null);
   }, [initialData, isEditMode]);
 
-  // Обработчик для обычных полей
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
   
-  // ОБРАБОТЧИК ДЛЯ ЧЕКБОКСОВ ТАРИФОВ
   const handleTariffChange = (tariffId) => {
     setFormData(prev => {
       const currentTariffIds = prev.tariffIds;
       if (currentTariffIds.includes(tariffId)) {
-        // Если ID уже есть -> убираем (снимаем галочку)
         return { ...prev, tariffIds: currentTariffIds.filter(id => id !== tariffId) };
       } else {
-        // Если ID нет -> добавляем (ставим галочку)
         return { ...prev, tariffIds: [...currentTariffIds, tariffId] };
       }
     });
@@ -66,52 +66,40 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Конвертируем год в число
-    const dataToSend = {
-      ...formData,
-      year: parseInt(formData.year)
-    };
-    
-    // Если это режим Редактирования, убираем пароль и номер (которые мы не меняем)
+    const dataToSend = { ...formData, year: parseInt(formData.year) };
     if (isEditMode) {
       delete dataToSend.password;
       delete dataToSend.phoneNumber;
     }
-    
-    onSubmit(dataToSend);
+    onSubmit(dataToSend, selectedFile);
   };
 
   return (
-    // 'driver-form' теперь называется 'entity-form'
     <form onSubmit={handleSubmit} className="entity-form">
       <div className="form-grid">
-        {/* --- Блок 1: Данные Водителя --- */}
         <fieldset>
           <legend>Данные Водителя</legend>
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label>Фото Водителя</label>
+            <input type="file" onChange={handleFileChange} accept="image/*" />
+            {isEditMode && initialData.photoUrl && !selectedFile && <small style={{color:'green'}}>Фото есть</small>}
+          </div>
           <div className="form-group">
             <label>ФИО</label>
             <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required />
           </div>
           <div className="form-group">
-            <label>Номер телефона</label>
-            <input 
-              type="tel" 
-              name="phoneNumber" 
-              value={formData.phoneNumber} 
-              onChange={handleChange} 
-              disabled={isEditMode} 
-              required 
-            />
+            <label>Телефон</label>
+            <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} disabled={isEditMode} required />
           </div>
           {!isEditMode && (
             <div className="form-group">
-              <label>Пароль (мин. 6)</label>
+              <label>Пароль</label>
               <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} />
             </div>
           )}
         </fieldset>
 
-        {/* --- Блок 2: Данные Автомобиля --- */}
         <fieldset>
           <legend>Данные Автомобиля</legend>
           <div className="form-group">
@@ -122,8 +110,15 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
             <label>Модель</label>
             <input type="text" name="model" value={formData.model} onChange={handleChange} required />
           </div>
+          
+          {/* ПОЛЕ ЦВЕТ */}
           <div className="form-group">
-            <label>Гос. номер</label>
+            <label>Колір</label>
+            <input type="text" name="color" value={formData.color} onChange={handleChange} required placeholder="напр. Білий" />
+          </div>
+
+          <div className="form-group">
+            <label>Держ. номер</label>
             <input type="text" name="plateNumber" value={formData.plateNumber} onChange={handleChange} required />
           </div>
           <div className="form-group">
@@ -131,40 +126,29 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
             <input type="text" name="vin" value={formData.vin} onChange={handleChange} required />
           </div>
           <div className="form-group">
-            <label>Год</label>
+            <label>Рік</label>
             <input type="number" name="year" value={formData.year} onChange={handleChange} required min={1990} />
           </div>
         </fieldset>
       </div>
 
-      {/* --- Блок 3: Тарифы --- */}
       <fieldset className="full-width">
         <legend>Доступные Тарифы</legend>
         <div className="checkbox-group">
           {availableTariffs.length > 0 ? (
             availableTariffs.map(tariff => (
               <label key={tariff.id} className="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={formData.tariffIds.includes(tariff.id)} 
-                  onChange={() => handleTariffChange(tariff.id)}
-                />
-                {tariff.name} (База: {tariff.basePrice})
+                <input type="checkbox" checked={formData.tariffIds.includes(tariff.id)} onChange={() => handleTariffChange(tariff.id)} />
+                {tariff.name}
               </label>
             ))
-          ) : (
-            <p>Нет доступных тарифов. Сначала создайте их во вкладке "Тарифы".</p>
-          )}
+          ) : <p>Нет тарифов</p>}
         </div>
       </fieldset>
 
       <div className="form-actions">
-        <button type="button" className="btn-secondary" onClick={onCancel} disabled={isLoading}>
-          Отмена
-        </button>
-        <button type="submit" className="btn-primary" disabled={isLoading}>
-          {isLoading ? 'Сохранение...' : 'Сохранить'}
-        </button>
+        <button type="button" className="btn-secondary" onClick={onCancel} disabled={isLoading}>Отмена</button>
+        <button type="submit" className="btn-primary" disabled={isLoading}>{isLoading ? '...' : 'Сохранить'}</button>
       </div>
     </form>
   );

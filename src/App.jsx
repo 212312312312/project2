@@ -14,10 +14,9 @@ function App() {
 
         {/* === Защищенные роуты === */}
         <Route
-          path="/*" // "/*" означает "все остальные пути"
+          path="/*" // "/*" перенаправляет всё управление в DashboardLayout
           element={
             <ProtectedRoute>
-              {/* DashboardLayout содержит свои (вложенные) роуты */}
               <DashboardLayout />
             </ProtectedRoute>
           }
