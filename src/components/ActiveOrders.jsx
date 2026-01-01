@@ -42,13 +42,11 @@ const MapFocusController = ({ selectedOrder }) => {
 
   useEffect(() => {
     if (selectedOrder && selectedOrder.originLat && selectedOrder.destLat) {
-      // Собираем все точки для границ (А, Б + Зупинки)
       const bounds = [
         [selectedOrder.originLat, selectedOrder.originLng],
         [selectedOrder.destLat, selectedOrder.destLng]
       ];
       
-      // Добавляем зупинки в границы, если они есть
       if (selectedOrder.stops && selectedOrder.stops.length > 0) {
         selectedOrder.stops.forEach(stop => {
             if (stop.lat && stop.lng) {
@@ -69,13 +67,11 @@ const MapFocusController = ({ selectedOrder }) => {
 const DriverMap = ({ drivers, selectedOrder }) => {
   const position = [50.45, 30.52]; 
   
-  // Логика отрисовки маршрута
   let routePath = null;
   if (selectedOrder) {
     if (selectedOrder.googleRoutePolyline) {
       routePath = polyline.decode(selectedOrder.googleRoutePolyline);
     } else if (selectedOrder.originLat && selectedOrder.destLat) {
-      // Если полилайна нет, рисуем прямые линии через точки
       routePath = [[selectedOrder.originLat, selectedOrder.originLng]];
       if (selectedOrder.stops) {
           selectedOrder.stops.forEach(s => routePath.push([s.lat, s.lng]));
@@ -91,7 +87,6 @@ const DriverMap = ({ drivers, selectedOrder }) => {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
       
-      {/* 1. Показываем водителей (если заказ НЕ выбран) */}
       {!selectedOrder && drivers.map(driver => (
         <Marker 
           key={`driver-${driver.id}`} 
@@ -102,10 +97,8 @@ const DriverMap = ({ drivers, selectedOrder }) => {
         </Marker>
       ))}
 
-      {/* 2. Показываем выбранный маршрут */}
       {selectedOrder && (
         <>
-          {/* Точка А */}
           <Marker 
             position={[selectedOrder.originLat, selectedOrder.originLng]} 
             icon={originIcon}
@@ -113,7 +106,6 @@ const DriverMap = ({ drivers, selectedOrder }) => {
             <Popup><b>Точка А (Откуда):</b><br/>{selectedOrder.fromAddress}</Popup>
           </Marker>
           
-          {/* Зупинки (Waypoints) */}
           {selectedOrder.stops && selectedOrder.stops.map((stop, index) => (
              <Marker 
                 key={`wp-${index}`}
@@ -124,7 +116,6 @@ const DriverMap = ({ drivers, selectedOrder }) => {
              </Marker>
           ))}
 
-          {/* Точка Б */}
           <Marker 
             position={[selectedOrder.destLat, selectedOrder.destLng]} 
             icon={destIcon}
@@ -132,7 +123,6 @@ const DriverMap = ({ drivers, selectedOrder }) => {
             <Popup><b>Точка Б (Куда):</b><br/>{selectedOrder.toAddress}</Popup>
           </Marker>
           
-          {/* Линия маршрута */}
           {routePath && <Polyline positions={routePath} color="blue" />}
         </>
       )}
@@ -143,11 +133,11 @@ const DriverMap = ({ drivers, selectedOrder }) => {
 };
 
 
-// --- Компонент OrderList (ОБНОВЛЕН) ---
+// --- Компонент OrderList ---
 const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId }) => {
   return (
     <div className="orders-list">
-      {orders.length === 0 && <p style={{padding: '1.5rem'}}>Активных заказов нет.</p>}
+      {orders.length === 0 && <p style={{padding: '1.5rem'}}>Активних замовлень немає (або не знайдено).</p>}
       {orders.map(order => (
         <div 
           key={order.id} 
@@ -155,59 +145,62 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
           onClick={() => onSelectOrder(order)}
         >
           <div className="order-card-header">
-            <h4>Заказ #{order.id} ({order.tariffName})</h4>
+            <h4>Замовлення #{order.id} ({order.tariffName})</h4>
             <span className={`status status-${order.status}`}>{order.status}</span>
           </div>
           <div className="order-card-body">
-            <p><strong>Клиент:</strong> {order.client.fullName} ({order.client.phoneNumber})</p>
+            <p><strong>Клієнт:</strong> {order.client.fullName} ({order.client.phoneNumber})</p>
             
-            {/* ОТОБРАЖЕНИЕ МАРШРУТА С ЗУПИНКАМИ */}
             <div className="route-details" style={{marginTop: '5px', marginBottom: '10px'}}>
-                <div>🟢 <b>Откуда:</b> {order.fromAddress}</div>
+                <div>🟢 <b>Звідки:</b> {order.fromAddress}</div>
                 
                 {order.stops && order.stops.length > 0 && order.stops.map((stop, i) => (
                     <div key={i} style={{marginLeft: '15px', color: '#666'}}>
-                        📍 <i>Заезд: {stop.address}</i>
+                        📍 <i>Заїзд: {stop.address}</i>
                     </div>
                 ))}
                 
-                <div>🔴 <b>Куда:</b> {order.toAddress}</div>
+                <div>🔴 <b>Куди:</b> {order.toAddress}</div>
             </div>
 
-            {/* --- БЛОК ЦЕНЫ И НАДБАВКИ --- */}
-            <p><strong>Цена:</strong> {order.price.toFixed(2)} грн</p>
+            <p><strong>Цена:</strong> {Math.round(order.price)} грн</p>
             
-            {/* Если есть надбавка, показываем её красным */}
             {order.addedValue > 0 && (
-                <p style={{ color: '#d32f2f', marginTop: '-5px', marginBottom: '10px', fontWeight: 'bold' }}>
-                    🔥 Надбавка: +{order.addedValue.toFixed(2)} грн
+                <p style={{ color: '#d32f2f', marginTop: '-5px', marginBottom: '5px', fontWeight: 'bold' }}>
+                    🔥 Надбавка: +{Math.round(order.addedValue)} грн
                 </p>
             )}
-            {/* --------------------------- */}
+
+            {order.services && order.services.length > 0 && (
+               <p style={{ marginTop: '2px', marginBottom: '8px' }}>
+                 <strong>🛠 Послуги: </strong>
+                 {order.services.map(s => s.name).join(', ')}
+               </p>
+            )}
                   
             <p>
             <strong>Оплата:</strong> 
             {order.paymentMethod === 'CARD' ? ' 💳 Картка' : ' 💵 Готівка'}
             </p>
 
-            {/* === БЛОК КОММЕНТАРИЯ === */}
             {order.comment && (
               <div style={{
                 marginTop: '8px',
                 marginBottom: '8px',
                 padding: '10px',
                 borderRadius: '6px',
-                color: '#000000ff',
-                fontSize: '0.95em'
+                backgroundColor: '#fff3cd', 
+                color: '#856404',
+                fontSize: '0.95em',
+                border: '1px solid #ffeeba'
               }}>
-                <strong>Коментар:</strong> {order.comment}
+                <strong>📝 Коментар:</strong> {order.comment}
               </div>
             )}
-            {/* ======================== */}
 
-            <p><strong>Водитель:</strong> {order.driver ? 
+            <p><strong>Водій:</strong> {order.driver ? 
                 `${order.driver.fullName} (${order.driver.carPlateNumber})` : 
-                '--- Назначение ---'}
+                '--- Призначення ---'}
             </p>
           </div>
           <div className="order-card-actions">
@@ -216,14 +209,14 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
                 className="btn-primary" 
                 onClick={(e) => { e.stopPropagation(); onAssign(order.id); }}
               >
-                Назначить
+                Призначити
               </button>
             )}
             <button 
               className="btn-danger"
               onClick={(e) => { e.stopPropagation(); onCancel(order.id); }}
             >
-              Отменить
+              Скасувати
             </button>
           </div>
         </div>
@@ -232,18 +225,23 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
   );
 };
 
-
-// --- Компонент ActiveOrders ---
+// --- Компонент ActiveOrders (ОБНОВЛЕН) ---
 const ActiveOrders = () => {
   const [orders, setOrders] = useState([]);
   const [mapDrivers, setMapDrivers] = useState([]);
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null); 
 
+  // --- НОВІ СТЕЙТИ ДЛЯ ФІЛЬТРАЦІЇ ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
   const fetchActiveOrders = async () => {
     try {
       const data = await getActiveOrders();
-      setOrders(data);
+      // Сортуємо: новіші за ID зверху
+      const sortedData = data.sort((a, b) => b.id - a.id);
+      setOrders(sortedData);
     } catch (err) {
       setError(err.message);
     }
@@ -305,26 +303,76 @@ const ActiveOrders = () => {
     }
   };
 
+  // --- ЛОГІКА ФІЛЬТРАЦІЇ ---
+  const filteredOrders = orders.filter(order => {
+    // 1. Фільтр по телефону
+    const matchesSearch = order.client.phoneNumber.includes(searchTerm);
+    
+    // 2. Фільтр по статусу
+    let matchesStatus = true;
+    if (statusFilter === 'REQUESTED') {
+        matchesStatus = order.status === 'REQUESTED';
+    } else if (statusFilter === 'ACTIVE') {
+        // ACCEPTED або IN_PROGRESS
+        matchesStatus = (order.status === 'ACCEPTED' || order.status === 'IN_PROGRESS');
+    }
+    
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="active-orders-layout">
       <div className="orders-list-container">
-        <div className="orders-list-header">
-          <h3>
-            Активные заказы ({orders.length})
-            {selectedOrder && (
-              <button 
-                onClick={() => setSelectedOrder(null)} 
-                className="btn-secondary" 
-                style={{marginLeft: '20px', padding: '0.2rem 0.5rem'}}
+        
+        {/* ХЕДЕР З ФІЛЬТРАМИ */}
+        <div className="orders-list-header" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '10px'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center'}}>
+              <h3>Активные заказы ({filteredOrders.length})</h3>
+              {selectedOrder && (
+                <button 
+                  onClick={() => setSelectedOrder(null)} 
+                  className="btn-secondary" 
+                  style={{padding: '0.2rem 0.5rem', fontSize: '0.8rem'}}
+                >
+                  Сброс карты
+                </button>
+              )}
+          </div>
+
+          <div className="filters-row" style={{display: 'flex', gap: '10px', width: '100%'}}>
+              <input 
+                type="text" 
+                placeholder="🔍 Пошук за телефоном..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                    flex: 1, 
+                    padding: '8px', 
+                    borderRadius: '4px', 
+                    border: '1px solid #ccc'
+                }}
+              />
+              
+              <select 
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                    padding: '8px', 
+                    borderRadius: '4px', 
+                    border: '1px solid #ccc'
+                }}
               >
-                Показать всех водителей
-              </button>
-            )}
-          </h3>
+                  <option value="ALL">Всі статуси</option>
+                  <option value="REQUESTED">Пошук (Requested)</option>
+                  <option value="ACTIVE">В роботі (Active)</option>
+              </select>
+          </div>
         </div>
+
         {error && <div className="error-message">{error}</div>}
+        
         <OrderList 
-          orders={orders} 
+          orders={filteredOrders} 
           onCancel={handleCancel} 
           onAssign={handleAssign}
           onSelectOrder={handleSelectOrder}
