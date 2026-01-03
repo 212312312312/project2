@@ -35,7 +35,22 @@ const waypointIcon = new L.Icon({
 // ---
 
 /**
- * Компонент, который автоматически центрирует карту
+ * Функция для перевода статусов на понятный язык
+ */
+const getStatusLabel = (status) => {
+    switch (status) {
+        case 'REQUESTED': return 'Пошук водія';
+        case 'ACCEPTED': return 'Водій їде';
+        case 'DRIVER_ARRIVED': return 'Водій чекає';
+        case 'IN_PROGRESS': return 'В дорозі';
+        case 'COMPLETED': return 'Завершено';
+        case 'CANCELLED': return 'Скасовано';
+        default: return status;
+    }
+};
+
+/**
+ * Компонент, который автоматически центрирует карту на выбранном заказе
  */
 const MapFocusController = ({ selectedOrder }) => {
   const map = useMap(); 
@@ -65,13 +80,14 @@ const MapFocusController = ({ selectedOrder }) => {
 
 // --- Компонент Карты ---
 const DriverMap = ({ drivers, selectedOrder }) => {
-  const position = [50.45, 30.52]; 
+  const position = [50.45, 30.52]; // Центр Киева по умолчанию
   
   let routePath = null;
   if (selectedOrder) {
     if (selectedOrder.googleRoutePolyline) {
       routePath = polyline.decode(selectedOrder.googleRoutePolyline);
     } else if (selectedOrder.originLat && selectedOrder.destLat) {
+      // Если полилайна нет, строим прямые линии между точками
       routePath = [[selectedOrder.originLat, selectedOrder.originLng]];
       if (selectedOrder.stops) {
           selectedOrder.stops.forEach(s => routePath.push([s.lat, s.lng]));
@@ -87,6 +103,7 @@ const DriverMap = ({ drivers, selectedOrder }) => {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
       
+      {/* Отображаем всех водителей, если заказ не выбран */}
       {!selectedOrder && drivers.map(driver => (
         <Marker 
           key={`driver-${driver.id}`} 
@@ -97,13 +114,14 @@ const DriverMap = ({ drivers, selectedOrder }) => {
         </Marker>
       ))}
 
+      {/* Если заказ выбран, показываем его маршрут */}
       {selectedOrder && (
         <>
           <Marker 
             position={[selectedOrder.originLat, selectedOrder.originLng]} 
             icon={originIcon}
           >
-            <Popup><b>Точка А (Откуда):</b><br/>{selectedOrder.fromAddress}</Popup>
+            <Popup><b>Точка А (Звідки):</b><br/>{selectedOrder.fromAddress}</Popup>
           </Marker>
           
           {selectedOrder.stops && selectedOrder.stops.map((stop, index) => (
@@ -120,7 +138,7 @@ const DriverMap = ({ drivers, selectedOrder }) => {
             position={[selectedOrder.destLat, selectedOrder.destLng]} 
             icon={destIcon}
           >
-            <Popup><b>Точка Б (Куда):</b><br/>{selectedOrder.toAddress}</Popup>
+            <Popup><b>Точка Б (Куди):</b><br/>{selectedOrder.toAddress}</Popup>
           </Marker>
           
           {routePath && <Polyline positions={routePath} color="blue" />}
@@ -133,7 +151,7 @@ const DriverMap = ({ drivers, selectedOrder }) => {
 };
 
 
-// --- Компонент OrderList ---
+// --- Компонент Списка Заказов ---
 const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId }) => {
   return (
     <div className="orders-list">
@@ -146,7 +164,9 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
         >
           <div className="order-card-header">
             <h4>Замовлення #{order.id} ({order.tariffName})</h4>
-            <span className={`status status-${order.status}`}>{order.status}</span>
+            <span className={`status status-${order.status}`}>
+                {getStatusLabel(order.status)}
+            </span>
           </div>
           <div className="order-card-body">
             <p><strong>Клієнт:</strong> {order.client.fullName} ({order.client.phoneNumber})</p>
@@ -163,7 +183,7 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
                 <div>🔴 <b>Куди:</b> {order.toAddress}</div>
             </div>
 
-            <p><strong>Цена:</strong> {Math.round(order.price)} грн</p>
+            <p><strong>Ціна:</strong> {Math.round(order.price)} грн</p>
             
             {order.addedValue > 0 && (
                 <p style={{ color: '#d32f2f', marginTop: '-5px', marginBottom: '5px', fontWeight: 'bold' }}>
@@ -225,27 +245,28 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
   );
 };
 
-// --- Компонент ActiveOrders (ОБНОВЛЕН) ---
+// --- Основной Компонент ActiveOrders ---
 const ActiveOrders = () => {
   const [orders, setOrders] = useState([]);
   const [mapDrivers, setMapDrivers] = useState([]);
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null); 
 
-  // --- НОВІ СТЕЙТИ ДЛЯ ФІЛЬТРАЦІЇ ---
+  // --- СТЕЙТИ ДЛЯ ФІЛЬТРАЦІЇ ---
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const fetchActiveOrders = async () => {
     try {
       const data = await getActiveOrders();
-      // Сортуємо: новіші за ID зверху
+      // Сортируем: новые (по ID) сверху
       const sortedData = data.sort((a, b) => b.id - a.id);
       setOrders(sortedData);
     } catch (err) {
       setError(err.message);
     }
   };
+  
   const fetchMapDrivers = async () => {
     try {
       const data = await getOnlineDriversForMap();
@@ -254,10 +275,13 @@ const ActiveOrders = () => {
       console.error(err.message);
     }
   };
+
   useEffect(() => {
     fetchActiveOrders();
     fetchMapDrivers();
   }, []);
+  
+  // Автообновление
   useInterval(fetchActiveOrders, 10000); 
   useInterval(fetchMapDrivers, 5000);
   
@@ -269,8 +293,9 @@ const ActiveOrders = () => {
       setSelectedOrder(updatedOrder);
     }
   };
+
   const handleCancel = async (orderId) => {
-    if (window.confirm(`Отменить заказ #${orderId}?`)) {
+    if (window.confirm(`Скасувати замовлення #${orderId}?`)) {
       try {
         setError('');
         await cancelOrder(orderId);
@@ -283,8 +308,9 @@ const ActiveOrders = () => {
       }
     }
   };
+
   const handleAssign = async (orderId) => {
-    const driverId = prompt(`Назначить заказ #${orderId}. \nВведите ID водителя:`);
+    const driverId = prompt(`Призначити замовлення #${orderId}. \nВведіть ID водія:`);
     if (driverId && !isNaN(driverId)) {
       try {
         setError('');
@@ -295,6 +321,7 @@ const ActiveOrders = () => {
       }
     }
   };
+
   const handleSelectOrder = (order) => {
     if (selectedOrder && selectedOrder.id === order.id) {
       setSelectedOrder(null); 
@@ -303,18 +330,25 @@ const ActiveOrders = () => {
     }
   };
 
-  // --- ЛОГІКА ФІЛЬТРАЦІЇ ---
+  // --- ЛОГИКА ФИЛЬТРАЦИИ ---
   const filteredOrders = orders.filter(order => {
-    // 1. Фільтр по телефону
+    // 1. Фильтр по телефону
     const matchesSearch = order.client.phoneNumber.includes(searchTerm);
     
-    // 2. Фільтр по статусу
+    // 2. Фильтр по статусу
     let matchesStatus = true;
+    
     if (statusFilter === 'REQUESTED') {
         matchesStatus = order.status === 'REQUESTED';
     } else if (statusFilter === 'ACTIVE') {
-        // ACCEPTED або IN_PROGRESS
-        matchesStatus = (order.status === 'ACCEPTED' || order.status === 'IN_PROGRESS');
+        // "В работе" включает в себя: Принят, На месте, В пути
+        matchesStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS'].includes(order.status);
+    } else if (statusFilter === 'ACCEPTED') {
+        matchesStatus = order.status === 'ACCEPTED';
+    } else if (statusFilter === 'DRIVER_ARRIVED') {
+        matchesStatus = order.status === 'DRIVER_ARRIVED';
+    } else if (statusFilter === 'IN_PROGRESS') {
+        matchesStatus = order.status === 'IN_PROGRESS';
     }
     
     return matchesSearch && matchesStatus;
@@ -324,17 +358,17 @@ const ActiveOrders = () => {
     <div className="active-orders-layout">
       <div className="orders-list-container">
         
-        {/* ХЕДЕР З ФІЛЬТРАМИ */}
+        {/* ХЕДЕР С ФИЛЬТРАМИ */}
         <div className="orders-list-header" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '10px'}}>
           <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center'}}>
-              <h3>Активные заказы ({filteredOrders.length})</h3>
+              <h3>Активні замовлення ({filteredOrders.length})</h3>
               {selectedOrder && (
                 <button 
                   onClick={() => setSelectedOrder(null)} 
                   className="btn-secondary" 
                   style={{padding: '0.2rem 0.5rem', fontSize: '0.8rem'}}
                 >
-                  Сброс карты
+                  Скидання карти
                 </button>
               )}
           </div>
@@ -363,8 +397,12 @@ const ActiveOrders = () => {
                 }}
               >
                   <option value="ALL">Всі статуси</option>
-                  <option value="REQUESTED">Пошук (Requested)</option>
-                  <option value="ACTIVE">В роботі (Active)</option>
+                  <option value="REQUESTED">Пошук (Нові)</option>
+                  <option value="ACTIVE">В роботі (Всі активні)</option>
+                  <option disabled>──────────</option>
+                  <option value="ACCEPTED">Водій їде</option>
+                  <option value="DRIVER_ARRIVED">Водій чекає</option>
+                  <option value="IN_PROGRESS">В дорозі (Поїздка)</option>
               </select>
           </div>
         </div>
@@ -379,12 +417,13 @@ const ActiveOrders = () => {
           selectedOrderId={selectedOrder?.id}
         />
       </div>
+      
       <div className="map-container">
         <div className="orders-list-header">
           <h3>
             {selectedOrder ? 
-              `Маршрут заказа #${selectedOrder.id}` : 
-              `Водители ONLINE (${mapDrivers.length})`}
+              `Маршрут замовлення #${selectedOrder.id}` : 
+              `Водії ONLINE (${mapDrivers.length})`}
           </h3>
         </div>
         <DriverMap 
@@ -395,4 +434,5 @@ const ActiveOrders = () => {
     </div>
   );
 };
+
 export default ActiveOrders;

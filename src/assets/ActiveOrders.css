@@ -34,9 +34,29 @@
   color: #ffc107;
   background-color: #fff9e6;
 }
+.status-DRIVER_ARRIVED {
+  color: #6f42c1;
+  background-color: #f3e5f5;
+  border: 1px solid #e1bee7;
+}
+
+/* В дорозі (Синій - Активність) */
 .status-IN_PROGRESS {
+  color: #0056b3;
+  background-color: #cce5ff;
+  border: 1px solid #b8daff;
+}
+
+/* -------------------- */
+
+.status-COMPLETED {
   color: #28a745;
   background-color: #e9f7eb;
+}
+
+.status-CANCELLED {
+  color: #dc3545;
+  background-color: #f8d7da;
 }
 
 .order-card-body {

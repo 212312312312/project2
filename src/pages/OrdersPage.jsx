@@ -5,21 +5,27 @@ import ArchiveOrders from '../components/ArchiveOrders';
 import '../assets/OrdersPage.css';
 
 const OrdersPage = () => {
-  const [viewMode, setViewMode] = useState('active');
+  const [viewMode, setViewMode] = useState('active'); // 'active' або 'archive'
   const { user } = useAuth();
 
-  // --- ВИПРАВЛЕННЯ ТУТ ---
-  // Перевіряємо, чи має користувач будь-яку з цих двох ролей
+  // --- ВИПРАВЛЕННЯ: ЗАХИСТ ВІД БІЛОГО ЕКРАНУ ---
+  
+  // 1. Якщо дані користувача ще не завантажились
+  if (!user) {
+    return <div style={{ padding: '20px' }}>Завантаження даних користувача...</div>;
+  }
+
+  // 2. Тепер безпечно перевіряємо роль
   const isAllowed = user.role === 'DISPATCHER' || user.role === 'ADMINISTRATOR';
 
   if (!isAllowed) {
-    // Це повідомлення тепер не повинно з'являтися
-    return <h2>Доступ заборонено</h2>;
+    return <h2 style={{ padding: '20px', color: 'red' }}>Доступ заборонено: Ви не диспетчер</h2>;
   }
-  // --- Кінець виправлення ---
+  // ---------------------------------------------
 
   return (
     <div className="orders-page-container">
+      {/* Перемикач вкладок */}
       <div className="view-switcher">
         <button
           className={viewMode === 'active' ? 'active' : ''}
@@ -35,13 +41,14 @@ const OrdersPage = () => {
         </button>
       </div>
 
-      <div style={{ display: viewMode === 'active' ? 'block' : 'none' }}>
-        <ActiveOrders />
+      {/* Контент вкладок */}
+      <div className="orders-content">
+        {viewMode === 'active' ? (
+           <ActiveOrders />
+        ) : (
+           <ArchiveOrders />
+        )}
       </div>
-      <div style={{ display: viewMode === 'archive' ? 'block' : 'none' }}>
-        <ArchiveOrders />
-      </div>
-
     </div>
   );
 };
