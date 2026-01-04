@@ -12,12 +12,20 @@ import polyline from '@mapbox/polyline';
 import 'leaflet/dist/leaflet.css';
 import '../assets/ActiveOrders.css';
 
-// --- ИКОНКИ ПО УМОЛЧАНИЮ ---
+// --- ИКОНКИ ---
 const defaultOnlineIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
+
+// СЕРАЯ ИКОНКА (Для активных, но не онлайн)
+const offlineIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
 const originIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
@@ -67,7 +75,8 @@ const MapFocusController = ({ selectedOrder, drivers }) => {
     else if (!hasInitialZoom.current && drivers && drivers.length > 0) {
       drivers.forEach(d => {
         const { lat, lng } = getCoords(d);
-        if (d.isOnline && lat && lng && lat !== 0) {
+        // Зуммируемся ко всем валидным водителям (и серым, и зеленым)
+        if (lat && lng && lat !== 0) {
           bounds.push([lat, lng]);
         }
       });
@@ -98,16 +107,6 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
 
   const safeDrivers = Array.isArray(drivers) ? drivers : [];
 
-  // Выбираем иконку: Кастомная или Стандартная
-  let iconToUse = defaultOnlineIcon;
-  if (customOnlineIcon) {
-      // Проверка на валидность размеров
-      const [w, h] = customOnlineIcon.options.iconSize;
-      if (w > 0 && h > 0) {
-          iconToUse = customOnlineIcon;
-      }
-  }
-
   return (
     <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
@@ -116,14 +115,29 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
         const { lat, lng } = getCoords(driver);
 
         if (lat === null || lng === null || lat === 0) return null;
-        if (!driver.isOnline) return null;
         
+        // ВАЖНО: Мы больше не делаем "if (!driver.isOnline) return null"
+        // Мы рисуем всех, просто меняем иконку
+
+        let iconToUse;
+        if (driver.isOnline) {
+             // ЗЕЛЕНЫЙ (или кастомный)
+             iconToUse = defaultOnlineIcon;
+             if (customOnlineIcon) {
+                 const [w, h] = customOnlineIcon.options.iconSize;
+                 if (w > 0 && h > 0) iconToUse = customOnlineIcon;
+             }
+        } else {
+             // СЕРЫЙ (Просто в приложении)
+             iconToUse = offlineIcon;
+        }
+
         return (
-            <Marker key={`driver-${driver.id}`} position={[lat, lng]} icon={iconToUse}>
+            <Marker key={`driver-${driver.id}-${lat}-${lng}`} position={[lat, lng]} icon={iconToUse}>
               <Popup>
                 <strong>{driver.fullName}</strong><br/>
                 ID: {driver.id}<br/>
-                🟢 ONLINE
+                {driver.isOnline ? '🟢 НА ЛИНИИ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
               </Popup>
             </Marker>
         );
@@ -188,22 +202,17 @@ const ActiveOrders = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [onlineIcon, setOnlineIcon] = useState(null);
 
-  // ЗАГРУЗКА НАСТРОЕК (ИКОНКИ)
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const settings = await getAllSettings();
         if (settings && settings.driver_map_icon) {
-          
           let w = parseInt(settings.driver_map_icon_width);
           let h = parseInt(settings.driver_map_icon_height);
-
-          // Если размеры не заданы - ставим 40x40
           if (!w || isNaN(w) || w <= 0) w = 40;
           if (!h || isNaN(h) || h <= 0) h = 40;
 
           const imageUrl = `${settings.driver_map_icon}?t=${new Date().getTime()}`;
-          
           const customIcon = new L.Icon({
             iconUrl: imageUrl,
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -231,8 +240,15 @@ const ActiveOrders = () => {
   const fetchMapDrivers = async () => {
     try {
       const data = await getOnlineDriversForMap();
-      const onlineOnly = (data || []).filter(d => d.isOnline);
-      setMapDrivers(onlineOnly);
+      
+      // БЫЛО (ОШИБКА): 
+      // const onlineOnly = (data || []).filter(d => d.isOnline);
+      // setMapDrivers(onlineOnly);
+
+      // СТАЛО (ПРАВИЛЬНО):
+      // Мы берем ВСЕХ, кого прислал сервер. Иконочкой (серой/зеленой) управляет компонент карты.
+      setMapDrivers(data || []); 
+      
     } catch (err) { console.error(err); }
   };
 
@@ -250,6 +266,11 @@ const ActiveOrders = () => {
     else if (statusFilter === 'ACTIVE') matchStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS'].includes(o.status);
     return matchSearch && matchStatus;
   });
+
+  // --- СТАТИСТИКА ВОДИТЕЛЕЙ ---
+  const totalDrivers = mapDrivers.length;
+  const onlineDrivers = mapDrivers.filter(d => d.isOnline).length;
+  const activeDrivers = totalDrivers - onlineDrivers; // Те, кто серые
 
   return (
     <div className="active-orders-layout">
@@ -269,7 +290,17 @@ const ActiveOrders = () => {
       </div>
       <div className="map-container">
         <div className="orders-list-header">
-          <h3>{selectedOrder ? `Маршрут #${selectedOrder.id}` : `Водії ONLINE (${mapDrivers.length})`}</h3>
+           {/* НОВАЯ ШАПКА СО СТАТИСТИКОЙ */}
+          {selectedOrder ? (
+              <h3>Маршрут #{selectedOrder.id}</h3>
+          ) : (
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0 }}>Водії:</h3>
+                  <span style={{ color: 'green', fontWeight: 'bold' }}>🟢 {onlineDrivers}</span>
+                  <span style={{ color: 'gray', fontWeight: 'bold' }}>⚪ {activeDrivers}</span>
+              </div>
+          )}
+          
           {selectedOrder && <button onClick={() => setSelectedOrder(null)}>Скинути</button>}
         </div>
         <DriverMap drivers={mapDrivers} selectedOrder={selectedOrder} customOnlineIcon={onlineIcon} />
