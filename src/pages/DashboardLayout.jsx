@@ -11,7 +11,8 @@ import DispatchersPage from './DispatchersPage';
 import PromosPage from './PromosPage';         // Акции (Задания за поездки)
 import PromoCodesPage from './PromoCodesPage'; // Текстовые коды
 import NewsPage from './NewsPage';             // Сповіщення
-import ServicesPage from './Services';         // <-- НОВАЯ СТРАНИЦА (Доп. послуги)
+import ServicesPage from './Services';         // Доп. послуги
+import SettingsPage from './SettingsPage';     // <-- НОВАЯ СТРАНИЦА (Налаштування)
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -39,16 +40,17 @@ const DashboardLayout = () => {
         {isAdmin && (
           <>
             <NavLink to="/news">Сповіщення</NavLink> 
-            
-            {/* --- НОВАЯ КНОПКА В МЕНЮ --- */}
             <NavLink to="/services">Дод. послуги</NavLink>
-            {/* --------------------------- */}
 
             <NavLink to="/tariffs">Тарифы</NavLink>
             <NavLink to="/dispatchers">Диспетчеры</NavLink>
             
             <NavLink to="/promos">Акції (Завдання)</NavLink>
             <NavLink to="/promocodes">Промокоди</NavLink>
+
+            {/* --- НОВАЯ КНОПКА В МЕНЮ --- */}
+            <NavLink to="/settings">Налаштування</NavLink>
+            {/* --------------------------- */}
           </>
         )}
       </nav>
@@ -64,30 +66,32 @@ const DashboardLayout = () => {
           {isAdmin ? (
             <>
               <Route path="/news" element={<NewsPage />} />
-              
-              {/* --- НОВЫЙ РОУТ --- */}
               <Route path="/services" element={<ServicesPage />} />
-              {/* ------------------ */}
-
+              
               <Route path="/tariffs" element={<TariffsPage />} />
               <Route path="/dispatchers" element={<DispatchersPage />} />
               
               <Route path="/promos" element={<PromosPage />} />
               <Route path="/promocodes" element={<PromoCodesPage />} />
+
+              {/* --- НОВЫЙ РОУТ --- */}
+              <Route path="/settings" element={<SettingsPage />} />
+              {/* ------------------ */}
             </>
           ) : (
             <>
               {/* Если обычный Диспетчер попытается зайти на закрытые страницы */}
               <Route path="/news" element={<Navigate to="/" replace />} />
-              
-              {/* --- ЗАЩИТА НОВОГО РОУТА --- */}
               <Route path="/services" element={<Navigate to="/" replace />} />
-              {/* --------------------------- */}
-
+              
               <Route path="/tariffs" element={<Navigate to="/" replace />} />
               <Route path="/dispatchers" element={<Navigate to="/" replace />} />
               <Route path="/promos" element={<Navigate to="/" replace />} />
               <Route path="/promocodes" element={<Navigate to="/" replace />} />
+
+              {/* --- ЗАЩИТА НОВОГО РОУТА --- */}
+              <Route path="/settings" element={<Navigate to="/" replace />} />
+              {/* --------------------------- */}
             </>
           )}
           

@@ -1,42 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  getActiveOrders, 
-  getOnlineDriversForMap, 
-  cancelOrder, 
-  assignDriverToOrder 
-} from '../services/orderService';
+import React, { useState, useEffect, useRef } from 'react';
+import { getActiveOrders, cancelOrder, assignDriverToOrder } from '../services/orderService';
+import { getOnlineDriversForMap } from '../services/driverService'; 
+import { getAllSettings } from '../services/settingsService';
+
 import useInterval from '../hooks/useInterval'; 
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet'; 
 import polyline from '@mapbox/polyline';
 
-// --- ИКОНКИ ---
-// Водитель
-const driverIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
+import 'leaflet/dist/leaflet.css';
+import '../assets/ActiveOrders.css';
+
+// --- ИКОНКИ ПО УМОЛЧАНИЮ ---
+const defaultOnlineIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
-// Точка А (Зеленая)
 const originIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
 });
-// Точка Б (Красная)
 const destIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
 });
-// Зупинка (Желтая)
 const waypointIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
 });
-// ---
 
-/**
- * Функция для перевода статусов на понятный язык
- */
+// --- HELPER ---
+const getCoords = (driver) => {
+    const lat = driver.latitude ?? driver.lat ?? driver.currentLatitude ?? null;
+    const lng = driver.longitude ?? driver.lng ?? driver.currentLongitude ?? null;
+    return { lat, lng };
+};
+
 const getStatusLabel = (status) => {
     switch (status) {
         case 'REQUESTED': return 'Пошук водія';
@@ -49,195 +50,128 @@ const getStatusLabel = (status) => {
     }
 };
 
-/**
- * Компонент, который автоматически центрирует карту на выбранном заказе
- */
-const MapFocusController = ({ selectedOrder }) => {
+// --- КОНТРОЛЛЕР ФОКУСА ---
+const MapFocusController = ({ selectedOrder, drivers }) => {
   const map = useMap(); 
+  const hasInitialZoom = useRef(false);
 
   useEffect(() => {
+    const bounds = [];
     if (selectedOrder && selectedOrder.originLat && selectedOrder.destLat) {
-      const bounds = [
-        [selectedOrder.originLat, selectedOrder.originLng],
-        [selectedOrder.destLat, selectedOrder.destLng]
-      ];
-      
-      if (selectedOrder.stops && selectedOrder.stops.length > 0) {
-        selectedOrder.stops.forEach(stop => {
-            if (stop.lat && stop.lng) {
-                bounds.push([stop.lat, stop.lng]);
-            }
-        });
+      bounds.push([selectedOrder.originLat, selectedOrder.originLng]);
+      bounds.push([selectedOrder.destLat, selectedOrder.destLng]);
+      if (selectedOrder.stops) {
+        selectedOrder.stops.forEach(s => { if(s.lat) bounds.push([s.lat, s.lng]) });
       }
-
-      map.fitBounds(bounds, { padding: [50, 50] }); 
+    } 
+    else if (!hasInitialZoom.current && drivers && drivers.length > 0) {
+      drivers.forEach(d => {
+        const { lat, lng } = getCoords(d);
+        if (d.isOnline && lat && lng && lat !== 0) {
+          bounds.push([lat, lng]);
+        }
+      });
+      if (bounds.length > 0) hasInitialZoom.current = true;
     }
-  }, [selectedOrder, map]);
 
+    if (bounds.length > 0) {
+      try { map.fitBounds(bounds, { padding: [80, 80], maxZoom: 15 }); } catch (e) {}
+    }
+  }, [selectedOrder, drivers, map]);
   return null;
 };
 
-
-// --- Компонент Карты ---
-const DriverMap = ({ drivers, selectedOrder }) => {
-  const position = [50.45, 30.52]; // Центр Киева по умолчанию
+// --- КАРТА ---
+const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
+  const position = [50.45, 30.52]; 
   
   let routePath = null;
   if (selectedOrder) {
     if (selectedOrder.googleRoutePolyline) {
-      routePath = polyline.decode(selectedOrder.googleRoutePolyline);
+      try { routePath = polyline.decode(selectedOrder.googleRoutePolyline); } catch (e) {}
     } else if (selectedOrder.originLat && selectedOrder.destLat) {
-      // Если полилайна нет, строим прямые линии между точками
       routePath = [[selectedOrder.originLat, selectedOrder.originLng]];
-      if (selectedOrder.stops) {
-          selectedOrder.stops.forEach(s => routePath.push([s.lat, s.lng]));
-      }
+      if (selectedOrder.stops) selectedOrder.stops.forEach(s => routePath.push([s.lat, s.lng]));
       routePath.push([selectedOrder.destLat, selectedOrder.destLng]);
     }
   }
 
-  return (
-    <MapContainer center={position} zoom={11} className="leaflet-container">
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-      
-      {/* Отображаем всех водителей, если заказ не выбран */}
-      {!selectedOrder && drivers.map(driver => (
-        <Marker 
-          key={`driver-${driver.id}`} 
-          position={[driver.latitude, driver.longitude]}
-          icon={driverIcon}
-        >
-          <Popup>ID: {driver.id} <br/> {driver.fullName}</Popup>
-        </Marker>
-      ))}
+  const safeDrivers = Array.isArray(drivers) ? drivers : [];
 
-      {/* Если заказ выбран, показываем его маршрут */}
+  // Выбираем иконку: Кастомная или Стандартная
+  let iconToUse = defaultOnlineIcon;
+  if (customOnlineIcon) {
+      // Проверка на валидность размеров
+      const [w, h] = customOnlineIcon.options.iconSize;
+      if (w > 0 && h > 0) {
+          iconToUse = customOnlineIcon;
+      }
+  }
+
+  return (
+    <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+      
+      {!selectedOrder && safeDrivers.map(driver => {
+        const { lat, lng } = getCoords(driver);
+
+        if (lat === null || lng === null || lat === 0) return null;
+        if (!driver.isOnline) return null;
+        
+        return (
+            <Marker key={`driver-${driver.id}`} position={[lat, lng]} icon={iconToUse}>
+              <Popup>
+                <strong>{driver.fullName}</strong><br/>
+                ID: {driver.id}<br/>
+                🟢 ONLINE
+              </Popup>
+            </Marker>
+        );
+      })}
+
       {selectedOrder && (
         <>
-          <Marker 
-            position={[selectedOrder.originLat, selectedOrder.originLng]} 
-            icon={originIcon}
-          >
-            <Popup><b>Точка А (Звідки):</b><br/>{selectedOrder.fromAddress}</Popup>
+          <Marker position={[selectedOrder.originLat, selectedOrder.originLng]} icon={originIcon}>
+             <Popup>А: {selectedOrder.fromAddress}</Popup>
           </Marker>
-          
-          {selectedOrder.stops && selectedOrder.stops.map((stop, index) => (
-             <Marker 
-                key={`wp-${index}`}
-                position={[stop.lat, stop.lng]} 
-                icon={waypointIcon}
-             >
-                <Popup><b>Зупинка #{index + 1}:</b><br/>{stop.address}</Popup>
-             </Marker>
+          {selectedOrder.stops?.map((stop, i) => (
+             <Marker key={i} position={[stop.lat, stop.lng]} icon={waypointIcon}><Popup>{stop.address}</Popup></Marker>
           ))}
-
-          <Marker 
-            position={[selectedOrder.destLat, selectedOrder.destLng]} 
-            icon={destIcon}
-          >
-            <Popup><b>Точка Б (Куди):</b><br/>{selectedOrder.toAddress}</Popup>
+          <Marker position={[selectedOrder.destLat, selectedOrder.destLng]} icon={destIcon}>
+             <Popup>Б: {selectedOrder.toAddress}</Popup>
           </Marker>
-          
           {routePath && <Polyline positions={routePath} color="blue" />}
         </>
       )}
       
-      <MapFocusController selectedOrder={selectedOrder} />
+      <MapFocusController selectedOrder={selectedOrder} drivers={safeDrivers} />
     </MapContainer>
   );
 };
 
-
-// --- Компонент Списка Заказов ---
+// --- СПИСОК ЗАКАЗОВ ---
 const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId }) => {
   return (
     <div className="orders-list">
-      {orders.length === 0 && <p style={{padding: '1.5rem'}}>Активних замовлень немає (або не знайдено).</p>}
+      {orders.length === 0 && <p style={{padding: '1.5rem'}}>Активних замовлень немає.</p>}
       {orders.map(order => (
-        <div 
-          key={order.id} 
-          className={`order-card ${selectedOrderId === order.id ? 'selected' : ''}`}
-          onClick={() => onSelectOrder(order)}
-        >
+        <div key={order.id} className={`order-card ${selectedOrderId === order.id ? 'selected' : ''}`} onClick={() => onSelectOrder(order)}>
           <div className="order-card-header">
-            <h4>Замовлення #{order.id} ({order.tariffName})</h4>
-            <span className={`status status-${order.status}`}>
-                {getStatusLabel(order.status)}
-            </span>
+            <h4>#{order.id} ({order.tariffName})</h4>
+            <span className={`status status-${order.status}`}>{getStatusLabel(order.status)}</span>
           </div>
           <div className="order-card-body">
-            <p><strong>Клієнт:</strong> {order.client.fullName} ({order.client.phoneNumber})</p>
-            
-            <div className="route-details" style={{marginTop: '5px', marginBottom: '10px'}}>
-                <div>🟢 <b>Звідки:</b> {order.fromAddress}</div>
-                
-                {order.stops && order.stops.length > 0 && order.stops.map((stop, i) => (
-                    <div key={i} style={{marginLeft: '15px', color: '#666'}}>
-                        📍 <i>Заїзд: {stop.address}</i>
-                    </div>
-                ))}
-                
-                <div>🔴 <b>Куди:</b> {order.toAddress}</div>
+            <p><strong>Клієнт:</strong> {order.client.fullName}</p>
+            <div className="route-details" style={{marginTop: '5px'}}>
+                <div>🟢 {order.fromAddress}</div>
+                <div>🔴 {order.toAddress}</div>
             </div>
-
-            <p><strong>Ціна:</strong> {Math.round(order.price)} грн</p>
-            
-            {order.addedValue > 0 && (
-                <p style={{ color: '#d32f2f', marginTop: '-5px', marginBottom: '5px', fontWeight: 'bold' }}>
-                    🔥 Надбавка: +{Math.round(order.addedValue)} грн
-                </p>
-            )}
-
-            {order.services && order.services.length > 0 && (
-               <p style={{ marginTop: '2px', marginBottom: '8px' }}>
-                 <strong>🛠 Послуги: </strong>
-                 {order.services.map(s => s.name).join(', ')}
-               </p>
-            )}
-                  
-            <p>
-            <strong>Оплата:</strong> 
-            {order.paymentMethod === 'CARD' ? ' 💳 Картка' : ' 💵 Готівка'}
-            </p>
-
-            {order.comment && (
-              <div style={{
-                marginTop: '8px',
-                marginBottom: '8px',
-                padding: '10px',
-                borderRadius: '6px',
-                backgroundColor: '#fff3cd', 
-                color: '#856404',
-                fontSize: '0.95em',
-                border: '1px solid #ffeeba'
-              }}>
-                <strong>📝 Коментар:</strong> {order.comment}
-              </div>
-            )}
-
-            <p><strong>Водій:</strong> {order.driver ? 
-                `${order.driver.fullName} (${order.driver.carPlateNumber})` : 
-                '--- Призначення ---'}
-            </p>
+            <p><strong>Ціна:</strong> {Math.round(order.price)} грн {order.paymentMethod === 'CARD' ? '💳' : '💵'}</p>
+            <p><strong>Водій:</strong> {order.driver ? order.driver.fullName : '---'}</p>
           </div>
           <div className="order-card-actions">
-            {order.status === 'REQUESTED' && (
-              <button 
-                className="btn-primary" 
-                onClick={(e) => { e.stopPropagation(); onAssign(order.id); }}
-              >
-                Призначити
-              </button>
-            )}
-            <button 
-              className="btn-danger"
-              onClick={(e) => { e.stopPropagation(); onCancel(order.id); }}
-            >
-              Скасувати
-            </button>
+            {order.status === 'REQUESTED' && <button className="btn-primary" onClick={(e) => { e.stopPropagation(); onAssign(order.id); }}>Призначити</button>}
+            <button className="btn-danger" onClick={(e) => { e.stopPropagation(); onCancel(order.id); }}>Скасувати</button>
           </div>
         </div>
       ))}
@@ -245,191 +179,100 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
   );
 };
 
-// --- Основной Компонент ActiveOrders ---
+// --- ГЛАВНЫЙ КОМПОНЕНТ ---
 const ActiveOrders = () => {
   const [orders, setOrders] = useState([]);
   const [mapDrivers, setMapDrivers] = useState([]);
-  const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null); 
-
-  // --- СТЕЙТИ ДЛЯ ФІЛЬТРАЦІЇ ---
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [onlineIcon, setOnlineIcon] = useState(null);
+
+  // ЗАГРУЗКА НАСТРОЕК (ИКОНКИ)
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await getAllSettings();
+        if (settings && settings.driver_map_icon) {
+          
+          let w = parseInt(settings.driver_map_icon_width);
+          let h = parseInt(settings.driver_map_icon_height);
+
+          // Если размеры не заданы - ставим 40x40
+          if (!w || isNaN(w) || w <= 0) w = 40;
+          if (!h || isNaN(h) || h <= 0) h = 40;
+
+          const imageUrl = `${settings.driver_map_icon}?t=${new Date().getTime()}`;
+          
+          const customIcon = new L.Icon({
+            iconUrl: imageUrl,
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [w, h],          
+            iconAnchor: [w / 2, h / 2], 
+            popupAnchor: [0, -(h / 2)], 
+            shadowSize: [w + 5, h + 5] 
+          });
+          setOnlineIcon(customIcon);
+        }
+      } catch (err) {
+        console.error("Не удалось загрузить иконку:", err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const fetchActiveOrders = async () => {
     try {
       const data = await getActiveOrders();
-      // Сортируем: новые (по ID) сверху
-      const sortedData = data.sort((a, b) => b.id - a.id);
-      setOrders(sortedData);
-    } catch (err) {
-      setError(err.message);
-    }
+      setOrders(data.sort((a, b) => b.id - a.id));
+    } catch (err) {}
   };
   
   const fetchMapDrivers = async () => {
     try {
       const data = await getOnlineDriversForMap();
-      setMapDrivers(data);
-    } catch (err) {
-      console.error(err.message);
-    }
+      const onlineOnly = (data || []).filter(d => d.isOnline);
+      setMapDrivers(onlineOnly);
+    } catch (err) { console.error(err); }
   };
 
-  useEffect(() => {
-    fetchActiveOrders();
-    fetchMapDrivers();
-  }, []);
-  
-  // Автообновление
+  useEffect(() => { fetchActiveOrders(); fetchMapDrivers(); }, []);
   useInterval(fetchActiveOrders, 10000); 
   useInterval(fetchMapDrivers, 5000);
   
-  const updateOrderInList = (updatedOrder) => {
-    setOrders(prevOrders => 
-      prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o)
-    );
-    if (selectedOrder && selectedOrder.id === updatedOrder.id) {
-      setSelectedOrder(updatedOrder);
-    }
-  };
+  const handleCancel = async (orderId) => { if (window.confirm(`Скасувати #${orderId}?`)) try { await cancelOrder(orderId); setOrders(prev => prev.filter(o => o.id !== orderId)); if (selectedOrder?.id === orderId) setSelectedOrder(null); } catch (err) { alert(err.message); } };
+  const handleAssign = async (orderId) => { const did = prompt(`ID водія:`); if (did) try { await assignDriverToOrder(orderId, parseInt(did)); fetchActiveOrders(); } catch (err) { alert(err.message); } };
 
-  const handleCancel = async (orderId) => {
-    if (window.confirm(`Скасувати замовлення #${orderId}?`)) {
-      try {
-        setError('');
-        await cancelOrder(orderId);
-        setOrders(prev => prev.filter(o => o.id !== orderId));
-        if (selectedOrder && selectedOrder.id === orderId) {
-          setSelectedOrder(null);
-        }
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-  };
-
-  const handleAssign = async (orderId) => {
-    const driverId = prompt(`Призначити замовлення #${orderId}. \nВведіть ID водія:`);
-    if (driverId && !isNaN(driverId)) {
-      try {
-        setError('');
-        const updatedOrder = await assignDriverToOrder(orderId, parseInt(driverId));
-        updateOrderInList(updatedOrder);
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-  };
-
-  const handleSelectOrder = (order) => {
-    if (selectedOrder && selectedOrder.id === order.id) {
-      setSelectedOrder(null); 
-    } else {
-      setSelectedOrder(order);
-    }
-  };
-
-  // --- ЛОГИКА ФИЛЬТРАЦИИ ---
-  const filteredOrders = orders.filter(order => {
-    // 1. Фильтр по телефону
-    const matchesSearch = order.client.phoneNumber.includes(searchTerm);
-    
-    // 2. Фильтр по статусу
-    let matchesStatus = true;
-    
-    if (statusFilter === 'REQUESTED') {
-        matchesStatus = order.status === 'REQUESTED';
-    } else if (statusFilter === 'ACTIVE') {
-        // "В работе" включает в себя: Принят, На месте, В пути
-        matchesStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS'].includes(order.status);
-    } else if (statusFilter === 'ACCEPTED') {
-        matchesStatus = order.status === 'ACCEPTED';
-    } else if (statusFilter === 'DRIVER_ARRIVED') {
-        matchesStatus = order.status === 'DRIVER_ARRIVED';
-    } else if (statusFilter === 'IN_PROGRESS') {
-        matchesStatus = order.status === 'IN_PROGRESS';
-    }
-    
-    return matchesSearch && matchesStatus;
+  const filteredOrders = orders.filter(o => {
+    const matchSearch = o.client.phoneNumber.includes(searchTerm);
+    let matchStatus = true;
+    if (statusFilter === 'REQUESTED') matchStatus = o.status === 'REQUESTED';
+    else if (statusFilter === 'ACTIVE') matchStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS'].includes(o.status);
+    return matchSearch && matchStatus;
   });
 
   return (
     <div className="active-orders-layout">
       <div className="orders-list-container">
-        
-        {/* ХЕДЕР С ФИЛЬТРАМИ */}
-        <div className="orders-list-header" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '10px'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center'}}>
-              <h3>Активні замовлення ({filteredOrders.length})</h3>
-              {selectedOrder && (
-                <button 
-                  onClick={() => setSelectedOrder(null)} 
-                  className="btn-secondary" 
-                  style={{padding: '0.2rem 0.5rem', fontSize: '0.8rem'}}
-                >
-                  Скидання карти
-                </button>
-              )}
-          </div>
-
-          <div className="filters-row" style={{display: 'flex', gap: '10px', width: '100%'}}>
-              <input 
-                type="text" 
-                placeholder="🔍 Пошук за телефоном..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                    flex: 1, 
-                    padding: '8px', 
-                    borderRadius: '4px', 
-                    border: '1px solid #ccc'
-                }}
-              />
-              
-              <select 
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                    padding: '8px', 
-                    borderRadius: '4px', 
-                    border: '1px solid #ccc'
-                }}
-              >
-                  <option value="ALL">Всі статуси</option>
-                  <option value="REQUESTED">Пошук (Нові)</option>
-                  <option value="ACTIVE">В роботі (Всі активні)</option>
-                  <option disabled>──────────</option>
-                  <option value="ACCEPTED">Водій їде</option>
-                  <option value="DRIVER_ARRIVED">Водій чекає</option>
-                  <option value="IN_PROGRESS">В дорозі (Поїздка)</option>
+        <div className="orders-list-header" style={{flexDirection: 'column', gap: '10px'}}>
+          <h3>Замовлення ({filteredOrders.length})</h3>
+          <div style={{display: 'flex', gap: '5px', width: '100%'}}>
+              <input type="text" placeholder="Пошук..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{flex: 1}}/>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="ALL">Всі</option>
+                  <option value="REQUESTED">Пошук</option>
+                  <option value="ACTIVE">В роботі</option>
               </select>
           </div>
         </div>
-
-        {error && <div className="error-message">{error}</div>}
-        
-        <OrderList 
-          orders={filteredOrders} 
-          onCancel={handleCancel} 
-          onAssign={handleAssign}
-          onSelectOrder={handleSelectOrder}
-          selectedOrderId={selectedOrder?.id}
-        />
+        <OrderList orders={filteredOrders} onCancel={handleCancel} onAssign={handleAssign} onSelectOrder={setSelectedOrder} selectedOrderId={selectedOrder?.id} />
       </div>
-      
       <div className="map-container">
         <div className="orders-list-header">
-          <h3>
-            {selectedOrder ? 
-              `Маршрут замовлення #${selectedOrder.id}` : 
-              `Водії ONLINE (${mapDrivers.length})`}
-          </h3>
+          <h3>{selectedOrder ? `Маршрут #${selectedOrder.id}` : `Водії ONLINE (${mapDrivers.length})`}</h3>
+          {selectedOrder && <button onClick={() => setSelectedOrder(null)}>Скинути</button>}
         </div>
-        <DriverMap 
-          drivers={mapDrivers} 
-          selectedOrder={selectedOrder} 
-        />
+        <DriverMap drivers={mapDrivers} selectedOrder={selectedOrder} customOnlineIcon={onlineIcon} />
       </div>
     </div>
   );
