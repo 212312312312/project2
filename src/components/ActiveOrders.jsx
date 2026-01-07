@@ -114,22 +114,24 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
       {!selectedOrder && safeDrivers.map(driver => {
         const { lat, lng } = getCoords(driver);
 
+        // Проверка координат
         if (lat === null || lng === null || lat === 0) return null;
         
-        // ВАЖНО: Мы больше не делаем "if (!driver.isOnline) return null"
-        // Мы рисуем всех, просто меняем иконку
+        // --- ОШИБКА БЫЛА ТУТ ---
+        // Удали или закомментируй эту строку:
+        // if (!driver.isOnline) return null; 
+        // ------------------------
 
+        // Логика иконки
         let iconToUse;
         if (driver.isOnline) {
-             // ЗЕЛЕНЫЙ (или кастомный)
              iconToUse = defaultOnlineIcon;
              if (customOnlineIcon) {
                  const [w, h] = customOnlineIcon.options.iconSize;
                  if (w > 0 && h > 0) iconToUse = customOnlineIcon;
              }
         } else {
-             // СЕРЫЙ (Просто в приложении)
-             iconToUse = offlineIcon;
+             iconToUse = offlineIcon; // Используем серую иконку для "активных"
         }
 
         return (

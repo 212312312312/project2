@@ -18,9 +18,8 @@ export const getAllDrivers = async () => {
  */
 export const getOnlineDriversForMap = async () => {
   try {
-    // ВАЖНО: Добавляем метку времени (?t=...), чтобы браузер не кэшировал запрос
-    // Иначе он будет показывать "0 водителей", даже если сервер отдает данные.
-    const response = await api.get(`/admin/drivers/online?t=${new Date().getTime()}`);
+    // ИСПРАВЛЕНО: Путь теперь /admin/drivers/location-map
+    const response = await api.get(`/admin/drivers/location-map?t=${new Date().getTime()}`);
     return response.data;
   } catch (error) {
     console.error("Ошибка загрузки водителей на карту:", error);
