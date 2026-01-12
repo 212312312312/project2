@@ -3,6 +3,10 @@ import { getActiveOrders, cancelOrder, assignDriverToOrder } from '../services/o
 import { getOnlineDriversForMap } from '../services/driverService'; 
 import { getAllSettings } from '../services/settingsService';
 
+// WebSocket
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
+
 import useInterval from '../hooks/useInterval'; 
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
@@ -19,7 +23,6 @@ const defaultOnlineIcon = new L.Icon({
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
 
-// СЕРАЯ ИКОНКА (Для активных, но не онлайн)
 const offlineIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -75,7 +78,6 @@ const MapFocusController = ({ selectedOrder, drivers }) => {
     else if (!hasInitialZoom.current && drivers && drivers.length > 0) {
       drivers.forEach(d => {
         const { lat, lng } = getCoords(d);
-        // Зуммируемся ко всем валидным водителям (и серым, и зеленым)
         if (lat && lng && lat !== 0) {
           bounds.push([lat, lng]);
         }
@@ -113,16 +115,8 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
       
       {!selectedOrder && safeDrivers.map(driver => {
         const { lat, lng } = getCoords(driver);
-
-        // Проверка координат
         if (lat === null || lng === null || lat === 0) return null;
-        
-        // --- ОШИБКА БЫЛА ТУТ ---
-        // Удали или закомментируй эту строку:
-        // if (!driver.isOnline) return null; 
-        // ------------------------
 
-        // Логика иконки
         let iconToUse;
         if (driver.isOnline) {
              iconToUse = defaultOnlineIcon;
@@ -131,7 +125,7 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
                  if (w > 0 && h > 0) iconToUse = customOnlineIcon;
              }
         } else {
-             iconToUse = offlineIcon; // Используем серую иконку для "активных"
+             iconToUse = offlineIcon; 
         }
 
         return (
@@ -139,7 +133,7 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
               <Popup>
                 <strong>{driver.fullName}</strong><br/>
                 ID: {driver.id}<br/>
-                {driver.isOnline ? '🟢 НА ЛИНИИ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
+                {driver.isOnline ? '🟢 НА ЛІНІЇ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
               </Popup>
             </Marker>
         );
@@ -203,6 +197,8 @@ const ActiveOrders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [onlineIcon, setOnlineIcon] = useState(null);
+  
+  const stompClientRef = useRef(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -211,14 +207,14 @@ const ActiveOrders = () => {
         if (settings && settings.driver_map_icon) {
           let w = parseInt(settings.driver_map_icon_width);
           let h = parseInt(settings.driver_map_icon_height);
-          if (!w || isNaN(w) || w <= 0) w = 40;
-          if (!h || isNaN(h) || h <= 0) h = 40;
+          if (!w) w = 40;
+          if (!h) h = 40;
 
           const imageUrl = `${settings.driver_map_icon}?t=${new Date().getTime()}`;
           const customIcon = new L.Icon({
             iconUrl: imageUrl,
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [w, h],          
+            iconSize: [w, h],           
             iconAnchor: [w / 2, h / 2], 
             popupAnchor: [0, -(h / 2)], 
             shadowSize: [w + 5, h + 5] 
@@ -242,24 +238,69 @@ const ActiveOrders = () => {
   const fetchMapDrivers = async () => {
     try {
       const data = await getOnlineDriversForMap();
-      
-      // БЫЛО (ОШИБКА): 
-      // const onlineOnly = (data || []).filter(d => d.isOnline);
-      // setMapDrivers(onlineOnly);
-
-      // СТАЛО (ПРАВИЛЬНО):
-      // Мы берем ВСЕХ, кого прислал сервер. Иконочкой (серой/зеленой) управляет компонент карты.
       setMapDrivers(data || []); 
-      
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => { fetchActiveOrders(); fetchMapDrivers(); }, []);
-  useInterval(fetchActiveOrders, 10000); 
+  useEffect(() => {
+    fetchActiveOrders(); 
+    fetchMapDrivers(); 
+
+    // WebSocket подключение
+    const socket = new SockJS('http://localhost:8080/ws-taxi');
+    
+    const client = new Client({
+        webSocketFactory: () => socket,
+        reconnectDelay: 5000,
+        onConnect: () => {
+            console.log('Connected to Dispatcher WebSocket');
+            client.subscribe('/topic/admin/orders', (message) => {
+                const msg = JSON.parse(message.body);
+                handleSocketMessage(msg);
+            });
+        },
+        onStompError: (frame) => {
+            console.error('WS Error:', frame);
+        },
+    });
+
+    client.activate();
+    stompClientRef.current = client;
+
+    return () => {
+        if (stompClientRef.current) stompClientRef.current.deactivate();
+    };
+  }, []);
+
+  const handleSocketMessage = (msg) => {
+    if (msg.action === 'ADD') {
+        setOrders(prevOrders => {
+            if (prevOrders.find(o => o.id === msg.orderId)) return prevOrders;
+            return [msg.order, ...prevOrders];
+        });
+    } else if (msg.action === 'REMOVE') {
+        setOrders(prevOrders => prevOrders.filter(o => o.id !== msg.orderId));
+    }
+  };
+
   useInterval(fetchMapDrivers, 5000);
-  
-  const handleCancel = async (orderId) => { if (window.confirm(`Скасувати #${orderId}?`)) try { await cancelOrder(orderId); setOrders(prev => prev.filter(o => o.id !== orderId)); if (selectedOrder?.id === orderId) setSelectedOrder(null); } catch (err) { alert(err.message); } };
-  const handleAssign = async (orderId) => { const did = prompt(`ID водія:`); if (did) try { await assignDriverToOrder(orderId, parseInt(did)); fetchActiveOrders(); } catch (err) { alert(err.message); } };
+
+  const handleCancel = async (orderId) => { 
+      if (window.confirm(`Скасувати #${orderId}?`)) {
+          try { 
+              await cancelOrder(orderId); 
+              if (selectedOrder?.id === orderId) setSelectedOrder(null); 
+          } catch (err) { alert(err.message); } 
+      }
+  };
+
+  const handleAssign = async (orderId) => { 
+      const did = prompt(`ID водія:`); 
+      if (did) {
+          try { await assignDriverToOrder(orderId, parseInt(did)); } 
+          catch (err) { alert(err.message); }
+      }
+  };
 
   const filteredOrders = orders.filter(o => {
     const matchSearch = o.client.phoneNumber.includes(searchTerm);
@@ -269,10 +310,9 @@ const ActiveOrders = () => {
     return matchSearch && matchStatus;
   });
 
-  // --- СТАТИСТИКА ВОДИТЕЛЕЙ ---
   const totalDrivers = mapDrivers.length;
   const onlineDrivers = mapDrivers.filter(d => d.isOnline).length;
-  const activeDrivers = totalDrivers - onlineDrivers; // Те, кто серые
+  const activeDrivers = totalDrivers - onlineDrivers;
 
   return (
     <div className="active-orders-layout">
@@ -292,7 +332,6 @@ const ActiveOrders = () => {
       </div>
       <div className="map-container">
         <div className="orders-list-header">
-           {/* НОВАЯ ШАПКА СО СТАТИСТИКОЙ */}
           {selectedOrder ? (
               <h3>Маршрут #{selectedOrder.id}</h3>
           ) : (

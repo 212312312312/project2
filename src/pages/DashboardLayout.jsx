@@ -12,7 +12,8 @@ import PromosPage from './PromosPage';         // Акции (Задания з�
 import PromoCodesPage from './PromoCodesPage'; // Текстовые коды
 import NewsPage from './NewsPage';             // Сповіщення
 import ServicesPage from './Services';         // Доп. послуги
-import SettingsPage from './SettingsPage';     // <-- НОВАЯ СТРАНИЦА (Налаштування)
+import SettingsPage from './SettingsPage';     // Налаштування
+import SectorsPage from './SectorsPage';       // <-- НОВАЯ СТРАНИЦА (Сектори)
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -49,8 +50,10 @@ const DashboardLayout = () => {
             <NavLink to="/promocodes">Промокоди</NavLink>
 
             {/* --- НОВАЯ КНОПКА В МЕНЮ --- */}
-            <NavLink to="/settings">Налаштування</NavLink>
+            <NavLink to="/sectors">Сектори</NavLink>
             {/* --------------------------- */}
+
+            <NavLink to="/settings">Налаштування</NavLink>
           </>
         )}
       </nav>
@@ -75,8 +78,10 @@ const DashboardLayout = () => {
               <Route path="/promocodes" element={<PromoCodesPage />} />
 
               {/* --- НОВЫЙ РОУТ --- */}
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/sectors" element={<SectorsPage />} />
               {/* ------------------ */}
+
+              <Route path="/settings" element={<SettingsPage />} />
             </>
           ) : (
             <>
@@ -88,8 +93,9 @@ const DashboardLayout = () => {
               <Route path="/dispatchers" element={<Navigate to="/" replace />} />
               <Route path="/promos" element={<Navigate to="/" replace />} />
               <Route path="/promocodes" element={<Navigate to="/" replace />} />
-
-              {/* --- ЗАЩИТА НОВОГО РОУТА --- */}
+              
+              {/* --- ЗАЩИТА НОВЫХ РОУТОВ --- */}
+              <Route path="/sectors" element={<Navigate to="/" replace />} />
               <Route path="/settings" element={<Navigate to="/" replace />} />
               {/* --------------------------- */}
             </>
