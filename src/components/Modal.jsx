@@ -1,25 +1,26 @@
-import React from 'react';
-import '../assets/Modal.css'; // Стили для модального окна
+import React, { useEffect } from 'react';
+import '../assets/Modal.css'; // Стилі для модалки (код нижче)
 
-/**
- * Универсальный компонент модального окна
- * @param {object} props
- * @param {boolean} props.isOpen - Показать или скрыть
- * @param {function} props.onClose - Функция, вызываемая при закрытии
- * @param {string} props.title - Заголовок окна
- * @param {React.ReactNode} props.children - Содержимое (например, форма)
- */
 const Modal = ({ isOpen, onClose, title, children }) => {
-  if (!isOpen) {
-    return null; // Не рендерим, если закрыто
-  }
+  // Блокуємо скрол сторінки, коли модалка відкрита
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
 
-  // e.stopPropagation() нужен, чтобы клик по самому окну не закрывал его
+  if (!isOpen) return null;
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    // Тут НЕМАЄ onClick={onClose}, тому клік по фону нічого не робить
+    <div className="modal-overlay">
+      <div className="modal-content">
         <div className="modal-header">
           <h2>{title}</h2>
+          {/* Єдиний спосіб закрити - ця кнопка */}
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">

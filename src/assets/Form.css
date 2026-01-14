@@ -1,4 +1,7 @@
-/* --- Общие стили для форм (TariffForm, DriverForm) --- */
+/* ============================================================
+   1. ЗАГАЛЬНІ СТИЛІ ТА СТАРІ ФОРМИ (TariffForm, entity-form)
+   ============================================================ */
+
 .entity-form {
   display: flex;
   flex-direction: column;
@@ -7,7 +10,6 @@
 
 .entity-form .form-grid {
   display: grid;
-  /* 2 колонки */
   grid-template-columns: repeat(2, 1fr); 
   gap: 1rem 1.5rem;
 }
@@ -19,8 +21,8 @@
   padding: 1.5rem;
   margin: 0;
 }
+
 .entity-form fieldset.full-width {
-  /* Для сетки с 1 колонкой */
   grid-column: 1 / -1; 
 }
 
@@ -31,16 +33,18 @@
   color: #333;
 }
 
-/* Универсальная группа (label + input) */
+/* Універсальна група (label + input) для entity-form */
 .entity-form .form-group {
   display: flex;
   flex-direction: column;
 }
+
 .entity-form .form-group label {
   margin-bottom: 0.5rem;
   font-weight: 500;
   font-size: 0.9rem;
 }
+
 .entity-form .form-group input[type="text"],
 .entity-form .form-group input[type="tel"],
 .entity-form .form-group input[type="password"],
@@ -51,41 +55,257 @@
   border-radius: 4px;
   box-sizing: border-box;
 }
+
 .entity-form .form-group input:disabled {
   background-color: #f4f4f4;
   cursor: not-allowed;
 }
 
-/* --- Стили для Чекбоксов --- */
+/* Кнопки внизу форми (загальні) */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+  margin-top: 1rem;
+}
+
+/* ============================================================
+   2. НОВІ СТИЛІ ДЛЯ DRIVER FORM (Широка, з фото)
+   ============================================================ */
+
+/* Головний контейнер нової форми */
+.app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  /* min-width прибрали, щоб не ламало мобілку, але 
+     grid внизу забезпечить ширину */
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+/* Секція (блок з сірим фоном) */
+.form-section {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  gap: 30px; /* Відступ між фото та полями */
+}
+
+.form-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  width: 100%;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 10px;
+  color: #333;
+  font-size: 18px;
+}
+
+/* --- КОЛОНКА З ФОТО (ЗЛІВА) --- */
+.photo-column {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.photo-column label {
+  font-weight: 600;
+  color: #555;
+  font-size: 14px;
+}
+
+/* Квадрат превью фото */
+.image-preview-box {
+  width: 200px;
+  height: 200px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #fff;
+  position: relative;
+}
+
+.image-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-preview-box span {
+  color: #aaa;
+  font-size: 13px;
+  text-align: center;
+  padding: 10px;
+}
+
+/* Стилізована кнопка "Завантажити" */
+.custom-file-upload {
+  border: 1px solid #ccc;
+  display: inline-block;
+  padding: 8px 16px;
+  cursor: pointer;
+  background: #fff;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+
+.custom-file-upload:hover {
+  background: #f0f0f0;
+  border-color: #bbb;
+}
+
+/* --- КОЛОНКА З ПОЛЯМИ (СПРАВА) --- */
+.fields-column {
+  flex-grow: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Дві колонки для інпутів */
+  gap: 20px;
+  align-content: start;
+}
+
+/* Поле на всю ширину */
+.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Стилі інпутів для .app-form */
+.app-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-form .form-group label {
+  font-weight: 500;
+  font-size: 13px;
+  color: #555;
+}
+
+.app-form .form-group input,
+.app-form .form-group select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.app-form .form-group input:focus,
+.app-form .form-group select:focus {
+  border-color: #1976d2;
+  outline: none;
+}
+
+.app-form .form-group input:disabled {
+  background: #eee;
+  color: #777;
+}
+
+/* --- ГРІД ДЛЯ ДОКУМЕНТІВ (Нижня секція) --- */
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.doc-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.doc-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-align: center;
+}
+
+/* Зменшена версія превью бокса для документів */
+.doc-item .image-preview-box {
+  width: 100%;
+  height: 120px;
+  border-width: 1px;
+}
+
+/* --- ЧЕКБОКСИ (Тарифи) --- */
 .checkbox-group {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* 3 колонки */
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Адаптивні колонки */
+  gap: 10px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .checkbox-label {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background 0.2s;
 }
+
+.checkbox-label:hover {
+  background: #f5f5f5;
+}
+
 .checkbox-label input[type="checkbox"] {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
-}
-.checkbox-label label { /* для TariffForm */
-  margin-bottom: 0;
-  font-weight: normal;
+  accent-color: #1976d2;
 }
 
+/* ============================================================
+   3. ВАЖЛИВЕ ВИПРАВЛЕННЯ ДЛЯ МОДАЛКИ (MODAL FIX)
+   Це змусить контейнер модалки розширитись під нашу форму
+   ============================================================ */
 
-/* Кнопки внизу формы */
-.entity-form .form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #eee;
+/* Спроба пересилити стилі стандартної модалки */
+.modal-content, 
+.modal-body,
+[class*="modal-content"], /* Ловить класи типу style_modal-content */
+[class*="modal_content"] {
+  width: auto !important;
+  max-width: 1200px !important; /* Робимо широким */
+  min-width: 950px !important;  /* Гарантуємо, що форма влізе */
+}
+
+/* Якщо модалка використовує .modal-dialog (як у Bootstrap) */
+.modal-dialog {
+  max-width: 1200px !important;
+  width: 95% !important;
+}
+
+/* Запобігаємо горизонтальному скролу всередині тіла */
+.modal-body {
+  overflow-x: hidden !important;
 }
