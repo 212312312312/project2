@@ -145,3 +145,12 @@ export const unblockDriver = async (id) => {
     throw new Error(error.response?.data?.message || 'Помилка розблокування');
   }
 };
+
+export const changeDriverActivity = async (id, points, reason) => {
+  try {
+    const response = await api.post(`/admin/drivers/${id}/activity`, { points, reason });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка зміни активності');
+  }
+};

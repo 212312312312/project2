@@ -6,118 +6,138 @@ import {
   deleteDriver,
   blockDriverPermanently,
   blockDriverTemporarily,
-  unblockDriver
+  unblockDriver,
+  changeDriverActivity // <-- Переконайся, що додав цю функцію в driverService.js
 } from '../services/driverService';
 import { getAllTariffs } from '../services/tariffService'; 
 
 import Modal from '../components/Modal';
 import DriverForm from '../components/DriverForm';
 
+// --- ХЕЛПЕР: КОЛЬОРИ АКТИВНОСТІ ---
+const getActivityColor = (score) => {
+    // Якщо score null або undefined, вважаємо 1000
+    const s = score !== undefined && score !== null ? score : 1000;
+    
+    if (s >= 701) return { color: '#2e7d32', bg: '#e8f5e9', label: 'Зелений (Високий)', barColor: '#4CAF50' };
+    if (s >= 401) return { color: '#f9a825', bg: '#fffde7', label: 'Жовтий (Середній)', barColor: '#FFC107' };
+    if (s >= 1) return { color: '#c62828', bg: '#ffebee', label: 'Червоний (Низький)', barColor: '#F44336' };
+    return { color: '#fff', bg: '#333', label: 'ЗАБЛОКОВАНО', barColor: '#000' };
+};
+
+// --- КОМПОНЕНТ РЕДАГУВАННЯ АКТИВНОСТІ (ВНУТРІШНІЙ) ---
+const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
+    const [points, setPoints] = useState('');
+    const [reason, setReason] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!points || !reason) return alert("Вкажіть бали та причину");
+
+        setLoading(true);
+        try {
+            // Викликаємо API
+            const updatedDriver = await changeDriverActivity(driverId, parseInt(points), reason);
+            // Повертаємо оновленого водія батьківському компоненту
+            onUpdate(updatedDriver);
+            setPoints('');
+            setReason('');
+            alert('Бали успішно оновлено!');
+        } catch (err) {
+            alert(err.message || 'Помилка оновлення');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div style={{marginTop: '15px', padding: '15px', background: '#fafafa', borderRadius: '8px', border: '1px solid #eee'}}>
+            <h4 style={{marginTop:0, marginBottom:'10px', fontSize:'16px'}}>🛠 Ручне коригування балів</h4>
+            <form onSubmit={handleSubmit} style={{display:'flex', gap:'10px', flexWrap:'wrap'}}>
+                <div style={{display:'flex', flexDirection:'column'}}>
+                    <label style={{fontSize:'12px', color:'#666', marginBottom:'4px'}}>Бали (+/-)</label>
+                    <input 
+                        type="number" 
+                        placeholder="-50 або 10" 
+                        value={points} 
+                        onChange={e => setPoints(e.target.value)}
+                        required
+                        style={{width:'100px', padding:'8px', borderRadius:'4px', border:'1px solid #ddd'}}
+                    />
+                </div>
+                <div style={{display:'flex', flexDirection:'column', flexGrow:1}}>
+                    <label style={{fontSize:'12px', color:'#666', marginBottom:'4px'}}>Причина зміни</label>
+                    <input 
+                        type="text" 
+                        placeholder="Напр: Скарга клієнта або Бонус за роботу" 
+                        value={reason} 
+                        onChange={e => setReason(e.target.value)}
+                        required
+                        style={{padding:'8px', borderRadius:'4px', border:'1px solid #ddd'}}
+                    />
+                </div>
+                <div style={{display:'flex', alignItems:'end'}}>
+                    <button type="submit" disabled={loading} className="btn-primary" style={{height:'35px', marginTop:'auto'}}>
+                        {loading ? '...' : 'Зберегти'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+};
+
 // --- КОМПОНЕНТ ДЕТАЛЬНОГО ПЕРЕГЛЯДУ (FULL SCREEN) ---
-const DriverDetailsModal = ({ driver, isOpen, onClose }) => {
+const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
     if (!isOpen || !driver) return null;
 
-    // Стилі для повноекранного режиму
+    // Отримуємо стилі для поточного балу
+    const actInfo = getActivityColor(driver.activityScore);
+
     const fullScreenOverlayStyle = {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        backgroundColor: '#f4f4f9', // Світлий фон контенту
-        zIndex: 2000, // Поверх усього
-        overflowY: 'auto', // Прокрутка
-        display: 'flex',
-        flexDirection: 'column'
+        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+        backgroundColor: '#f4f4f9', zIndex: 2000, overflowY: 'auto',
+        display: 'flex', flexDirection: 'column'
     };
 
     const headerStyle = {
-        backgroundColor: '#1E1E1E', // Темна шапка як в меню
-        color: '#fff',
-        padding: '15px 30px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+        backgroundColor: '#1E1E1E', color: '#fff', padding: '15px 30px',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
     };
 
     const closeBtnStyle = {
-        background: '#e74c3c',
-        color: '#fff',
-        border: 'none',
-        padding: '8px 20px',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '16px',
-        fontWeight: 'bold',
-        textTransform: 'uppercase'
+        background: '#e74c3c', color: '#fff', border: 'none', padding: '8px 20px',
+        borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold'
     };
 
     const contentContainerStyle = {
-        padding: '40px',
-        maxWidth: '1000px',
-        margin: '0 auto',
-        width: '100%',
-        boxSizing: 'border-box'
+        padding: '40px', maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box'
     };
 
     const cardStyle = {
-        backgroundColor: '#fff',
-        borderRadius: '8px',
-        padding: '25px',
-        marginBottom: '30px',
+        backgroundColor: '#fff', borderRadius: '8px', padding: '25px', marginBottom: '30px',
         boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
     };
 
     const sectionTitleStyle = {
-        borderBottom: '2px solid #eee',
-        paddingBottom: '10px',
-        marginBottom: '20px',
-        color: '#333',
-        marginTop: 0,
-        fontSize: '20px'
+        borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px',
+        color: '#333', marginTop: 0, fontSize: '20px'
     };
 
     const rowStyle = { display: 'flex', marginBottom: '12px', borderBottom: '1px dashed #eee', paddingBottom: '8px' };
     const labelStyle = { fontWeight: 'bold', width: '200px', color: '#555' };
     const valueStyle = { color: '#000', fontWeight: '500' };
 
-    // Компонент для фото (трохи збільшений)
     const PhotoBlock = ({ label, url }) => (
         <div style={{marginRight: '20px', marginBottom: '20px', textAlign: 'center'}}>
             <div style={{fontSize:'14px', color:'#555', marginBottom:'8px', fontWeight:'bold'}}>{label}</div>
             {url ? (
                 <a href={url} target="_blank" rel="noopener noreferrer">
-                    <img 
-                        src={url} 
-                        alt={label} 
-                        style={{
-                            width:'200px', 
-                            height:'140px', 
-                            objectFit:'cover', 
-                            borderRadius:'8px', 
-                            border:'1px solid #ddd',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            cursor: 'zoom-in'
-                        }} 
-                    />
+                    <img src={url} alt={label} style={{width:'200px', height:'140px', objectFit:'cover', borderRadius:'8px', border:'1px solid #ddd', cursor: 'zoom-in'}} />
                 </a>
             ) : (
-                <div style={{
-                    width:'200px', 
-                    height:'140px', 
-                    background:'#f0f0f0', 
-                    display:'flex', 
-                    alignItems:'center', 
-                    justifyContent:'center', 
-                    color:'#999', 
-                    fontSize:'14px', 
-                    borderRadius:'8px',
-                    border: '1px dashed #ccc'
-                }}>
+                <div style={{width:'200px', height:'140px', background:'#f0f0f0', display:'flex', alignItems:'center', justifyContent:'center', color:'#999', fontSize:'14px', borderRadius:'8px', border: '1px dashed #ccc'}}>
                     Немає фото
                 </div>
             )}
@@ -126,17 +146,13 @@ const DriverDetailsModal = ({ driver, isOpen, onClose }) => {
 
     return (
         <div style={fullScreenOverlayStyle}>
-            {/* ШАПКА */}
             <div style={headerStyle}>
                 <div style={{fontSize: '24px', fontWeight: 'bold'}}>
                     👤 Картка водія: <span style={{color: '#4CAF50'}}>{driver.fullName}</span>
                 </div>
-                <button style={closeBtnStyle} onClick={onClose}>
-                    Закрити ✕
-                </button>
+                <button style={closeBtnStyle} onClick={onClose}>Закрити ✕</button>
             </div>
 
-            {/* КОНТЕНТ */}
             <div style={contentContainerStyle}>
                 
                 {/* 1. Основна інформація */}
@@ -145,31 +161,12 @@ const DriverDetailsModal = ({ driver, isOpen, onClose }) => {
                     <div style={{display:'flex', gap:'40px', alignItems: 'flex-start'}}>
                         <div style={{flexShrink:0, textAlign: 'center'}}>
                             {driver.photoUrl ? (
-                                <img 
-                                    src={driver.photoUrl} 
-                                    alt="Avatar" 
-                                    style={{
-                                        width:'150px', 
-                                        height:'150px', 
-                                        borderRadius:'50%', 
-                                        objectFit:'cover', 
-                                        border: '4px solid #fff',
-                                        boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
-                                    }} 
-                                />
+                                <img src={driver.photoUrl} alt="Avatar" style={{width:'150px', height:'150px', borderRadius:'50%', objectFit:'cover', border: '4px solid #fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)'}} />
                             ) : (
-                                <div style={{width:'150px', height:'150px', background:'#ddd', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}>
-                                    Немає фото
-                                </div>
+                                <div style={{width:'150px', height:'150px', background:'#ddd', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}>Немає фото</div>
                             )}
                             <div style={{marginTop: '15px'}}>
-                                <span style={{
-                                    padding: '5px 10px', 
-                                    borderRadius: '15px', 
-                                    background: driver.isOnline ? '#e8f5e9' : '#ffebee',
-                                    color: driver.isOnline ? '#2e7d32' : '#c62828',
-                                    fontWeight: 'bold'
-                                }}>
+                                <span style={{padding: '5px 10px', borderRadius: '15px', background: driver.isOnline ? '#e8f5e9' : '#ffebee', color: driver.isOnline ? '#2e7d32' : '#c62828', fontWeight: 'bold'}}>
                                     {driver.isOnline ? '🟢 ONLINE' : '⚪ OFFLINE'}
                                 </span>
                             </div>
@@ -180,76 +177,98 @@ const DriverDetailsModal = ({ driver, isOpen, onClose }) => {
                             <div style={rowStyle}><span style={labelStyle}>Номер телефону:</span> <span style={valueStyle}>{driver.phoneNumber}</span></div>
                             <div style={rowStyle}><span style={labelStyle}>Email:</span> <span style={valueStyle}>{driver.email || '-'}</span></div>
                             <div style={rowStyle}><span style={labelStyle}>РНОКПП:</span> <span style={valueStyle}>{driver.rnokpp || '-'}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Посвідчення водія:</span> <span style={valueStyle}>{driver.driverLicense || '-'}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Статус блокування:</span> 
-                                {driver.isBlocked ? (
-                                    <span style={{color: 'red', fontWeight:'bold'}}>ЗАБЛОКОВАНИЙ</span>
-                                ) : driver.tempBlockExpiresAt ? (
-                                    <span style={{color: 'orange', fontWeight:'bold'}}>Тимчасово до {new Date(driver.tempBlockExpiresAt).toLocaleString()}</span>
-                                ) : (
-                                    <span style={{color: 'green'}}>Активний</span>
-                                )}
+                            <div style={rowStyle}><span style={labelStyle}>Посвідчення:</span> <span style={valueStyle}>{driver.driverLicense || '-'}</span></div>
+                            <div style={rowStyle}><span style={labelStyle}>Статус блоку:</span> 
+                                {driver.isBlocked ? <span style={{color: 'red', fontWeight:'bold'}}>ЗАБЛОКОВАНИЙ</span> : 
+                                 driver.tempBlockExpiresAt ? <span style={{color: 'orange', fontWeight:'bold'}}>Тимчасово до {new Date(driver.tempBlockExpiresAt).toLocaleString()}</span> : 
+                                 <span style={{color: 'green'}}>Активний</span>}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 2. Автомобіль */}
+                {/* 2. БЛОК АКТИВНОСТІ (НОВЕ) */}
+                <div style={cardStyle}>
+                    <h3 style={sectionTitleStyle}>📊 Активність водія</h3>
+                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px'}}>
+                        <div>
+                            <div style={{fontSize: '32px', fontWeight: 'bold', color: actInfo.color}}>
+                                {driver.activityScore !== undefined ? driver.activityScore : 1000}
+                                <span style={{fontSize: '16px', color: '#666', fontWeight: 'normal'}}> / 1000</span>
+                            </div>
+                            <div style={{
+                                display: 'inline-block', 
+                                marginTop: '5px',
+                                padding: '4px 12px', 
+                                borderRadius: '12px', 
+                                backgroundColor: actInfo.bg, 
+                                color: actInfo.color,
+                                fontWeight: 'bold',
+                                border: `1px solid ${actInfo.color}`
+                            }}>
+                                {actInfo.label}
+                            </div>
+                        </div>
+                        <div style={{width: '60%', background: '#eee', height: '20px', borderRadius: '10px', overflow: 'hidden'}}>
+                            <div style={{
+                                width: `${Math.max(0, Math.min((driver.activityScore || 1000) / 10, 100))}%`, 
+                                height: '100%', 
+                                background: actInfo.barColor, 
+                                transition: 'width 0.5s ease-in-out'
+                            }}></div>
+                        </div>
+                    </div>
+
+                    {/* Компонент редагування */}
+                    <ActivityEditor 
+                        driverId={driver.id} 
+                        currentScore={driver.activityScore} 
+                        onUpdate={onDriverUpdated} 
+                    />
+                </div>
+
+                {/* 3. Автомобіль */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>Автомобіль</h3>
                     {driver.car ? (
                         <div>
                             <div style={rowStyle}><span style={labelStyle}>Модель:</span> <span style={valueStyle}>{driver.car.make} {driver.car.model}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Держ. номер:</span> <span style={{background:'#f0f0f0', padding:'2px 8px', borderRadius:'4px', fontWeight:'bold', border: '1px solid #ccc'}}>{driver.car.plateNumber}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Тип кузова:</span> <span style={valueStyle}>{driver.car.carType}</span></div>
+                            <div style={rowStyle}><span style={labelStyle}>Номер:</span> <span style={{background:'#f0f0f0', padding:'2px 8px', borderRadius:'4px', fontWeight:'bold', border: '1px solid #ccc'}}>{driver.car.plateNumber}</span></div>
+                            <div style={rowStyle}><span style={labelStyle}>Тип:</span> <span style={valueStyle}>{driver.car.carType}</span></div>
                             <div style={rowStyle}><span style={labelStyle}>Колір:</span> <span style={valueStyle}>{driver.car.color}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Рік випуску:</span> <span style={valueStyle}>{driver.car.year}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>VIN код:</span> <span style={valueStyle}>{driver.car.vin}</span></div>
+                            <div style={rowStyle}><span style={labelStyle}>Рік:</span> <span style={valueStyle}>{driver.car.year}</span></div>
                         </div>
                     ) : <p style={{color:'#999'}}>Автомобіль не призначено</p>}
                 </div>
 
-                {/* 3. Документи та Фото */}
+                {/* 4. Фото */}
                 <div style={cardStyle}>
-                    <h3 style={sectionTitleStyle}>Фото та Документи</h3>
-                    
-                    <h4 style={{marginTop:0, color:'#666'}}>📂 Основні документи</h4>
+                    <h3 style={sectionTitleStyle}>Документи та Фото</h3>
+                    <h4 style={{marginTop:0, color:'#666'}}>📂 Документи</h4>
                     <div style={{display:'flex', flexWrap:'wrap', paddingBottom: '20px', borderBottom: '1px solid #eee', marginBottom: '20px'}}>
-                        <PhotoBlock label="Головне фото авто" url={driver.car?.photoUrl} />
+                        <PhotoBlock label="Фото авто" url={driver.car?.photoUrl} />
                         <PhotoBlock label="Тех. паспорт (Перед)" url={driver.car?.techPassportFront} />
                         <PhotoBlock label="Тех. паспорт (Зад)" url={driver.car?.techPassportBack} />
-                        <PhotoBlock label="Страховка (ОСАГО)" url={driver.car?.insurancePhoto} />
+                        <PhotoBlock label="Страховка" url={driver.car?.insurancePhoto} />
                     </div>
-
-                    <h4 style={{marginTop:0, color:'#666'}}>🚗 Огляд автомобіля (6 сторін)</h4>
+                    <h4 style={{marginTop:0, color:'#666'}}>🚗 Огляд (6 сторін)</h4>
                     <div style={{display:'flex', flexWrap:'wrap'}}>
-                        <PhotoBlock label="Вид спереду" url={driver.car?.photoFront} />
-                        <PhotoBlock label="Вид ззаду" url={driver.car?.photoBack} />
-                        <PhotoBlock label="Вид зліва" url={driver.car?.photoLeft} />
-                        <PhotoBlock label="Вид справа" url={driver.car?.photoRight} />
-                        <PhotoBlock label="Салон (Передні)" url={driver.car?.photoSeatsFront} />
-                        <PhotoBlock label="Салон (Задні)" url={driver.car?.photoSeatsBack} />
+                        <PhotoBlock label="Спереду" url={driver.car?.photoFront} />
+                        <PhotoBlock label="Ззаду" url={driver.car?.photoBack} />
+                        <PhotoBlock label="Зліва" url={driver.car?.photoLeft} />
+                        <PhotoBlock label="Справа" url={driver.car?.photoRight} />
+                        <PhotoBlock label="Салон (Пер)" url={driver.car?.photoSeatsFront} />
+                        <PhotoBlock label="Салон (Зад)" url={driver.car?.photoSeatsBack} />
                     </div>
                 </div>
 
-                {/* 4. Тарифи */}
+                {/* 5. Тарифи */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>Доступні тарифи</h3>
                     <div>
                         {driver.allowedTariffs && driver.allowedTariffs.length > 0 ? (
                             driver.allowedTariffs.map(t => (
-                                <span key={t.id} style={{
-                                    display:'inline-block', 
-                                    background:'#e3f2fd', 
-                                    color:'#1565c0', 
-                                    padding:'8px 16px', 
-                                    borderRadius:'20px', 
-                                    marginRight:'10px', 
-                                    marginBottom: '10px',
-                                    fontSize:'14px',
-                                    fontWeight: 'bold',
-                                    border: '1px solid #90caf9'
-                                }}>
+                                <span key={t.id} style={{display:'inline-block', background:'#e3f2fd', color:'#1565c0', padding:'8px 16px', borderRadius:'20px', marginRight:'10px', marginBottom:'10px', fontSize:'14px', fontWeight:'bold', border: '1px solid #90caf9'}}>
                                     {t.name}
                                 </span>
                             ))
@@ -262,8 +281,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose }) => {
     );
 };
 
-
-// --- ГОЛОВНИЙ КОМПОНЕНТ СТОРІНКИ (Без змін логіки) ---
+// --- ГОЛОВНИЙ КОМПОНЕНТ СТОРІНКИ ---
 const DriversPage = () => {
   const [drivers, setDrivers] = useState([]); 
   const [loading, setLoading] = useState(true); 
@@ -311,7 +329,6 @@ const DriversPage = () => {
     );
   }, [drivers, searchTerm]);
 
-  // --- МОДАЛЬНЕ ВІКНО РЕДАГУВАННЯ ---
   const handleAddClick = () => {
     setEditingDriver(null);
     setIsModalOpen(true);
@@ -326,7 +343,6 @@ const DriversPage = () => {
     setEditingDriver(null);
   };
 
-  // --- ДЕТАЛЬНИЙ ПЕРЕГЛЯД ---
   const handleRowDoubleClick = (driver) => {
       setDetailsDriver(driver);
   };
@@ -334,7 +350,14 @@ const DriversPage = () => {
       setDetailsDriver(null);
   };
 
-  // --- CRUD ОПЕРАЦІЇ ---
+  // --- ОНОВЛЕННЯ ВОДІЯ З МОДАЛКИ (Без перезавантаження всієї таблиці) ---
+  const handleDriverUpdateInModal = (updatedDriver) => {
+      // 1. Оновлюємо стан списку водіїв
+      updateDriverState(updatedDriver);
+      // 2. Оновлюємо водія, який зараз відкритий у модалці
+      setDetailsDriver(updatedDriver);
+  };
+
   const handleFormSubmit = async (formData, file, carFilesCollection) => {
     setIsSubmitting(true);
     setError('');
@@ -512,7 +535,7 @@ const DriversPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="14">Водії не знайдені.</td>
+                <td colSpan="13">Водії не знайдені.</td>
               </tr>
             )}
           </tbody>
@@ -534,11 +557,12 @@ const DriversPage = () => {
         />
       </Modal>
 
-      {/* Модалка деталей (FULL SCREEN) */}
+      {/* Модалка деталей (FULL SCREEN) - ТЕПЕР З АКТИВНІСТЮ */}
       <DriverDetailsModal 
         driver={detailsDriver} 
         isOpen={!!detailsDriver} 
         onClose={closeDetails} 
+        onDriverUpdated={handleDriverUpdateInModal} // <-- Callback оновлення
       />
     </div>
   );
