@@ -8,14 +8,6 @@ import sectorService from '../services/sectorService';
 import 'leaflet/dist/leaflet.css';
 import '../assets/SectorsPage.css';
 
-// Вспомогательная функция для поиска центра полигона (чтобы поставить название)
-const getPolygonCenter = (points) => {
-    if (!points || points.length === 0) return [0, 0];
-    const latlngs = points.map(p => [p.lat, p.lng]);
-    const bounds = L.latLngBounds(latlngs);
-    return bounds.getCenter();
-};
-
 const GeomanControl = ({ isDrawing, onPolygonComplete }) => {
     const map = useMap();
 
@@ -31,10 +23,7 @@ const GeomanControl = ({ isDrawing, onPolygonComplete }) => {
                     lng: latlng.lng
                 }));
                 
-                // Передаем координаты в родительский компонент
                 onPolygonComplete(coords);
-                
-                // Удаляем слой Geoman, так как мы отрисуем его через React Polygon (Preview)
                 map.removeLayer(layer); 
             }
         });
@@ -60,8 +49,12 @@ const GeomanControl = ({ isDrawing, onPolygonComplete }) => {
 const SectorsPage = () => {
     const [sectors, setSectors] = useState([]);
     const [isDrawing, setIsDrawing] = useState(false);
-    const [newPoints, setNewPoints] = useState(null); // Координаты нового сектора
+    const [newPoints, setNewPoints] = useState(null);
+    
+    // Стан форми
     const [name, setName] = useState('');
+    const [isCity, setIsCity] = useState(true); // <-- НОВИЙ СТАН: true = Місто, false = За містом
+
     const position = [50.45, 30.52];
 
     useEffect(() => { loadSectors(); }, []);
@@ -81,9 +74,14 @@ const SectorsPage = () => {
     const handleSave = async () => {
         if (!name) return alert("Введіть назву сектора");
         try {
-            await sectorService.createSector({ name, points: newPoints });
+            // Передаємо параметр isCity на сервер
+            await sectorService.createSector({ name, isCity, points: newPoints });
+            
+            // Скидаємо форму
             setName('');
+            setIsCity(true); 
             setNewPoints(null);
+            
             loadSectors();
         } catch (e) { alert("Помилка збереження"); }
     };
@@ -91,6 +89,7 @@ const SectorsPage = () => {
     const handleDiscard = () => {
         setNewPoints(null);
         setName('');
+        setIsCity(true);
     };
 
     const handleDelete = async (id) => {
@@ -124,6 +123,23 @@ const SectorsPage = () => {
                             autoFocus
                             onChange={(e) => setName(e.target.value)}
                         />
+                        
+                        {/* --- ЧЕКБОКС: ЦЕ МІСТО? --- */}
+                        <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
+                            <input 
+                                type="checkbox" 
+                                id="chkIsCity" 
+                                checked={isCity} 
+                                onChange={(e) => setIsCity(e.target.checked)} 
+                                style={{ width: 'auto', marginRight: '8px' }}
+                            />
+                            <label htmlFor="chkIsCity" style={{ marginBottom: 0, cursor: 'pointer' }}>
+                                Це зона міста? (Тариф "Стандарт")
+                            </label>
+                        </div>
+                        {!isCity && <small style={{color: '#ff9800'}}>Буде діяти тариф "За містом"</small>}
+                        {/* ------------------------- */}
+
                         <div className="box-actions">
                             <button onClick={handleSave} className="save-btn">Зберегти</button>
                             <button onClick={handleDiscard} className="discard-btn">Скинути</button>
@@ -133,8 +149,13 @@ const SectorsPage = () => {
 
                 <div className="sectors-list">
                     {sectors.map(s => (
-                        <div key={s.id} className="sector-card">
-                            <span className="sector-name">{s.name}</span>
+                        <div key={s.id} className="sector-card" style={{ borderLeft: s.isCity ? '4px solid #00ffaa' : '4px solid #ff9800' }}>
+                            <div style={{display: 'flex', flexDirection: 'column'}}>
+                                <span className="sector-name">{s.name}</span>
+                                <span style={{fontSize: '0.8em', color: '#888'}}>
+                                    {s.isCity ? "🏙️ Місто" : "🌲 За містом"}
+                                </span>
+                            </div>
                             <button className="del-btn" onClick={() => handleDelete(s.id)}>🗑️</button>
                         </div>
                     ))}
@@ -145,12 +166,17 @@ const SectorsPage = () => {
                 <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     
-                    {/* 1. ПОДТВЕРЖДЕННЫЕ СЕКТОРЫ (из базы) */}
+                    {/* ВІДОБРАЖЕННЯ ІСНУЮЧИХ СЕКТОРІВ З РІЗНИМИ КОЛЬОРАМИ */}
                     {sectors.map(s => (
                         <Polygon 
                             key={s.id}
                             positions={s.points.map(p => [p.lat, p.lng])}
-                            pathOptions={{ fillColor: '#00ffaa', fillOpacity: 0.15, color: '#00ffaa', weight: 2 }}
+                            pathOptions={{ 
+                                fillColor: s.isCity ? '#00ffaa' : '#ff9800', 
+                                fillOpacity: 0.2, 
+                                color: s.isCity ? '#00ffaa' : '#ff9800', 
+                                weight: 2 
+                            }}
                         >
                             <Tooltip permanent direction="center" className="sector-label">
                                 {s.name}
@@ -158,7 +184,6 @@ const SectorsPage = () => {
                         </Polygon>
                     ))}
 
-                    {/* 2. ПРЕДПРОСМОТР НОВОГО СЕКТОРА (пока не нажали Сохранить) */}
                     {newPoints && (
                         <Polygon 
                             positions={newPoints.map(p => [p.lat, p.lng])}

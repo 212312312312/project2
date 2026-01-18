@@ -112,6 +112,7 @@ const TariffsPage = () => {
               <th>Status</th>
               <th>Base Price</th>
               <th>Price/km</th>
+              <th>Out City $/km</th>
               <th>Free Wait (min)</th>
               <th>Wait Price/min</th>
               <th>Actions</th>
@@ -142,6 +143,9 @@ const TariffsPage = () => {
                   </td>
                   <td>{tariff.basePrice.toFixed(2)}</td>
                   <td>{tariff.pricePerKm.toFixed(2)}</td>
+                  <td style={{ color: '#e65100', fontWeight: 'bold' }}>
+                      {tariff.pricePerKmOutCity ? tariff.pricePerKmOutCity.toFixed(2) : '-'}
+                  </td>
                   <td>{tariff.freeWaitingMinutes} min</td>
                   <td>{tariff.pricePerWaitingMinute.toFixed(2)}</td>
                   <td>
