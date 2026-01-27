@@ -15,7 +15,9 @@ import PromoCodesPage from './PromoCodesPage';
 import NewsPage from './NewsPage';             
 import ServicesPage from './Services';         
 import SettingsPage from './SettingsPage';     
-import SectorsPage from './SectorsPage';       
+import SectorsPage from './SectorsPage';
+// --- НОВОЕ: Импорт страницы рейтингов ---
+import RatingsPage from './RatingsPage';       
 
 const sosStyle = {
   backgroundColor: '#ff4d4d',
@@ -101,6 +103,10 @@ const DashboardLayout = () => {
                 Сповіщення {sosAlert && "(!)"}
             </NavLink> 
 
+            {/* --- НОВОЕ: Кнопка Рейтинги --- */}
+            <NavLink to="/ratings">Відгуки</NavLink>
+            {/* ----------------------------- */}
+
             <NavLink to="/services">Дод. послуги</NavLink>
             <NavLink to="/tariffs">Тарифы</NavLink>
             <NavLink to="/dispatchers">Диспетчеры</NavLink>
@@ -125,6 +131,10 @@ const DashboardLayout = () => {
               {/* ВАЖНО: Передаем sosList как пропс! */}
               <Route path="/news" element={<NewsPage sosList={sosList} setSosList={setSosList} />} />
               
+              {/* --- НОВОЕ: Роут для страницы рейтингов --- */}
+              <Route path="/ratings" element={<RatingsPage />} />
+              {/* ---------------------------------------- */}
+
               <Route path="/services" element={<ServicesPage />} />
               <Route path="/tariffs" element={<TariffsPage />} />
               <Route path="/dispatchers" element={<DispatchersPage />} />
@@ -137,6 +147,7 @@ const DashboardLayout = () => {
             <>
               {/* Защита роутов для обычного диспетчера */}
               <Route path="/news" element={<Navigate to="/" replace />} />
+              <Route path="/ratings" element={<Navigate to="/" replace />} /> {/* Защита для ratings */}
               <Route path="/services" element={<Navigate to="/" replace />} />
               <Route path="/tariffs" element={<Navigate to="/" replace />} />
               <Route path="/dispatchers" element={<Navigate to="/" replace />} />

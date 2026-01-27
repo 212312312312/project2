@@ -91,8 +91,13 @@ const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
 const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
     if (!isOpen || !driver) return null;
 
-    // Отримуємо стилі для поточного балу
     const actInfo = getActivityColor(driver.activityScore);
+
+    // Хелпер для звезд
+    const renderStars = (score) => {
+        const rounded = Math.round(score || 0);
+        return "★".repeat(rounded) + "☆".repeat(5 - rounded);
+    };
 
     const fullScreenOverlayStyle = {
         position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
@@ -187,7 +192,30 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     </div>
                 </div>
 
-                {/* 2. БЛОК АКТИВНОСТІ (НОВЕ) */}
+                {/* 2. РЕЙТИНГ (НОВЕ!) */}
+                <div style={cardStyle}>
+                    <h3 style={sectionTitleStyle}>⭐ Рейтинг та Відгуки</h3>
+                    <div style={{display:'flex', alignItems:'center', gap:'20px'}}>
+                        <div style={{
+                            fontSize: '48px', 
+                            fontWeight: 'bold', 
+                            color: '#FFD700', 
+                            textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
+                        }}>
+                            {driver.rating ? driver.rating.toFixed(2) : "5.00"}
+                        </div>
+                        <div style={{display:'flex', flexDirection:'column'}}>
+                            <div style={{fontSize: '24px', color: '#FFD700', letterSpacing: '2px'}}>
+                                {renderStars(driver.rating || 5)}
+                            </div>
+                            <div style={{color: '#666', fontSize: '14px', marginTop: '4px'}}>
+                                На основі {driver.ratingCount || 0} оцінок
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. БЛОК АКТИВНОСТІ */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>📊 Активність водія</h3>
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px'}}>
@@ -219,7 +247,6 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                         </div>
                     </div>
 
-                    {/* Компонент редагування */}
                     <ActivityEditor 
                         driverId={driver.id} 
                         currentScore={driver.activityScore} 
@@ -227,7 +254,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     />
                 </div>
 
-                {/* 3. Автомобіль */}
+                {/* 4. Автомобіль */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>Автомобіль</h3>
                     {driver.car ? (
@@ -241,7 +268,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     ) : <p style={{color:'#999'}}>Автомобіль не призначено</p>}
                 </div>
 
-                {/* 4. Фото */}
+                {/* 5. Фото */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>Документи та Фото</h3>
                     <h4 style={{marginTop:0, color:'#666'}}>📂 Документи</h4>
@@ -262,7 +289,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     </div>
                 </div>
 
-                {/* 5. Тарифи */}
+                {/* 6. Тарифи */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>Доступні тарифи</h3>
                     <div>
