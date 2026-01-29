@@ -51,7 +51,9 @@ const getCoords = (driver) => {
 
 const getStatusLabel = (status) => {
     switch (status) {
+        case 'SCHEDULED': return 'Заплановано'; // <--- НОВЫЙ СТАТУС
         case 'REQUESTED': return 'Пошук водія';
+        case 'OFFERING': return 'Пропонуємо';
         case 'ACCEPTED': return 'Водій їде';
         case 'DRIVER_ARRIVED': return 'Водій чекає';
         case 'IN_PROGRESS': return 'В дорозі';
@@ -59,6 +61,23 @@ const getStatusLabel = (status) => {
         case 'CANCELLED': return 'Скасовано';
         default: return status;
     }
+};
+
+const formatScheduledTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('uk-UA', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+};
+
+const formatTime = (isoString) => {
+    if(!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
 // --- КОНТРОЛЛЕР ФОКУСА ---
@@ -163,21 +182,35 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
 const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId }) => {
   return (
     <div className="orders-list">
-      {orders.length === 0 && <p style={{padding: '1.5rem'}}>Активних замовлень немає.</p>}
+      {orders.length === 0 && <p style={{padding: '1.5rem', textAlign: 'center', color: '#888'}}>Список порожній.</p>}
       {orders.map(order => (
         <div key={order.id} className={`order-card ${selectedOrderId === order.id ? 'selected' : ''}`} onClick={() => onSelectOrder(order)}>
           <div className="order-card-header">
             <h4>#{order.id} ({order.tariffName})</h4>
             <span className={`status status-${order.status}`}>{getStatusLabel(order.status)}</span>
           </div>
+          
+          {/* ЕСЛИ ЭТО ЗАПЛАНИРОВАННЫЙ ЗАКАЗ - ПОКАЗЫВАЕМ ВРЕМЯ */}
+          {order.status === 'SCHEDULED' && order.scheduledAt && (
+              <div className="scheduled-time-badge">
+                  🕒 {formatScheduledTime(order.scheduledAt)}
+              </div>
+          )}
+
           <div className="order-card-body">
-            <p><strong>Клієнт:</strong> {order.client.fullName}</p>
+            {/* ДОБАВЛЕНО: Время для запланированных */}
+    {order.status === 'SCHEDULED' && (
+        <div style={{marginBottom: '8px', color: '#d9480f', fontWeight: 'bold', background: '#fff4e6', padding: '4px', borderRadius: '4px', display: 'inline-block'}}>
+            ⏰ Час подачі: {formatTime(order.scheduledAt)}
+        </div>
+    )}
+            <p><strong>Клієнт:</strong> {order.client.fullName} ({order.client.userPhone})</p>
             <div className="route-details" style={{marginTop: '5px'}}>
                 <div>🟢 {order.fromAddress}</div>
                 <div>🔴 {order.toAddress}</div>
             </div>
             <p><strong>Ціна:</strong> {Math.round(order.price)} грн {order.paymentMethod === 'CARD' ? '💳' : '💵'}</p>
-            <p><strong>Водій:</strong> {order.driver ? order.driver.fullName : '---'}</p>
+            <p><strong>Водій:</strong> {order.driver ? order.driver.fullName : (order.status === 'SCHEDULED' ? 'Буде призначено' : 'Пошук...')}</p>
           </div>
           <div className="order-card-actions">
             {order.status === 'REQUESTED' && <button className="btn-primary" onClick={(e) => { e.stopPropagation(); onAssign(order.id); }}>Призначити</button>}
@@ -195,7 +228,11 @@ const ActiveOrders = () => {
   const [mapDrivers, setMapDrivers] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null); 
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  
+  // Tabs & Filters
+  const [activeTab, setActiveTab] = useState('ACTIVE'); // 'ACTIVE' | 'SCHEDULED'
+  const [statusFilter, setStatusFilter] = useState('ALL'); // For Active tab
+  
   const [onlineIcon, setOnlineIcon] = useState(null);
   
   const stompClientRef = useRef(null);
@@ -275,7 +312,13 @@ const ActiveOrders = () => {
   const handleSocketMessage = (msg) => {
     if (msg.action === 'ADD') {
         setOrders(prevOrders => {
-            if (prevOrders.find(o => o.id === msg.orderId)) return prevOrders;
+            // Если такой заказ уже есть - обновляем его
+            const existingIndex = prevOrders.findIndex(o => o.id === msg.orderId);
+            if (existingIndex !== -1) {
+                const updated = [...prevOrders];
+                updated[existingIndex] = msg.order;
+                return updated;
+            }
             return [msg.order, ...prevOrders];
         });
     } else if (msg.action === 'REMOVE') {
@@ -302,12 +345,22 @@ const ActiveOrders = () => {
       }
   };
 
+  // --- ЛОГИКА ФИЛЬТРАЦИИ ---
   const filteredOrders = orders.filter(o => {
-    const matchSearch = o.client.phoneNumber.includes(searchTerm);
-    let matchStatus = true;
-    if (statusFilter === 'REQUESTED') matchStatus = o.status === 'REQUESTED';
-    else if (statusFilter === 'ACTIVE') matchStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS'].includes(o.status);
-    return matchSearch && matchStatus;
+    const matchSearch = o.client.phoneNumber.includes(searchTerm) || o.id.toString().includes(searchTerm);
+    
+    if (activeTab === 'SCHEDULED') {
+        return matchSearch && o.status === 'SCHEDULED';
+    } else {
+        // ACTIVE TAB
+        if (o.status === 'SCHEDULED') return false; // Hide scheduled from active tab
+
+        let matchStatus = true;
+        if (statusFilter === 'REQUESTED') matchStatus = o.status === 'REQUESTED';
+        else if (statusFilter === 'ACTIVE') matchStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS', 'OFFERING'].includes(o.status);
+        
+        return matchSearch && matchStatus;
+    }
   });
 
   const totalDrivers = mapDrivers.length;
@@ -317,19 +370,44 @@ const ActiveOrders = () => {
   return (
     <div className="active-orders-layout">
       <div className="orders-list-container">
+        
+        {/* --- TABS --- */}
+        <div className="tabs-container">
+            <button 
+                className={`tab-button ${activeTab === 'ACTIVE' ? 'active' : ''}`}
+                onClick={() => setActiveTab('ACTIVE')}
+            >
+                Активні
+            </button>
+            <button 
+                className={`tab-button ${activeTab === 'SCHEDULED' ? 'active' : ''}`}
+                onClick={() => setActiveTab('SCHEDULED')}
+            >
+                Заплановані
+            </button>
+        </div>
+
         <div className="orders-list-header" style={{flexDirection: 'column', gap: '10px'}}>
-          <h3>Замовлення ({filteredOrders.length})</h3>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
+             <h3>{activeTab === 'SCHEDULED' ? 'Заплановані' : 'В ефірі'} ({filteredOrders.length})</h3>
+          </div>
+          
           <div style={{display: 'flex', gap: '5px', width: '100%'}}>
-              <input type="text" placeholder="Пошук..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{flex: 1}}/>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="ALL">Всі</option>
-                  <option value="REQUESTED">Пошук</option>
-                  <option value="ACTIVE">В роботі</option>
-              </select>
+              <input type="text" placeholder="Пошук (телефон, ID)..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{flex: 1}}/>
+              
+              {activeTab === 'ACTIVE' && (
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                      <option value="ALL">Всі</option>
+                      <option value="REQUESTED">Пошук</option>
+                      <option value="ACTIVE">В роботі</option>
+                  </select>
+              )}
           </div>
         </div>
+        
         <OrderList orders={filteredOrders} onCancel={handleCancel} onAssign={handleAssign} onSelectOrder={setSelectedOrder} selectedOrderId={selectedOrder?.id} />
       </div>
+      
       <div className="map-container">
         <div className="orders-list-header">
           {selectedOrder ? (

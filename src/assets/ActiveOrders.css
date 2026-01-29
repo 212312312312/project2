@@ -2,6 +2,11 @@
 .order-card {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.order-card:hover {
+  background-color: #f9f9f9;
 }
 .order-card:last-child {
   border-bottom: none;
@@ -23,9 +28,10 @@
   font-weight: 700;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
+/* --- СТАТУСЫ --- */
 .status-REQUESTED {
   color: #007bff;
   background-color: #e6f2ff;
@@ -39,24 +45,25 @@
   background-color: #f3e5f5;
   border: 1px solid #e1bee7;
 }
-
-/* В дорозі (Синій - Активність) */
 .status-IN_PROGRESS {
   color: #0056b3;
   background-color: #cce5ff;
   border: 1px solid #b8daff;
 }
-
-/* -------------------- */
-
 .status-COMPLETED {
   color: #28a745;
   background-color: #e9f7eb;
 }
-
 .status-CANCELLED {
   color: #dc3545;
   background-color: #f8d7da;
+}
+
+/* НОВЫЙ СТАТУС: ЗАПЛАНИРОВАНО (Оранжевый) */
+.status-SCHEDULED {
+  color: #fd7e14;
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
 }
 
 .order-card-body {
@@ -76,7 +83,46 @@
   gap: 0.75rem;
   margin-top: 1rem;
 }
+
 .order-card.selected {
   background-color: #e6f2ff;
   border-left: 4px solid #007bff;
+}
+
+/* --- TABS (ВКЛАДКИ) --- */
+.tabs-container {
+  display: flex;
+  background-color: #f1f3f5;
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.tab-button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #495057;
+  transition: all 0.2s;
+}
+
+.tab-button.active {
+  background-color: white;
+  color: #007bff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.scheduled-time-badge {
+  display: inline-block;
+  background-color: #ffe8cc;
+  color: #d9480f;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-weight: bold;
+  margin-bottom: 5px;
 }
