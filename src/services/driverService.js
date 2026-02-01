@@ -154,3 +154,49 @@ export const changeDriverActivity = async (id, points, reason) => {
     throw new Error(error.response?.data?.message || 'Помилка зміни активності');
   }
 };
+
+// --- НОВІ МЕТОДИ: Управління заявками на авто ---
+
+/**
+ * Отримати список авто, що чекають перевірки (Status: PENDING)
+ */
+export const getPendingCars = async () => {
+  try {
+    const response = await api.get('/admin/drivers/cars/pending');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Не вдалося завантажити заявки');
+  }
+};
+
+/**
+ * Схвалити авто
+ */
+export const approveCar = async (carId) => {
+  try {
+    const response = await api.post(`/admin/drivers/cars/${carId}/approve`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка при схваленні авто');
+  }
+};
+
+/**
+ * Відхилити авто (з причиною)
+ */
+export const rejectCar = async (carId, reason) => {
+  try {
+    // Передаємо reason як звичайний текст
+    const response = await api.post(`/admin/drivers/cars/${carId}/reject`, reason, {
+        headers: { 'Content-Type': 'text/plain' }
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка при відхиленні авто');
+  }
+};
+
+export const updateCarDetails = async (carId, carData) => {
+  const response = await api.put(`/admin/drivers/cars/${carId}`, carData);
+  return response.data;
+};

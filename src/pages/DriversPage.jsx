@@ -7,7 +7,7 @@ import {
   blockDriverPermanently,
   blockDriverTemporarily,
   unblockDriver,
-  changeDriverActivity // <-- Переконайся, що додав цю функцію в driverService.js
+  changeDriverActivity 
 } from '../services/driverService';
 import { getAllTariffs } from '../services/tariffService'; 
 
@@ -16,7 +16,6 @@ import DriverForm from '../components/DriverForm';
 
 // --- ХЕЛПЕР: КОЛЬОРИ АКТИВНОСТІ ---
 const getActivityColor = (score) => {
-    // Якщо score null або undefined, вважаємо 1000
     const s = score !== undefined && score !== null ? score : 1000;
     
     if (s >= 701) return { color: '#2e7d32', bg: '#e8f5e9', label: 'Зелений (Високий)', barColor: '#4CAF50' };
@@ -25,7 +24,7 @@ const getActivityColor = (score) => {
     return { color: '#fff', bg: '#333', label: 'ЗАБЛОКОВАНО', barColor: '#000' };
 };
 
-// --- КОМПОНЕНТ РЕДАГУВАННЯ АКТИВНОСТІ (ВНУТРІШНІЙ) ---
+// --- КОМПОНЕНТ РЕДАГУВАННЯ АКТИВНОСТІ ---
 const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
     const [points, setPoints] = useState('');
     const [reason, setReason] = useState('');
@@ -37,9 +36,7 @@ const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
 
         setLoading(true);
         try {
-            // Викликаємо API
             const updatedDriver = await changeDriverActivity(driverId, parseInt(points), reason);
-            // Повертаємо оновленого водія батьківському компоненту
             onUpdate(updatedDriver);
             setPoints('');
             setReason('');
@@ -89,11 +86,13 @@ const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
 
 // --- КОМПОНЕНТ ДЕТАЛЬНОГО ПЕРЕГЛЯДУ (FULL SCREEN) ---
 const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
+    // Стан для згортання/розгортання блоку авто
+    const [isCarsExpanded, setIsCarsExpanded] = useState(true);
+
     if (!isOpen || !driver) return null;
 
     const actInfo = getActivityColor(driver.activityScore);
 
-    // Хелпер для звезд
     const renderStars = (score) => {
         const rounded = Math.round(score || 0);
         return "★".repeat(rounded) + "☆".repeat(5 - rounded);
@@ -111,11 +110,6 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
         position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
     };
 
-    const closeBtnStyle = {
-        background: '#e74c3c', color: '#fff', border: 'none', padding: '8px 20px',
-        borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold'
-    };
-
     const contentContainerStyle = {
         padding: '40px', maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box'
     };
@@ -127,7 +121,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
 
     const sectionTitleStyle = {
         borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px',
-        color: '#333', marginTop: 0, fontSize: '20px'
+        color: '#333', marginTop: 0, fontSize: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
     };
 
     const rowStyle = { display: 'flex', marginBottom: '12px', borderBottom: '1px dashed #eee', paddingBottom: '8px' };
@@ -136,18 +130,21 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
 
     const PhotoBlock = ({ label, url }) => (
         <div style={{marginRight: '20px', marginBottom: '20px', textAlign: 'center'}}>
-            <div style={{fontSize:'14px', color:'#555', marginBottom:'8px', fontWeight:'bold'}}>{label}</div>
+            <div style={{fontSize:'12px', color:'#555', marginBottom:'8px', fontWeight:'bold'}}>{label}</div>
             {url ? (
                 <a href={url} target="_blank" rel="noopener noreferrer">
-                    <img src={url} alt={label} style={{width:'200px', height:'140px', objectFit:'cover', borderRadius:'8px', border:'1px solid #ddd', cursor: 'zoom-in'}} />
+                    <img src={url} alt={label} style={{width:'160px', height:'110px', objectFit:'cover', borderRadius:'8px', border:'1px solid #ddd', cursor: 'zoom-in'}} />
                 </a>
             ) : (
-                <div style={{width:'200px', height:'140px', background:'#f0f0f0', display:'flex', alignItems:'center', justifyContent:'center', color:'#999', fontSize:'14px', borderRadius:'8px', border: '1px dashed #ccc'}}>
-                    Немає фото
+                <div style={{width:'160px', height:'110px', background:'#f0f0f0', display:'flex', alignItems:'center', justifyContent:'center', color:'#999', fontSize:'12px', borderRadius:'8px', border: '1px dashed #ccc'}}>
+                    Немає
                 </div>
             )}
         </div>
     );
+
+    // Збираємо список машин (якщо в майбутньому driver.cars буде списком, використовуємо його)
+    const carsList = driver.cars || (driver.car ? [driver.car] : []);
 
     return (
         <div style={fullScreenOverlayStyle}>
@@ -155,7 +152,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                 <div style={{fontSize: '24px', fontWeight: 'bold'}}>
                     👤 Картка водія: <span style={{color: '#4CAF50'}}>{driver.fullName}</span>
                 </div>
-                <button style={closeBtnStyle} onClick={onClose}>Закрити ✕</button>
+                <button style={{background: '#e74c3c', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold'}} onClick={onClose}>Закрити ✕</button>
             </div>
 
             <div style={contentContainerStyle}>
@@ -192,16 +189,11 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     </div>
                 </div>
 
-                {/* 2. РЕЙТИНГ (НОВЕ!) */}
+                {/* 2. РЕЙТИНГ */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>⭐ Рейтинг та Відгуки</h3>
                     <div style={{display:'flex', alignItems:'center', gap:'20px'}}>
-                        <div style={{
-                            fontSize: '48px', 
-                            fontWeight: 'bold', 
-                            color: '#FFD700', 
-                            textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
-                        }}>
+                        <div style={{fontSize: '48px', fontWeight: 'bold', color: '#FFD700', textShadow: '1px 1px 2px rgba(0,0,0,0.1)'}}>
                             {driver.rating ? driver.rating.toFixed(2) : "5.00"}
                         </div>
                         <div style={{display:'flex', flexDirection:'column'}}>
@@ -224,29 +216,14 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                                 {driver.activityScore !== undefined ? driver.activityScore : 1000}
                                 <span style={{fontSize: '16px', color: '#666', fontWeight: 'normal'}}> / 1000</span>
                             </div>
-                            <div style={{
-                                display: 'inline-block', 
-                                marginTop: '5px',
-                                padding: '4px 12px', 
-                                borderRadius: '12px', 
-                                backgroundColor: actInfo.bg, 
-                                color: actInfo.color,
-                                fontWeight: 'bold',
-                                border: `1px solid ${actInfo.color}`
-                            }}>
+                            <div style={{display: 'inline-block', marginTop: '5px', padding: '4px 12px', borderRadius: '12px', backgroundColor: actInfo.bg, color: actInfo.color, fontWeight: 'bold', border: `1px solid ${actInfo.color}`}}>
                                 {actInfo.label}
                             </div>
                         </div>
                         <div style={{width: '60%', background: '#eee', height: '20px', borderRadius: '10px', overflow: 'hidden'}}>
-                            <div style={{
-                                width: `${Math.max(0, Math.min((driver.activityScore || 1000) / 10, 100))}%`, 
-                                height: '100%', 
-                                background: actInfo.barColor, 
-                                transition: 'width 0.5s ease-in-out'
-                            }}></div>
+                            <div style={{width: `${Math.max(0, Math.min((driver.activityScore || 1000) / 10, 100))}%`, height: '100%', background: actInfo.barColor, transition: 'width 0.5s ease-in-out'}}></div>
                         </div>
                     </div>
-
                     <ActivityEditor 
                         driverId={driver.id} 
                         currentScore={driver.activityScore} 
@@ -254,42 +231,95 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     />
                 </div>
 
-                {/* 4. Автомобіль */}
+                {/* 4. АВТОМОБІЛІ (ПОВНА ІНФОРМАЦІЯ) */}
                 <div style={cardStyle}>
-                    <h3 style={sectionTitleStyle}>Автомобіль</h3>
-                    {driver.car ? (
+                    <div 
+                        style={{...sectionTitleStyle, cursor: 'pointer', marginBottom: isCarsExpanded ? '20px' : '0', borderBottom: isCarsExpanded ? '2px solid #eee' : 'none'}}
+                        onClick={() => setIsCarsExpanded(!isCarsExpanded)}
+                    >
+                        <span>🚘 Автопарк водія ({carsList.length})</span>
+                        <span style={{fontSize: '18px', color: '#666'}}>{isCarsExpanded ? '▲' : '▼'}</span>
+                    </div>
+
+                    {isCarsExpanded && (
                         <div>
-                            <div style={rowStyle}><span style={labelStyle}>Модель:</span> <span style={valueStyle}>{driver.car.make} {driver.car.model}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Номер:</span> <span style={{background:'#f0f0f0', padding:'2px 8px', borderRadius:'4px', fontWeight:'bold', border: '1px solid #ccc'}}>{driver.car.plateNumber}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Тип:</span> <span style={valueStyle}>{driver.car.carType}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Колір:</span> <span style={valueStyle}>{driver.car.color}</span></div>
-                            <div style={rowStyle}><span style={labelStyle}>Рік:</span> <span style={valueStyle}>{driver.car.year}</span></div>
+                            {carsList.length > 0 ? carsList.map((car, index) => (
+                                <div key={car.id || index} style={{
+                                    border: '1px solid #ddd', 
+                                    borderRadius: '8px', 
+                                    padding: '20px', 
+                                    marginBottom: '20px',
+                                    backgroundColor: car.status === 'ACTIVE' ? '#f0fdf4' : '#fafafa',
+                                    borderLeft: car.status === 'ACTIVE' ? '5px solid #4CAF50' : '1px solid #ddd'
+                                }}>
+                                    {/* ЗАГОЛОВОК АВТО */}
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px', borderBottom:'1px solid #eee', paddingBottom:'10px'}}>
+                                        <div>
+                                            <h3 style={{margin:'0 0 5px 0', fontSize:'18px'}}>
+                                                {car.make} {car.model}
+                                                {car.status === 'ACTIVE' && <span style={{color:'green', marginLeft:'10px', fontSize:'14px', fontWeight:'normal'}}>(АКТИВНЕ)</span>}
+                                            </h3>
+                                            <div style={{fontSize:'12px', color:'#777'}}>ID: {car.id}</div>
+                                        </div>
+                                        <div style={{textAlign:'right'}}>
+                                            <div style={{background: '#333', color:'#fff', padding: '4px 12px', borderRadius:'4px', fontSize:'16px', fontWeight:'bold', letterSpacing:'1px'}}>{car.plateNumber}</div>
+                                            <div style={{marginTop:'5px', fontSize:'12px', fontWeight:'bold', color: car.status==='REJECTED'?'red':car.status==='PENDING'?'orange':'green'}}>
+                                                {car.status}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* ПРИЧИНА ВІДМОВИ */}
+                                    {car.status === 'REJECTED' && car.rejectionReason && (
+                                        <div style={{background:'#ffebee', color:'#c62828', padding:'10px', borderRadius:'4px', marginBottom:'15px', border:'1px solid #ffcdd2'}}>
+                                            <strong>⛔ Причина відмови:</strong> {car.rejectionReason}
+                                        </div>
+                                    )}
+                                    
+                                    {/* ХАРАКТЕРИСТИКИ */}
+                                    <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px', marginBottom:'20px', fontSize:'14px'}}>
+                                        <div>Колір: <b>{car.color}</b></div>
+                                        <div>Рік випуску: <b>{car.year}</b></div>
+                                        <div>Тип кузова: <b>{car.carType}</b></div>
+                                        <div>VIN-код: <b>{car.vin || 'Не вказано'}</b></div>
+                                    </div>
+
+                                    {/* ФОТОГРАФІЇ ТА ДОКУМЕНТИ */}
+                                    <div style={{background:'#fff', padding:'15px', borderRadius:'8px', border:'1px solid #eee'}}>
+                                        {/* Група 1: Документи */}
+                                        <h5 style={{marginTop:0, marginBottom:'10px', color:'#1976D2', borderBottom:'1px solid #e3f2fd', paddingBottom:'5px'}}>📂 Документи</h5>
+                                        <div style={{display:'flex', flexWrap:'wrap'}}>
+                                            <PhotoBlock label="Тех. паспорт (Перед)" url={car.techPassportFront} />
+                                            <PhotoBlock label="Тех. паспорт (Зад)" url={car.techPassportBack} />
+                                            <PhotoBlock label="Страховка" url={car.insurancePhoto} />
+                                        </div>
+
+                                        {/* Група 2: Екстер'єр */}
+                                        <h5 style={{marginTop:'15px', marginBottom:'10px', color:'#388E3C', borderBottom:'1px solid #e8f5e9', paddingBottom:'5px'}}>🚗 Екстер'єр (Зовнішній вигляд)</h5>
+                                        <div style={{display:'flex', flexWrap:'wrap'}}>
+                                            <PhotoBlock label="Спереду" url={car.photoFront} />
+                                            <PhotoBlock label="Ззаду" url={car.photoBack} />
+                                            <PhotoBlock label="Зліва" url={car.photoLeft} />
+                                            <PhotoBlock label="Справа" url={car.photoRight} />
+                                        </div>
+
+                                        {/* Група 3: Інтер'єр */}
+                                        <h5 style={{marginTop:'15px', marginBottom:'10px', color:'#F57C00', borderBottom:'1px solid #fff3e0', paddingBottom:'5px'}}>💺 Інтер'єр (Салон)</h5>
+                                        <div style={{display:'flex', flexWrap:'wrap'}}>
+                                            <PhotoBlock label="Салон (Спереду)" url={car.photoSeatsFront} />
+                                            <PhotoBlock label="Салон (Ззаду)" url={car.photoSeatsBack} />
+                                        </div>
+                                    </div>
+
+                                </div>
+                            )) : (
+                                <p style={{color:'#999', textAlign:'center', padding:'20px'}}>Автомобілі не призначено</p>
+                            )}
                         </div>
-                    ) : <p style={{color:'#999'}}>Автомобіль не призначено</p>}
+                    )}
                 </div>
 
-                {/* 5. Фото */}
-                <div style={cardStyle}>
-                    <h3 style={sectionTitleStyle}>Документи та Фото</h3>
-                    <h4 style={{marginTop:0, color:'#666'}}>📂 Документи</h4>
-                    <div style={{display:'flex', flexWrap:'wrap', paddingBottom: '20px', borderBottom: '1px solid #eee', marginBottom: '20px'}}>
-                        <PhotoBlock label="Фото авто" url={driver.car?.photoUrl} />
-                        <PhotoBlock label="Тех. паспорт (Перед)" url={driver.car?.techPassportFront} />
-                        <PhotoBlock label="Тех. паспорт (Зад)" url={driver.car?.techPassportBack} />
-                        <PhotoBlock label="Страховка" url={driver.car?.insurancePhoto} />
-                    </div>
-                    <h4 style={{marginTop:0, color:'#666'}}>🚗 Огляд (6 сторін)</h4>
-                    <div style={{display:'flex', flexWrap:'wrap'}}>
-                        <PhotoBlock label="Спереду" url={driver.car?.photoFront} />
-                        <PhotoBlock label="Ззаду" url={driver.car?.photoBack} />
-                        <PhotoBlock label="Зліва" url={driver.car?.photoLeft} />
-                        <PhotoBlock label="Справа" url={driver.car?.photoRight} />
-                        <PhotoBlock label="Салон (Пер)" url={driver.car?.photoSeatsFront} />
-                        <PhotoBlock label="Салон (Зад)" url={driver.car?.photoSeatsBack} />
-                    </div>
-                </div>
-
-                {/* 6. Тарифи */}
+                {/* 5. Тарифи */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>Доступні тарифи</h3>
                     <div>
@@ -379,9 +409,7 @@ const DriversPage = () => {
 
   // --- ОНОВЛЕННЯ ВОДІЯ З МОДАЛКИ (Без перезавантаження всієї таблиці) ---
   const handleDriverUpdateInModal = (updatedDriver) => {
-      // 1. Оновлюємо стан списку водіїв
       updateDriverState(updatedDriver);
-      // 2. Оновлюємо водія, який зараз відкритий у модалці
       setDetailsDriver(updatedDriver);
   };
 
@@ -569,7 +597,6 @@ const DriversPage = () => {
         </table>
       </div>
 
-      {/* Модалка редагування (маленька) */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleModalClose}
@@ -584,12 +611,11 @@ const DriversPage = () => {
         />
       </Modal>
 
-      {/* Модалка деталей (FULL SCREEN) - ТЕПЕР З АКТИВНІСТЮ */}
       <DriverDetailsModal 
         driver={detailsDriver} 
         isOpen={!!detailsDriver} 
         onClose={closeDetails} 
-        onDriverUpdated={handleDriverUpdateInModal} // <-- Callback оновлення
+        onDriverUpdated={handleDriverUpdateInModal} 
       />
     </div>
   );

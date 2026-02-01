@@ -16,8 +16,11 @@ import NewsPage from './NewsPage';
 import ServicesPage from './Services';         
 import SettingsPage from './SettingsPage';     
 import SectorsPage from './SectorsPage';
-// --- НОВОЕ: Импорт страницы рейтингов ---
-import RatingsPage from './RatingsPage';       
+import RatingsPage from './RatingsPage';
+// --- НОВОЕ: Импорт конструктора форм ---
+import FormBuilderPage from './FormBuilderPage';
+// --- ВАЖНО: Добавили импорт страницы заявок ---
+import CarRequestsPage from './CarRequestsPage'; 
 
 const sosStyle = {
   backgroundColor: '#ff4d4d',
@@ -95,6 +98,8 @@ const DashboardLayout = () => {
         {/* Вкладки ТОЛЬКО ДЛЯ АДМИНА */}
         {isAdmin && (
           <>
+            <NavLink to="/car-requests" className="nav-item">Заявки авто</NavLink>
+
             {/* ПЕРЕДАЕМ СТИЛЬ ПРИ ТРЕВОГЕ */}
             <NavLink 
                 to="/news"
@@ -103,9 +108,7 @@ const DashboardLayout = () => {
                 Сповіщення {sosAlert && "(!)"}
             </NavLink> 
 
-            {/* --- НОВОЕ: Кнопка Рейтинги --- */}
             <NavLink to="/ratings">Відгуки</NavLink>
-            {/* ----------------------------- */}
 
             <NavLink to="/services">Дод. послуги</NavLink>
             <NavLink to="/tariffs">Тарифы</NavLink>
@@ -113,6 +116,10 @@ const DashboardLayout = () => {
             <NavLink to="/promos">Акції (Завдання)</NavLink>
             <NavLink to="/promocodes">Промокоди</NavLink>
             <NavLink to="/sectors">Сектори</NavLink>
+            
+            {/* --- НОВОЕ: Ссылка на конструктор --- */}
+            <NavLink to="/form-builder">Конструктор форм</NavLink>
+            
             <NavLink to="/settings">Налаштування</NavLink>
           </>
         )}
@@ -131,29 +138,38 @@ const DashboardLayout = () => {
               {/* ВАЖНО: Передаем sosList как пропс! */}
               <Route path="/news" element={<NewsPage sosList={sosList} setSosList={setSosList} />} />
               
-              {/* --- НОВОЕ: Роут для страницы рейтингов --- */}
               <Route path="/ratings" element={<RatingsPage />} />
-              {/* ---------------------------------------- */}
-
               <Route path="/services" element={<ServicesPage />} />
               <Route path="/tariffs" element={<TariffsPage />} />
               <Route path="/dispatchers" element={<DispatchersPage />} />
               <Route path="/promos" element={<PromosPage />} />
               <Route path="/promocodes" element={<PromoCodesPage />} />
               <Route path="/sectors" element={<SectorsPage />} />
+              
+              {/* --- НОВОЕ: Роут для страницы заявок --- */}
+              <Route path="/car-requests" element={<CarRequestsPage />} />
+
+              {/* --- НОВОЕ: Роут для конструктора --- */}
+              <Route path="/form-builder" element={<FormBuilderPage />} />
+
               <Route path="/settings" element={<SettingsPage />} />
             </>
           ) : (
             <>
               {/* Защита роутов для обычного диспетчера */}
               <Route path="/news" element={<Navigate to="/" replace />} />
-              <Route path="/ratings" element={<Navigate to="/" replace />} /> {/* Защита для ratings */}
+              <Route path="/ratings" element={<Navigate to="/" replace />} />
               <Route path="/services" element={<Navigate to="/" replace />} />
               <Route path="/tariffs" element={<Navigate to="/" replace />} />
               <Route path="/dispatchers" element={<Navigate to="/" replace />} />
               <Route path="/promos" element={<Navigate to="/" replace />} />
               <Route path="/promocodes" element={<Navigate to="/" replace />} />
               <Route path="/sectors" element={<Navigate to="/" replace />} />
+              
+              {/* --- НОВОЕ: Защита новых страниц --- */}
+              <Route path="/car-requests" element={<Navigate to="/" replace />} />
+              <Route path="/form-builder" element={<Navigate to="/" replace />} />
+              
               <Route path="/settings" element={<Navigate to="/" replace />} />
             </>
           )}
