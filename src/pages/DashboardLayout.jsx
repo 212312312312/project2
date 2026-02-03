@@ -20,7 +20,9 @@ import RatingsPage from './RatingsPage';
 // --- НОВОЕ: Импорт конструктора форм ---
 import FormBuilderPage from './FormBuilderPage';
 // --- ВАЖНО: Добавили импорт страницы заявок ---
-import CarRequestsPage from './CarRequestsPage'; 
+import CarRequestsPage from './CarRequestsPage';
+// --- ВАЖНО: Добавили импорт страницы заявок водителей (БЫЛО ПРОПУЩЕНО) ---
+import DriverRequestsPage from './DriverRequestsPage'; 
 
 const sosStyle = {
   backgroundColor: '#ff4d4d',
@@ -107,7 +109,9 @@ const DashboardLayout = () => {
             >
                 Сповіщення {sosAlert && "(!)"}
             </NavLink> 
-
+            
+            <NavLink to="/driver-requests" className="nav-item">Заявки водіїв 🆕</NavLink>
+            
             <NavLink to="/ratings">Відгуки</NavLink>
 
             <NavLink to="/services">Дод. послуги</NavLink>
@@ -146,6 +150,8 @@ const DashboardLayout = () => {
               <Route path="/promocodes" element={<PromoCodesPage />} />
               <Route path="/sectors" element={<SectorsPage />} />
               
+              <Route path="/driver-requests" element={<DriverRequestsPage />} />
+              
               {/* --- НОВОЕ: Роут для страницы заявок --- */}
               <Route path="/car-requests" element={<CarRequestsPage />} />
 
@@ -168,6 +174,7 @@ const DashboardLayout = () => {
               
               {/* --- НОВОЕ: Защита новых страниц --- */}
               <Route path="/car-requests" element={<Navigate to="/" replace />} />
+              <Route path="/driver-requests" element={<Navigate to="/" replace />} />
               <Route path="/form-builder" element={<Navigate to="/" replace />} />
               
               <Route path="/settings" element={<Navigate to="/" replace />} />

@@ -2,7 +2,15 @@ import axios from 'axios';
 
 // 1. Создаем "экземпляр" (instance) axios
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api/v1'
+  // ВАЖНО: Используем относительный путь. 
+  baseURL: '/api/v1',
+  
+  // !!! ВИДАЛЯЄМО ЦЕЙ РЯДОК !!!
+  // headers: { 'Content-Type': 'application/json' }, 
+  
+  // Axios САМ визначить:
+  // - Якщо шлемо об'єкт -> поставить application/json
+  // - Якщо шлемо FormData (файли) -> поставить multipart/form-data
 });
 
 // 2. Создаем "Перехватчик Запросов"
@@ -28,12 +36,11 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      // 1. Удаляем "сломанный" токен
+    const isRegistrationPage = window.location.pathname.includes('/driver-register');
+
+    if (!isRegistrationPage && error.response && (error.response.status === 401 || error.response.status === 403)) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      
-      // 2. "Выкидываем" пользователя на страницу логина
       window.location.href = '/login'; 
       console.error("Auth Error. Logging out.");
     }

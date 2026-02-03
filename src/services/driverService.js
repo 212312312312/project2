@@ -200,3 +200,41 @@ export const updateCarDetails = async (carId, carData) => {
   const response = await api.put(`/admin/drivers/cars/${carId}`, carData);
   return response.data;
 };
+
+export const getPendingDrivers = async () => {
+  try {
+    const response = await api.get('/admin/drivers/pending-registration');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Не вдалося завантажити заявки водіїв');
+  }
+};
+
+/**
+ * Схвалити реєстрацію водія
+ */
+export const approveDriverRegistration = async (driverId, tariffIds) => {
+  try {
+    // Ми передаємо tariffIds другим аргументом (це тіло запиту)
+    const response = await api.post(`/admin/drivers/${driverId}/approve-registration`, tariffIds);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка при схваленні водія');
+  }
+};
+
+/**
+ * Відхилити реєстрацію водія
+ */
+export const rejectDriverRegistration = async (driverId, reason) => {
+  try {
+    // reason передаємо як plain text або JSON
+    const response = await api.post(`/admin/drivers/${driverId}/reject-registration`, reason, {
+        headers: { 'Content-Type': 'text/plain' }
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка при відхиленні водія');
+  }
+};
+

@@ -4,12 +4,20 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  define: {
-    // Это тоже помогает решить проблему с global
-    'global': 'window',
-  },
-  // Настройка для корректной работы WebSocket в dev-режиме, если будут проблемы с CORS
   server: {
-    port: 5173,
+    // Эта настройка работает ТОЛЬКО в режиме разработки (npm run dev)
+    // Она спасает от белого экрана на ПК
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080', // Куда перенаправлять запросы
+        changeOrigin: true,
+        secure: false,
+      },
+      '/ws-taxi': {
+        target: 'http://localhost:8080', // Для Веб-сокетов
+        ws: true,
+        changeOrigin: true
+      }
+    }
   }
 })
