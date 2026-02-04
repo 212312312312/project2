@@ -46,8 +46,13 @@ export const registerDriver = async (driverData, files = {}) => {
     if (files.techPassportFront) formData.append('techPassportFront', files.techPassportFront);
     if (files.techPassportBack) formData.append('techPassportBack', files.techPassportBack);
     if (files.insurance) formData.append('insurance', files.insurance);
-    if (files.carPhoto) formData.append('carPhoto', files.carPhoto);
 
+    if (files.carFront) formData.append('carFront', files.carFront);
+    if (files.carBack) formData.append('carBack', files.carBack);
+    if (files.carLeft) formData.append('carLeft', files.carLeft);
+    if (files.carRight) formData.append('carRight', files.carRight);
+    if (files.carInteriorFront) formData.append('carInteriorFront', files.carInteriorFront);
+    if (files.carInteriorBack) formData.append('carInteriorBack', files.carInteriorBack);
     // 3. ОТПРАВЛЯЕМ
     // ВАЖЛИВО: Не вказуємо Content-Type вручну. 
     // Axios побачить, що це FormData, і браузер сам додасть правильний заголовок з boundary.
