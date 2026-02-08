@@ -143,7 +143,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
         </div>
     );
 
-    // Збираємо список машин (якщо в майбутньому driver.cars буде списком, використовуємо його)
+    // Збираємо список машин
     const carsList = driver.cars || (driver.car ? [driver.car] : []);
 
     return (
@@ -189,7 +189,40 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     </div>
                 </div>
 
-                {/* 2. РЕЙТИНГ */}
+                {/* 2. НОВИЙ БЛОК: МЕДИЧНІ ДАНІ */}
+                <div style={cardStyle}>
+                    <h3 style={sectionTitleStyle}>🏥 Медичні особливості (Нарушення функцій)</h3>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                        {(!driver.hasMovementIssue && !driver.hasHearingIssue && !driver.isDeaf && !driver.hasSpeechIssue) ? (
+                            <div style={{ color: '#666', fontStyle: 'italic', padding: '10px 0' }}>Немає інформації про порушення функцій (Здоровий)</div>
+                        ) : (
+                            <>
+                                {driver.hasMovementIssue && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#FFEBEE', color: '#D32F2F', borderRadius: '24px', border: '1px solid #FFCDD2', fontWeight: '600' }}>
+                                        <span style={{ fontSize: '20px' }}>♿</span> Порушення опорно-рухового апарату
+                                    </div>
+                                )}
+                                {driver.hasHearingIssue && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#FFF3E0', color: '#EF6C00', borderRadius: '24px', border: '1px solid #FFE0B2', fontWeight: '600' }}>
+                                        <span style={{ fontSize: '20px' }}>🦻</span> Порушення слуху
+                                    </div>
+                                )}
+                                {driver.isDeaf && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#FFF8E1', color: '#FF8F00', borderRadius: '24px', border: '1px solid #FFECB3', fontWeight: '700' }}>
+                                        <span style={{ fontSize: '20px' }}>🔇</span> Глухонімий / Повна глухота
+                                    </div>
+                                )}
+                                {driver.hasSpeechIssue && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#E3F2FD', color: '#1976D2', borderRadius: '24px', border: '1px solid #BBDEFB', fontWeight: '600' }}>
+                                        <span style={{ fontSize: '20px' }}>🗣️</span> Порушення мовлення
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* 3. РЕЙТИНГ */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>⭐ Рейтинг та Відгуки</h3>
                     <div style={{display:'flex', alignItems:'center', gap:'20px'}}>
@@ -207,7 +240,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     </div>
                 </div>
 
-                {/* 3. БЛОК АКТИВНОСТІ */}
+                {/* 4. БЛОК АКТИВНОСТІ */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>📊 Активність водія</h3>
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px'}}>
@@ -231,7 +264,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     />
                 </div>
 
-                {/* 4. АВТОМОБІЛІ (ПОВНА ІНФОРМАЦІЯ) */}
+                {/* 5. АВТОМОБІЛІ (ПОВНА ІНФОРМАЦІЯ) */}
                 <div style={cardStyle}>
                     <div 
                         style={{...sectionTitleStyle, cursor: 'pointer', marginBottom: isCarsExpanded ? '20px' : '0', borderBottom: isCarsExpanded ? '2px solid #eee' : 'none'}}
@@ -319,7 +352,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     )}
                 </div>
 
-                {/* 5. Тарифи */}
+                {/* 6. Тарифи */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>Доступні тарифи</h3>
                     <div>
