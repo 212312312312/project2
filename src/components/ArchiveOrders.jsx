@@ -51,7 +51,6 @@ const formatDate = (dateString) => {
     });
 };
 
-// --- ДОПОМІЖНІ ФУНКЦІЇ ДАТИ ---
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 const ArchiveOrders = () => {
@@ -62,11 +61,9 @@ const ArchiveOrders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // --- ФІЛЬТРИ ДАТИ (За замовчуванням - сьогодні) ---
   const [dateFrom, setDateFrom] = useState(getTodayStr());
   const [dateTo, setDateTo] = useState(getTodayStr());
 
-  // --- СТАТИСТИКА ---
   const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 0 });
 
   const fetchArchive = async () => {
@@ -74,7 +71,6 @@ const ArchiveOrders = () => {
       setLoading(true);
       setError('');
       const data = await getArchivedOrders();
-      // Сортуємо: новіші зверху
       const sorted = data.sort((a, b) => b.id - a.id);
       setAllOrders(sorted);
     } catch (err) {
@@ -88,7 +84,6 @@ const ArchiveOrders = () => {
     fetchArchive();
   }, []);
 
-  // --- ЛОГІКА ФІЛЬТРАЦІЇ ---
   useEffect(() => {
     if (!allOrders.length) {
         setFilteredOrders([]);
@@ -98,12 +93,10 @@ const ArchiveOrders = () => {
 
     let result = allOrders;
 
-    // 1. Фільтр по телефону
     if (searchTerm) {
         result = result.filter(o => o.client.phoneNumber.includes(searchTerm));
     }
 
-    // 2. Фільтр по даті
     if (dateFrom && dateTo) {
         const from = new Date(dateFrom);
         from.setHours(0,0,0,0);
@@ -119,7 +112,6 @@ const ArchiveOrders = () => {
 
     setFilteredOrders(result);
 
-    // 3. Підрахунок статистики
     let comp = 0, canc = 0, money = 0;
     result.forEach(o => {
         if (o.status === 'COMPLETED') {
@@ -163,7 +155,6 @@ const ArchiveOrders = () => {
       const start = new Date();
       
       if (days === 0) { 
-         // today
       } else if (days === 1) { 
          start.setDate(start.getDate() - 1);
          end.setDate(end.getDate() - 1);
@@ -186,7 +177,6 @@ const ArchiveOrders = () => {
 
     const isCancelled = selectedOrder.status === 'CANCELLED';
 
-    // --- РОЗРАХУНОК ЦІНИ ЗА КМ ---
     let distKm = 0;
     let pricePerKm = 0;
     if (selectedOrder.distanceMeters && selectedOrder.distanceMeters > 0) {
@@ -229,6 +219,24 @@ const ArchiveOrders = () => {
             <div style={{ display: 'flex', gap: '20px', flex: 1, minHeight: 0 }}>
                 
                 <div style={{ flex: '0 0 400px', overflowY: 'auto', paddingRight: '5px' }}>
+                    
+                    {/* --- ВІДОБРАЖЕННЯ ПРИЧИНИ СКАСУВАННЯ --- */}
+                    {isCancelled && selectedOrder.cancellationReason && (
+                        <div style={{ 
+                            backgroundColor: '#ffebee', 
+                            color: '#c62828',
+                            padding: '10px', 
+                            borderRadius: '5px', 
+                            marginBottom: '15px', 
+                            border: '1px solid #ef9a9a',
+                            fontSize: '1.05rem'
+                        }}>
+                            <strong>⚠️ Причина скасування:</strong><br/>
+                            {selectedOrder.cancellationReason}
+                        </div>
+                    )}
+                    {/* ---------------------------------------- */}
+
                     <div className="order-card" style={{ cursor: 'default', backgroundColor: '#fff', border: '1px solid #ddd', height: 'auto' }}>
                         
                         <div className="info-group" style={{ marginBottom: '15px' }}>
@@ -252,11 +260,9 @@ const ArchiveOrders = () => {
                             <div style={{marginTop: '5px'}}>🔴 <b>Куди:</b> {selectedOrder.toAddress}</div>
                         </div>
 
-                        {/* --- БЛОК ЦІНИ І РОЗРАХУНКУ КМ --- */}
                         <div style={{ fontSize: '1.1em', marginBottom: '15px' }}>
                             <p>💵 <strong>Ціна:</strong> {Math.round(selectedOrder.price)} ₴</p>
                             
-                            {/* ПОКАЗУЄМО ДИСТАНЦІЮ ТА ГРН/КМ */}
                             {distKm > 0 && (
                                 <p style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
                                     📏 {distKm.toFixed(1)} км • <strong>{pricePerKm.toFixed(2)} грн/км</strong>
@@ -368,7 +374,6 @@ const ArchiveOrders = () => {
                   <button className="btn-secondary" style={{fontSize: '0.8rem', padding: '4px 8px'}} onClick={() => setDateFilter(30)}>Місяць</button>
                   <button className="btn-secondary" style={{fontSize: '0.8rem', padding: '4px 8px'}} onClick={() => setDateFilter(90)}>3 міс.</button>
                   
-                  {/* КНОПКА ЗА ВЕСЬ ЧАС */}
                   <button 
                     className="btn-secondary" 
                     style={{fontSize: '0.8rem', padding: '4px 8px', backgroundColor: '#6c757d', color: 'white'}} 

@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { getAllSettings, uploadSettingImage, saveTextSettings } from '../services/settingsService';
+// Імпортуємо нову модалку
+import CancellationReasonsModal from '../components/CancellationReasonsModal';
 import '../assets/Form.css'; 
 
 const SettingsPage = () => {
     const [settings, setSettings] = useState({});
     const [loading, setLoading] = useState(false);
+    
+    // Стейт для модалки причин
+    const [showReasonsModal, setShowReasonsModal] = useState(false);
 
     useEffect(() => {
         loadSettings();
@@ -32,7 +37,6 @@ const SettingsPage = () => {
             }
 
             // 2. Сохраняем размеры (как текст)
-            // Создаем ключи типа "driver_map_icon_width"
             updates[`${keyPrefix}_width`] = width.toString();
             updates[`${keyPrefix}_height`] = height.toString();
 
@@ -58,11 +62,29 @@ const SettingsPage = () => {
 
             <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
                 
+                {/* --- НОВА КАРТКА ДЛЯ ПРИЧИН СКАСУВАННЯ --- */}
+                <div className="card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                        <h3 style={{ fontSize: '1.1rem', marginBottom: '5px' }}>⛔ Причини скасування</h3>
+                        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>
+                            Налаштування списку причин, які водії можуть обирати при скасуванні, та штрафів за них.
+                        </p>
+                    </div>
+                    <button 
+                        className="btn-primary" 
+                        onClick={() => setShowReasonsModal(true)}
+                        style={{ width: '100%' }}
+                    >
+                        Налаштувати список
+                    </button>
+                </div>
+                {/* ----------------------------------------- */}
+
                 <SettingCard 
                     title="📍 Мітка водія (Диспетчерська)"
                     description="Іконка на карті диспетчера."
                     settingKey="driver_map_icon"
-                    settingsData={settings} // Передаем все настройки
+                    settingsData={settings}
                     onSave={handleSaveCard}
                     loading={loading}
                 />
@@ -76,6 +98,11 @@ const SettingsPage = () => {
                     loading={loading}
                 />
             </div>
+
+            {/* Рендер модалки */}
+            {showReasonsModal && (
+                <CancellationReasonsModal onClose={() => setShowReasonsModal(false)} />
+            )}
         </div>
     );
 };
@@ -84,11 +111,9 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
     const [preview, setPreview] = useState(null);
     const [file, setFile] = useState(null);
     
-    // Берем текущие значения из базы или ставим дефолт 40
     const [width, setWidth] = useState(settingsData[`${settingKey}_width`] || 40);
     const [height, setHeight] = useState(settingsData[`${settingKey}_height`] || 40);
 
-    // Обновляем инпуты, когда данные пришли с сервера
     useEffect(() => {
         if (settingsData[`${settingKey}_width`]) setWidth(settingsData[`${settingKey}_width`]);
         if (settingsData[`${settingKey}_height`]) setHeight(settingsData[`${settingKey}_height`]);
@@ -111,7 +136,6 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
             
             <input type="file" accept="image/*" onChange={handleFileChange} style={{ marginBottom: '15px' }} />
 
-            {/* Поля для размеров */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                 <div style={{ flex: 1 }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Ширина (px):</label>
@@ -133,7 +157,6 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
                 </div>
             </div>
 
-            {/* Предпросмотр с реальным размером */}
             <div style={{ 
                 height: '150px', 
                 border: '2px dashed #ccc', 
@@ -151,8 +174,8 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
                         style={{ 
                             width: `${width}px`, 
                             height: `${height}px`, 
-                            objectFit: 'contain', // Чтобы картинка вписывалась в заданные рамки
-                            border: '1px solid red' // Рамка для наглядности размера
+                            objectFit: 'contain',
+                            border: '1px solid red' 
                         }} 
                     />
                 ) : (

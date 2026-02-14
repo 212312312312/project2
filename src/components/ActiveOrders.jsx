@@ -51,7 +51,7 @@ const getCoords = (driver) => {
 
 const getStatusLabel = (status) => {
     switch (status) {
-        case 'SCHEDULED': return 'Заплановано'; // <--- НОВЫЙ СТАТУС
+        case 'SCHEDULED': return 'Заплановано';
         case 'REQUESTED': return 'Пошук водія';
         case 'OFFERING': return 'Пропонуємо';
         case 'ACCEPTED': return 'Водій їде';
@@ -180,6 +180,30 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
 
 // --- СПИСОК ЗАКАЗОВ ---
 const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId }) => {
+  
+  // Функція для відображення статусу підтвердження водієм
+  const renderConfirmationStatus = (order) => {
+      if (order.status !== 'SCHEDULED') return null;
+      if (!order.driver) return <span style={{fontSize: '0.85em', color: '#666'}}>🔍 Пошук водія...</span>;
+
+      if (order.isDriverConfirmed) {
+          return <span style={{color: 'green', fontWeight: 'bold', fontSize: '0.9em'}}>✅ Водій підтвердив</span>;
+      } else {
+          // Перевірка часу
+          const now = new Date();
+          const scheduled = new Date(order.scheduledAt);
+          // Різниця в хвилинах
+          const diffMinutes = (scheduled - now) / 1000 / 60;
+
+          // Якщо залишилось менше 35 хвилин і немає підтвердження - ТРИВОГА
+          if (diffMinutes < 35) {
+              return <span style={{color: 'red', fontWeight: 'bold', fontSize: '0.9em', animation: 'blink 1s infinite'}}>⚠️ НЕ ПІДТВЕРДЖЕНО!</span>;
+          } else {
+              return <span style={{color: '#d9480f', fontSize: '0.9em'}}>⏳ Очікує підтвердження</span>;
+          }
+      }
+  };
+
   return (
     <div className="orders-list">
       {orders.length === 0 && <p style={{padding: '1.5rem', textAlign: 'center', color: '#888'}}>Список порожній.</p>}
@@ -198,12 +222,18 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
           )}
 
           <div className="order-card-body">
-            {/* ДОБАВЛЕНО: Время для запланированных */}
-    {order.status === 'SCHEDULED' && (
-        <div style={{marginBottom: '8px', color: '#d9480f', fontWeight: 'bold', background: '#fff4e6', padding: '4px', borderRadius: '4px', display: 'inline-block'}}>
-            ⏰ Час подачі: {formatTime(order.scheduledAt)}
-        </div>
-    )}
+            {/* ДОБАВЛЕНО: Время и Статус підтвердження для запланированных */}
+            {order.status === 'SCHEDULED' && (
+                <div style={{marginBottom: '8px', padding: '5px', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #eee'}}>
+                    <div style={{color: '#d9480f', fontWeight: 'bold'}}>
+                        ⏰ Подача: {formatTime(order.scheduledAt)}
+                    </div>
+                    <div style={{marginTop: '4px'}}>
+                        {renderConfirmationStatus(order)}
+                    </div>
+                </div>
+            )}
+
             <p><strong>Клієнт:</strong> {order.client.fullName} ({order.client.userPhone})</p>
             <div className="route-details" style={{marginTop: '5px'}}>
                 <div>🟢 {order.fromAddress}</div>
