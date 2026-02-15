@@ -27,30 +27,20 @@ export const getOnlineDriversForMap = async () => {
 
 /**
  * (Create) Створює нового водія
- * ОНОВЛЕНО: carFilesMap містить всі фото (головне + документи)
  */
 export const createDriver = async (driverData, file, carFilesMap) => {
   try {
     const formData = new FormData();
-    
-    // 1. Дані (JSON)
     formData.append('request', JSON.stringify(driverData));
-    
-    // 2. Аватарка водія (якщо є)
-    if (file) {
-      formData.append('file', file);
-    }
+    if (file) formData.append('file', file);
 
-    // 3. Файли авто та документи
     if (carFilesMap) {
       Object.keys(carFilesMap).forEach(key => {
         const fileItem = carFilesMap[key];
         if (fileItem) {
-          // Якщо ключ "carFile" (з форми), сервер чекає "carPhoto"
           if (key === 'carFile') {
             formData.append('carPhoto', fileItem);
           } else {
-            // Всі інші (techPassportFront, photoFront...) відправляємо як є
             formData.append(key, fileItem);
           }
         }
@@ -68,21 +58,13 @@ export const createDriver = async (driverData, file, carFilesMap) => {
 
 /**
  * (Update) Оновлює дані водія
- * ОНОВЛЕНО: carFilesMap містить всі фото
  */
 export const updateDriver = async (id, driverData, file, carFilesMap) => {
   try {
     const formData = new FormData();
-    
-    // 1. Дані
     formData.append('request', JSON.stringify(driverData));
-    
-    // 2. Аватарка
-    if (file) {
-      formData.append('file', file);
-    }
+    if (file) formData.append('file', file);
 
-    // 3. Файли авто та документи
     if (carFilesMap) {
       Object.keys(carFilesMap).forEach(key => {
         const fileItem = carFilesMap[key];
@@ -105,9 +87,6 @@ export const updateDriver = async (id, driverData, file, carFilesMap) => {
   }
 };
 
-/**
- * (Delete) Видаляє водія
- */
 export const deleteDriver = async (id) => {
   try {
     const response = await api.delete(`/admin/drivers/${id}`);
@@ -155,11 +134,8 @@ export const changeDriverActivity = async (id, points, reason) => {
   }
 };
 
-// --- НОВІ МЕТОДИ: Управління заявками на авто ---
+// --- Управління заявками на авто ---
 
-/**
- * Отримати список авто, що чекають перевірки (Status: PENDING)
- */
 export const getPendingCars = async () => {
   try {
     const response = await api.get('/admin/drivers/cars/pending');
@@ -169,9 +145,6 @@ export const getPendingCars = async () => {
   }
 };
 
-/**
- * Схвалити авто
- */
 export const approveCar = async (carId) => {
   try {
     const response = await api.post(`/admin/drivers/cars/${carId}/approve`);
@@ -181,12 +154,8 @@ export const approveCar = async (carId) => {
   }
 };
 
-/**
- * Відхилити авто (з причиною)
- */
 export const rejectCar = async (carId, reason) => {
   try {
-    // Передаємо reason як звичайний текст
     const response = await api.post(`/admin/drivers/cars/${carId}/reject`, reason, {
         headers: { 'Content-Type': 'text/plain' }
     });
@@ -210,12 +179,8 @@ export const getPendingDrivers = async () => {
   }
 };
 
-/**
- * Схвалити реєстрацію водія
- */
 export const approveDriverRegistration = async (driverId, tariffIds) => {
   try {
-    // Ми передаємо tariffIds другим аргументом (це тіло запиту)
     const response = await api.post(`/admin/drivers/${driverId}/approve-registration`, tariffIds);
     return response.data;
   } catch (error) {
@@ -223,12 +188,8 @@ export const approveDriverRegistration = async (driverId, tariffIds) => {
   }
 };
 
-/**
- * Відхилити реєстрацію водія
- */
 export const rejectDriverRegistration = async (driverId, reason) => {
   try {
-    // reason передаємо як plain text або JSON
     const response = await api.post(`/admin/drivers/${driverId}/reject-registration`, reason, {
         headers: { 'Content-Type': 'text/plain' }
     });
@@ -238,3 +199,33 @@ export const rejectDriverRegistration = async (driverId, reason) => {
   }
 };
 
+// =========================================================
+// 💰 FINANCE METHODS (NEW)
+// =========================================================
+
+/**
+ * Отримати історію транзакцій водія
+ */
+export const getDriverTransactions = async (driverId) => {
+    try {
+        const response = await api.get(`/admin/drivers/${driverId}/transactions`);
+        // Backend може повертати Page, тому перевіримо
+        return response.data.content ? response.data.content : response.data;
+    } catch (error) {
+        console.error("History error", error);
+        return [];
+    }
+};
+
+/**
+ * Ручна зміна балансу (Адмін поповнює або знімає)
+ * amount: число (позитивне = поповнення, негативне = штраф/вивід)
+ */
+export const manualBalanceUpdate = async (driverId, amount, description) => {
+     try {
+         const response = await api.post(`/admin/drivers/${driverId}/balance`, { amount, description });
+         return response.data; // Поверне оновленого водія
+     } catch (error) {
+         throw new Error(error.response?.data?.message || 'Помилка зміни балансу');
+     }
+};

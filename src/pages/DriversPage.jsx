@@ -7,7 +7,9 @@ import {
   blockDriverPermanently,
   blockDriverTemporarily,
   unblockDriver,
-  changeDriverActivity 
+  changeDriverActivity,
+  getDriverTransactions, // NEW
+  manualBalanceUpdate // NEW
 } from '../services/driverService';
 import { getAllTariffs } from '../services/tariffService'; 
 
@@ -22,6 +24,111 @@ const getActivityColor = (score) => {
     if (s >= 401) return { color: '#f9a825', bg: '#fffde7', label: 'Жовтий (Середній)', barColor: '#FFC107' };
     if (s >= 1) return { color: '#c62828', bg: '#ffebee', label: 'Червоний (Низький)', barColor: '#F44336' };
     return { color: '#fff', bg: '#333', label: 'ЗАБЛОКОВАНО', barColor: '#000' };
+};
+
+// --- КОМПОНЕНТ ФІНАНСІВ ВОДІЯ (НОВИЙ) ---
+const WalletEditor = ({ driverId, currentBalance, onUpdate }) => {
+    const [amount, setAmount] = useState('');
+    const [description, setDescription] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [history, setHistory] = useState([]);
+
+    // Завантаження історії при відкритті
+    useEffect(() => {
+        loadHistory();
+    }, [driverId]);
+
+    const loadHistory = async () => {
+        try {
+            const data = await getDriverTransactions(driverId);
+            setHistory(data);
+        } catch (e) {
+            console.error("Не вдалося завантажити історію", e);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!amount || !description) return alert("Вкажіть суму та опис");
+
+        setLoading(true);
+        try {
+            // Відправляємо amount як є (позитивне = плюс, негативне = мінус)
+            const updatedDriver = await manualBalanceUpdate(driverId, parseFloat(amount), description);
+            onUpdate(updatedDriver); // Оновлюємо батьківський компонент
+            setAmount('');
+            setDescription('');
+            loadHistory(); // Оновлюємо таблицю історії
+            alert('Баланс оновлено!');
+        } catch (err) {
+            alert(err.message || 'Помилка оновлення');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div style={{marginTop: '20px'}}>
+            <div style={{display:'flex', gap:'20px', alignItems:'flex-start'}}>
+                {/* ЛІВА КОЛОНКА: БАЛАНС ТА ДІЇ */}
+                <div style={{flex: 1, padding: '20px', background: '#e8f5e9', borderRadius: '8px', border: '1px solid #c8e6c9'}}>
+                    <h3 style={{marginTop:0, color: '#2e7d32'}}>💰 Баланс: {currentBalance ? currentBalance.toFixed(2) : "0.00"} ₴</h3>
+                    
+                    <form onSubmit={handleSubmit} style={{marginTop:'15px', display:'flex', flexDirection:'column', gap:'10px'}}>
+                        <label style={{fontSize:'14px', fontWeight:'bold'}}>Ручне коригування:</label>
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            placeholder="Сума (напр. 100 або -50)" 
+                            value={amount} 
+                            onChange={e => setAmount(e.target.value)}
+                            required
+                            style={{padding:'8px', borderRadius:'4px', border:'1px solid #ccc'}}
+                        />
+                        <input 
+                            type="text" 
+                            placeholder="Коментар (напр. Поповнення через термінал)" 
+                            value={description} 
+                            onChange={e => setDescription(e.target.value)}
+                            required
+                            style={{padding:'8px', borderRadius:'4px', border:'1px solid #ccc'}}
+                        />
+                        <button type="submit" disabled={loading} className="btn-primary" style={{background:'#2e7d32'}}>
+                            {loading ? 'Обробка...' : 'Застосувати'}
+                        </button>
+                    </form>
+                </div>
+
+                {/* ПРАВА КОЛОНКА: ІСТОРІЯ */}
+                <div style={{flex: 2, maxHeight:'300px', overflowY:'auto', border:'1px solid #eee', borderRadius:'8px'}}>
+                    <table style={{width:'100%', borderCollapse:'collapse', fontSize:'13px'}}>
+                        <thead style={{background:'#f5f5f5', position:'sticky', top:0}}>
+                            <tr>
+                                <th style={{padding:'8px', textAlign:'left'}}>Дата</th>
+                                <th style={{padding:'8px', textAlign:'left'}}>Тип</th>
+                                <th style={{padding:'8px', textAlign:'right'}}>Сума</th>
+                                <th style={{padding:'8px', textAlign:'left'}}>Опис</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {history.length > 0 ? history.map(tx => (
+                                <tr key={tx.id} style={{borderBottom:'1px solid #eee'}}>
+                                    <td style={{padding:'8px'}}>{new Date(tx.createdAt).toLocaleString()}</td>
+                                    <td style={{padding:'8px'}}>{tx.operationType}</td>
+                                    <td style={{padding:'8px', textAlign:'right', fontWeight:'bold', color: tx.amount >= 0 ? 'green' : 'red'}}>
+                                        {tx.amount > 0 ? '+' : ''}{tx.amount.toFixed(2)} ₴
+                                    </td>
+                                    <td style={{padding:'8px', color:'#555'}}>{tx.description}</td>
+                                </tr>
+                            )) : (
+                                <tr><td colSpan="4" style={{padding:'10px', textAlign:'center'}}>Історія порожня</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 // --- КОМПОНЕНТ РЕДАГУВАННЯ АКТИВНОСТІ ---
@@ -86,7 +193,6 @@ const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
 
 // --- КОМПОНЕНТ ДЕТАЛЬНОГО ПЕРЕГЛЯДУ (FULL SCREEN) ---
 const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
-    // Стан для згортання/розгортання блоку авто
     const [isCarsExpanded, setIsCarsExpanded] = useState(true);
 
     if (!isOpen || !driver) return null;
@@ -143,7 +249,6 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
         </div>
     );
 
-    // Збираємо список машин
     const carsList = driver.cars || (driver.car ? [driver.car] : []);
 
     return (
@@ -180,6 +285,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                             <div style={rowStyle}><span style={labelStyle}>Email:</span> <span style={valueStyle}>{driver.email || '-'}</span></div>
                             <div style={rowStyle}><span style={labelStyle}>РНОКПП:</span> <span style={valueStyle}>{driver.rnokpp || '-'}</span></div>
                             <div style={rowStyle}><span style={labelStyle}>Посвідчення:</span> <span style={valueStyle}>{driver.driverLicense || '-'}</span></div>
+                            <div style={rowStyle}><span style={labelStyle}>Баланс:</span> <span style={{...valueStyle, color: (driver.balance || 0) < 0 ? 'red' : 'green', fontSize: '18px'}}>{(driver.balance || 0).toFixed(2)} ₴</span></div>
                             <div style={rowStyle}><span style={labelStyle}>Статус блоку:</span> 
                                 {driver.isBlocked ? <span style={{color: 'red', fontWeight:'bold'}}>ЗАБЛОКОВАНИЙ</span> : 
                                  driver.tempBlockExpiresAt ? <span style={{color: 'orange', fontWeight:'bold'}}>Тимчасово до {new Date(driver.tempBlockExpiresAt).toLocaleString()}</span> : 
@@ -189,9 +295,19 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     </div>
                 </div>
 
-                {/* 2. НОВИЙ БЛОК: МЕДИЧНІ ДАНІ */}
+                {/* 2. НОВИЙ БЛОК: ГАМАНЕЦЬ */}
                 <div style={cardStyle}>
-                    <h3 style={sectionTitleStyle}>🏥 Медичні особливості (Нарушення функцій)</h3>
+                    <h3 style={sectionTitleStyle}>💳 Гаманець та Транзакції</h3>
+                    <WalletEditor 
+                        driverId={driver.id} 
+                        currentBalance={driver.balance} 
+                        onUpdate={onDriverUpdated} 
+                    />
+                </div>
+
+                {/* 3. Медичні особливості */}
+                <div style={cardStyle}>
+                    <h3 style={sectionTitleStyle}>🏥 Медичні особливості</h3>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                         {(!driver.hasMovementIssue && !driver.hasHearingIssue && !driver.isDeaf && !driver.hasSpeechIssue) ? (
                             <div style={{ color: '#666', fontStyle: 'italic', padding: '10px 0' }}>Немає інформації про порушення функцій (Здоровий)</div>
@@ -209,7 +325,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                                 )}
                                 {driver.isDeaf && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#FFF8E1', color: '#FF8F00', borderRadius: '24px', border: '1px solid #FFECB3', fontWeight: '700' }}>
-                                        <span style={{ fontSize: '20px' }}>🔇</span> Глухонімий / Повна глухота
+                                        <span style={{ fontSize: '20px' }}>🔇</span> Глухонімий
                                     </div>
                                 )}
                                 {driver.hasSpeechIssue && (
@@ -222,7 +338,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     </div>
                 </div>
 
-                {/* 3. РЕЙТИНГ */}
+                {/* 4. Рейтинг */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>⭐ Рейтинг та Відгуки</h3>
                     <div style={{display:'flex', alignItems:'center', gap:'20px'}}>
@@ -240,7 +356,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     </div>
                 </div>
 
-                {/* 4. БЛОК АКТИВНОСТІ */}
+                {/* 5. БЛОК АКТИВНОСТІ */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>📊 Активність водія</h3>
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px'}}>
@@ -264,7 +380,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     />
                 </div>
 
-                {/* 5. АВТОМОБІЛІ (ПОВНА ІНФОРМАЦІЯ) */}
+                {/* 6. АВТОМОБІЛІ */}
                 <div style={cardStyle}>
                     <div 
                         style={{...sectionTitleStyle, cursor: 'pointer', marginBottom: isCarsExpanded ? '20px' : '0', borderBottom: isCarsExpanded ? '2px solid #eee' : 'none'}}
@@ -285,7 +401,6 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                                     backgroundColor: car.status === 'ACTIVE' ? '#f0fdf4' : '#fafafa',
                                     borderLeft: car.status === 'ACTIVE' ? '5px solid #4CAF50' : '1px solid #ddd'
                                 }}>
-                                    {/* ЗАГОЛОВОК АВТО */}
                                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px', borderBottom:'1px solid #eee', paddingBottom:'10px'}}>
                                         <div>
                                             <h3 style={{margin:'0 0 5px 0', fontSize:'18px'}}>
@@ -301,49 +416,27 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* ПРИЧИНА ВІДМОВИ */}
-                                    {car.status === 'REJECTED' && car.rejectionReason && (
-                                        <div style={{background:'#ffebee', color:'#c62828', padding:'10px', borderRadius:'4px', marginBottom:'15px', border:'1px solid #ffcdd2'}}>
-                                            <strong>⛔ Причина відмови:</strong> {car.rejectionReason}
-                                        </div>
-                                    )}
-                                    
-                                    {/* ХАРАКТЕРИСТИКИ */}
                                     <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px', marginBottom:'20px', fontSize:'14px'}}>
                                         <div>Колір: <b>{car.color}</b></div>
                                         <div>Рік випуску: <b>{car.year}</b></div>
                                         <div>Тип кузова: <b>{car.carType}</b></div>
                                         <div>VIN-код: <b>{car.vin || 'Не вказано'}</b></div>
                                     </div>
-
-                                    {/* ФОТОГРАФІЇ ТА ДОКУМЕНТИ */}
                                     <div style={{background:'#fff', padding:'15px', borderRadius:'8px', border:'1px solid #eee'}}>
-                                        {/* Група 1: Документи */}
                                         <h5 style={{marginTop:0, marginBottom:'10px', color:'#1976D2', borderBottom:'1px solid #e3f2fd', paddingBottom:'5px'}}>📂 Документи</h5>
                                         <div style={{display:'flex', flexWrap:'wrap'}}>
                                             <PhotoBlock label="Тех. паспорт (Перед)" url={car.techPassportFront} />
                                             <PhotoBlock label="Тех. паспорт (Зад)" url={car.techPassportBack} />
                                             <PhotoBlock label="Страховка" url={car.insurancePhoto} />
                                         </div>
-
-                                        {/* Група 2: Екстер'єр */}
-                                        <h5 style={{marginTop:'15px', marginBottom:'10px', color:'#388E3C', borderBottom:'1px solid #e8f5e9', paddingBottom:'5px'}}>🚗 Екстер'єр (Зовнішній вигляд)</h5>
+                                        <h5 style={{marginTop:'15px', marginBottom:'10px', color:'#388E3C', borderBottom:'1px solid #e8f5e9', paddingBottom:'5px'}}>🚗 Екстер'єр</h5>
                                         <div style={{display:'flex', flexWrap:'wrap'}}>
                                             <PhotoBlock label="Спереду" url={car.photoFront} />
                                             <PhotoBlock label="Ззаду" url={car.photoBack} />
                                             <PhotoBlock label="Зліва" url={car.photoLeft} />
                                             <PhotoBlock label="Справа" url={car.photoRight} />
                                         </div>
-
-                                        {/* Група 3: Інтер'єр */}
-                                        <h5 style={{marginTop:'15px', marginBottom:'10px', color:'#F57C00', borderBottom:'1px solid #fff3e0', paddingBottom:'5px'}}>💺 Інтер'єр (Салон)</h5>
-                                        <div style={{display:'flex', flexWrap:'wrap'}}>
-                                            <PhotoBlock label="Салон (Спереду)" url={car.photoSeatsFront} />
-                                            <PhotoBlock label="Салон (Ззаду)" url={car.photoSeatsBack} />
-                                        </div>
                                     </div>
-
                                 </div>
                             )) : (
                                 <p style={{color:'#999', textAlign:'center', padding:'20px'}}>Автомобілі не призначено</p>
@@ -352,7 +445,7 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                     )}
                 </div>
 
-                {/* 6. Тарифи */}
+                {/* 7. Тарифи */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitleStyle}>Доступні тарифи</h3>
                     <div>
@@ -388,7 +481,6 @@ const DriversPage = () => {
   // Модалка деталей
   const [detailsDriver, setDetailsDriver] = useState(null);
 
-  // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -410,7 +502,6 @@ const DriversPage = () => {
     fetchData(); 
   }, []); 
 
-  // --- ФІЛЬТРАЦІЯ ---
   const filteredDrivers = useMemo(() => {
     if (!searchTerm) return drivers;
     return drivers.filter((driver) =>
@@ -440,7 +531,6 @@ const DriversPage = () => {
       setDetailsDriver(null);
   };
 
-  // --- ОНОВЛЕННЯ ВОДІЯ З МОДАЛКИ (Без перезавантаження всієї таблиці) ---
   const handleDriverUpdateInModal = (updatedDriver) => {
       updateDriverState(updatedDriver);
       setDetailsDriver(updatedDriver);
@@ -482,7 +572,6 @@ const DriversPage = () => {
     );
   };
 
-  // --- ЛОГІКА БЛОКУВАННЯ ---
   const handleBlockTemp = async (id, e) => {
     e.stopPropagation();
     const hours = prompt('На скільки годин заблокувати?', '24');
@@ -545,6 +634,7 @@ const DriversPage = () => {
               <th>ПІБ</th>
               <th>Телефон</th>
               <th>Email</th>
+              <th>Баланс</th> {/* НОВА КОЛОНКА */}
               <th>Статус</th>
               <th>Стан Блоку</th>
               <th>Авто (Фото)</th>
@@ -580,6 +670,12 @@ const DriversPage = () => {
                   <td>{driver.fullName}</td>
                   <td>{driver.phoneNumber}</td>
                   <td>{driver.email || '-'}</td>
+                  
+                  {/* НОВА КОЛОНКА БАЛАНС */}
+                  <td style={{fontWeight: 'bold', color: (driver.balance || 0) < 0 ? 'red' : '#2e7d32'}}>
+                      {(driver.balance || 0).toFixed(2)} ₴
+                  </td>
+
                   <td>
                     <span className={driver.isOnline ? 'status-online' : 'status-offline'}>
                       {driver.isOnline ? 'ON' : 'OFF'}
@@ -623,7 +719,7 @@ const DriversPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="13">Водії не знайдені.</td>
+                <td colSpan="14">Водії не знайдені.</td>
               </tr>
             )}
           </tbody>

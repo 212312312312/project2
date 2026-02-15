@@ -8,6 +8,9 @@ const SettingsPage = () => {
     const [settings, setSettings] = useState({});
     const [loading, setLoading] = useState(false);
     
+    // Стан для комісії
+    const [commission, setCommission] = useState('10');
+    
     // Стейт для модалки причин
     const [showReasonsModal, setShowReasonsModal] = useState(false);
 
@@ -19,8 +22,24 @@ const SettingsPage = () => {
         try {
             const data = await getAllSettings();
             setSettings(data);
+            if (data.driver_commission_percent) {
+                setCommission(data.driver_commission_percent);
+            }
         } catch (error) {
             console.error("Ошибка загрузки:", error);
+        }
+    };
+
+    // Збереження комісії
+    const handleSaveCommission = async () => {
+        setLoading(true);
+        try {
+            await saveTextSettings({ driver_commission_percent: commission });
+            alert("Комісію оновлено!");
+        } catch (e) {
+            alert("Помилка: " + e.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -62,6 +81,33 @@ const SettingsPage = () => {
 
             <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
                 
+                {/* --- 💰 КАРТКА ФІНАНСІВ --- */}
+                <div className="card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '5px', color: '#2e7d32' }}>💰 Фінанси та Комісія</h3>
+                    <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>
+                        Відсоток, який система забирає з кожного замовлення.
+                    </p>
+                    
+                    <label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>Комісія водія (%):</label>
+                    <div style={{display:'flex', gap:'10px'}}>
+                        <input 
+                            type="number" 
+                            step="0.1" 
+                            value={commission} 
+                            onChange={(e) => setCommission(e.target.value)}
+                            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc', flexGrow: 1 }}
+                        />
+                        <button 
+                            className="btn-primary" 
+                            onClick={handleSaveCommission}
+                            disabled={loading}
+                        >
+                            Зберегти
+                        </button>
+                    </div>
+                </div>
+                {/* ----------------------------------------- */}
+
                 {/* --- НОВА КАРТКА ДЛЯ ПРИЧИН СКАСУВАННЯ --- */}
                 <div className="card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
