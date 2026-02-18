@@ -17,12 +17,11 @@ import ServicesPage from './Services';
 import SettingsPage from './SettingsPage';     
 import SectorsPage from './SectorsPage';
 import RatingsPage from './RatingsPage';
-// --- НОВОЕ: Импорт конструктора форм ---
 import FormBuilderPage from './FormBuilderPage';
-// --- ВАЖНО: Добавили импорт страницы заявок ---
 import CarRequestsPage from './CarRequestsPage';
-// --- ВАЖНО: Добавили импорт страницы заявок водителей (БЫЛО ПРОПУЩЕНО) ---
 import DriverRequestsPage from './DriverRequestsPage'; 
+// --- НОВОЕ: Импорт страницы финансов ---
+import FinancePage from './FinancePage';
 
 const sosStyle = {
   backgroundColor: '#ff4d4d',
@@ -112,18 +111,17 @@ const DashboardLayout = () => {
             
             <NavLink to="/driver-requests" className="nav-item">Заявки водіїв 🆕</NavLink>
             
-            <NavLink to="/ratings">Відгуки</NavLink>
+            {/* --- НОВОЕ: Вкладка Финансы --- */}
+            <NavLink to="/finance" style={{ color: '#2e7d32', fontWeight: '500' }}>Фінанси 💰</NavLink>
 
+            <NavLink to="/ratings">Відгуки</NavLink>
             <NavLink to="/services">Дод. послуги</NavLink>
             <NavLink to="/tariffs">Тарифы</NavLink>
             <NavLink to="/dispatchers">Диспетчеры</NavLink>
             <NavLink to="/promos">Акції (Завдання)</NavLink>
             <NavLink to="/promocodes">Промокоди</NavLink>
             <NavLink to="/sectors">Сектори</NavLink>
-            
-            {/* --- НОВОЕ: Ссылка на конструктор --- */}
             <NavLink to="/form-builder">Конструктор форм</NavLink>
-            
             <NavLink to="/settings">Налаштування</NavLink>
           </>
         )}
@@ -149,14 +147,12 @@ const DashboardLayout = () => {
               <Route path="/promos" element={<PromosPage />} />
               <Route path="/promocodes" element={<PromoCodesPage />} />
               <Route path="/sectors" element={<SectorsPage />} />
-              
               <Route path="/driver-requests" element={<DriverRequestsPage />} />
-              
-              {/* --- НОВОЕ: Роут для страницы заявок --- */}
               <Route path="/car-requests" element={<CarRequestsPage />} />
-
-              {/* --- НОВОЕ: Роут для конструктора --- */}
               <Route path="/form-builder" element={<FormBuilderPage />} />
+              
+              {/* --- НОВЫЙ РОУТ --- */}
+              <Route path="/finance" element={<FinancePage />} />
 
               <Route path="/settings" element={<SettingsPage />} />
             </>

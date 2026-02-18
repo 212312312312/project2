@@ -204,27 +204,29 @@ export const rejectDriverRegistration = async (driverId, reason) => {
 // =========================================================
 
 /**
- * Отримати історію транзакцій водія
+ * Отримати історію транзакцій конкретного водія (для адміна)
  */
 export const getDriverTransactions = async (driverId) => {
     try {
+        // Переконайся, що такий endpoint існує на сервері в DriverAdminController
         const response = await api.get(`/admin/drivers/${driverId}/transactions`);
-        // Backend може повертати Page, тому перевіримо
+        // Якщо бекенд повертає Page, беремо content, інакше повертаємо data як масив
         return response.data.content ? response.data.content : response.data;
     } catch (error) {
-        console.error("History error", error);
+        console.error("Error fetching driver transactions:", error);
+        // Повертаємо пустий масив, щоб не ламати UI
         return [];
     }
 };
 
 /**
- * Ручна зміна балансу (Адмін поповнює або знімає)
- * amount: число (позитивне = поповнення, негативне = штраф/вивід)
+ * Ручна зміна балансу (Адмін поповнює або знімає гроші)
+ * amount: число (позитивне = поповнення/бонус, негативне = штраф/вивід)
  */
 export const manualBalanceUpdate = async (driverId, amount, description) => {
      try {
          const response = await api.post(`/admin/drivers/${driverId}/balance`, { amount, description });
-         return response.data; // Поверне оновленого водія
+         return response.data; // Повертає оновлений об'єкт водія (DriverDto)
      } catch (error) {
          throw new Error(error.response?.data?.message || 'Помилка зміни балансу');
      }

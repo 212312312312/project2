@@ -35,7 +35,9 @@ const WalletEditor = ({ driverId, currentBalance, onUpdate }) => {
 
     // Завантаження історії при відкритті
     useEffect(() => {
+        if (driverId) {
         loadHistory();
+        }            
     }, [driverId]);
 
     const loadHistory = async () => {
@@ -113,7 +115,9 @@ const WalletEditor = ({ driverId, currentBalance, onUpdate }) => {
                         <tbody>
                             {history.length > 0 ? history.map(tx => (
                                 <tr key={tx.id} style={{borderBottom:'1px solid #eee'}}>
-                                    <td style={{padding:'8px'}}>{new Date(tx.createdAt).toLocaleString()}</td>
+                                    <td style={{padding:'8px'}}>
+    {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : '-'}
+</td>
                                     <td style={{padding:'8px'}}>{tx.operationType}</td>
                                     <td style={{padding:'8px', textAlign:'right', fontWeight:'bold', color: tx.amount >= 0 ? 'green' : 'red'}}>
                                         {tx.amount > 0 ? '+' : ''}{tx.amount.toFixed(2)} ₴
@@ -749,5 +753,7 @@ const DriversPage = () => {
     </div>
   );
 };
+
+
 
 export default DriversPage;
