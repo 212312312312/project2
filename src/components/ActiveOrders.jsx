@@ -180,7 +180,60 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
 
 // --- СПИСОК ЗАКАЗОВ ---
 const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId }) => {
-  
+  // --- ДОБАВЛЕНО: Состояние для таймера реального времени ---
+  const [now, setNow] = useState(new Date());
+
+  useInterval(() => {
+    setNow(new Date());
+  }, 1000);
+
+  // --- ДОБАВЛЕНО: Вычисляем и рисуем статус ожидания ---
+  const renderWaitingInfo = (order) => {
+    // 1. Водитель приехал, идет таймер ожидания
+    if (order.status === 'DRIVER_ARRIVED' && order.arrivedAt) {
+        const arrivedTime = new Date(order.arrivedAt).getTime();
+        const diffMs = now.getTime() - arrivedTime;
+        
+        if (diffMs < 0) return null; // Защита от расхождения времени сервера и клиента
+
+        const diffMinutesFull = diffMs / (1000 * 60);
+        const freeMinutes = order.freeWaitingMinutes || 3;
+        const pricePerMin = order.pricePerWaitingMinute || 0;
+
+        if (diffMinutesFull <= freeMinutes) {
+            // Бесплатное ожидание (зеленая плашка)
+            const remainingMs = (freeMinutes * 60 * 1000) - diffMs;
+            const remMin = Math.floor(remainingMs / (1000 * 60));
+            const remSec = Math.floor((remainingMs / 1000) % 60);
+            return (
+                <div style={{ color: '#2b8a3e', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px', padding: '6px', backgroundColor: '#ebfbee', borderRadius: '4px', border: '1px solid #b2f2bb' }}>
+                    ⏱ Безкоштовне очікування: {remMin}хв {remSec}с
+                </div>
+            );
+        } else {
+            // Платное ожидание (красная плашка)
+            const paidMinutes = Math.floor(diffMinutesFull - freeMinutes);
+            const currentExtraCost = paidMinutes * pricePerMin;
+            return (
+                <div style={{ color: '#c92a2a', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px', padding: '6px', backgroundColor: '#fff5f5', borderRadius: '4px', border: '1px solid #ffc9c9' }}>
+                    ⏳ Платне очікування: {paidMinutes} хв (+{currentExtraCost.toFixed(2)} грн)
+                </div>
+            );
+        }
+    } 
+    
+    // 2. Заказ уже в пути или завершен — показываем финальную сумму за ожидание
+    if ((order.status === 'IN_PROGRESS' || order.status === 'COMPLETED') && order.waitingPrice > 0) {
+        return (
+            <div style={{ color: '#d9480f', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px', padding: '6px', backgroundColor: '#fff4e6', borderRadius: '4px', border: '1px solid #ffd8a8' }}>
+                💰 Додано за очікування: {order.waitingPrice.toFixed(2)} грн
+            </div>
+        );
+    }
+
+    return null;
+  };
+
   // Функція для відображення статусу підтвердження водієм
   const renderConfirmationStatus = (order) => {
       if (order.status !== 'SCHEDULED') return null;
@@ -189,13 +242,10 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
       if (order.isDriverConfirmed) {
           return <span style={{color: 'green', fontWeight: 'bold', fontSize: '0.9em'}}>✅ Водій підтвердив</span>;
       } else {
-          // Перевірка часу
-          const now = new Date();
+          const nowTime = new Date();
           const scheduled = new Date(order.scheduledAt);
-          // Різниця в хвилинах
-          const diffMinutes = (scheduled - now) / 1000 / 60;
+          const diffMinutes = (scheduled - nowTime) / 1000 / 60;
 
-          // Якщо залишилось менше 35 хвилин і немає підтвердження - ТРИВОГА
           if (diffMinutes < 35) {
               return <span style={{color: 'red', fontWeight: 'bold', fontSize: '0.9em', animation: 'blink 1s infinite'}}>⚠️ НЕ ПІДТВЕРДЖЕНО!</span>;
           } else {
@@ -214,7 +264,6 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
             <span className={`status status-${order.status}`}>{getStatusLabel(order.status)}</span>
           </div>
           
-          {/* ЕСЛИ ЭТО ЗАПЛАНИРОВАННЫЙ ЗАКАЗ - ПОКАЗЫВАЕМ ВРЕМЯ */}
           {order.status === 'SCHEDULED' && order.scheduledAt && (
               <div className="scheduled-time-badge">
                   🕒 {formatScheduledTime(order.scheduledAt)}
@@ -222,7 +271,6 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
           )}
 
           <div className="order-card-body">
-            {/* ДОБАВЛЕНО: Время и Статус підтвердження для запланированных */}
             {order.status === 'SCHEDULED' && (
                 <div style={{marginBottom: '8px', padding: '5px', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #eee'}}>
                     <div style={{color: '#d9480f', fontWeight: 'bold'}}>
@@ -239,8 +287,14 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
                 <div>🟢 {order.fromAddress}</div>
                 <div>🔴 {order.toAddress}</div>
             </div>
+            
+            {/* Добавлена логика отображения финальной цены с учетом ожидания для In_Progress */}
             <p><strong>Ціна:</strong> {Math.round(order.price)} грн {order.paymentMethod === 'CARD' ? '💳' : '💵'}</p>
             <p><strong>Водій:</strong> {order.driver ? order.driver.fullName : (order.status === 'SCHEDULED' ? 'Буде призначено' : 'Пошук...')}</p>
+
+            {/* ВЫВОД ИНФОРМАЦИИ ОБ ОЖИДАНИИ */}
+            {renderWaitingInfo(order)}
+
           </div>
           <div className="order-card-actions">
             {order.status === 'REQUESTED' && <button className="btn-primary" onClick={(e) => { e.stopPropagation(); onAssign(order.id); }}>Призначити</button>}
