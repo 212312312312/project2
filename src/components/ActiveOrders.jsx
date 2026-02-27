@@ -367,8 +367,14 @@ const ActiveOrders = () => {
     fetchActiveOrders(); 
     fetchMapDrivers(); 
 
-    // WebSocket подключение
-    const socket = new SockJS('http://localhost:8080/ws-taxi');
+    // Динамичне формування URL для WebSocket (працює і локально, і на сервері)
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    // Якщо ми локально на Vite (порт 5173), стукаємо на 8080. Якщо на сервері - використовуємо поточний домен
+    const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
+    const wsUrl = `${protocol}//${host}/ws-taxi`;
+    
+    // WebSocket підключення
+    const socket = new SockJS(wsUrl);
     
     const client = new Client({
         webSocketFactory: () => socket,
@@ -394,18 +400,23 @@ const ActiveOrders = () => {
   }, []);
 
   const handleSocketMessage = (msg) => {
-    if (msg.action === 'ADD') {
+    // Тепер ми обробляємо і ADD (нове замовлення), і UPDATE (зміна статусу/ціни/водія)
+    if (msg.action === 'ADD' || msg.action === 'UPDATE') {
         setOrders(prevOrders => {
-            // Если такой заказ уже есть - обновляем его
+            // Шукаємо, чи є вже таке замовлення в нашому списку
             const existingIndex = prevOrders.findIndex(o => o.id === msg.orderId);
+            
             if (existingIndex !== -1) {
+                // Якщо є — миттєво оновлюємо його дані (щоб не стрибало по екрану)
                 const updated = [...prevOrders];
                 updated[existingIndex] = msg.order;
                 return updated;
             }
+            // Якщо замовлення не було — додаємо його на самий верх списку
             return [msg.order, ...prevOrders];
         });
     } else if (msg.action === 'REMOVE') {
+        // Замовлення скасували або воно зникло з ефіру
         setOrders(prevOrders => prevOrders.filter(o => o.id !== msg.orderId));
     }
   };
