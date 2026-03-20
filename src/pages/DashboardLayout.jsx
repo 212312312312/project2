@@ -17,7 +17,6 @@ import ServicesPage from './Services';
 import SettingsPage from './SettingsPage';     
 import SectorsPage from './SectorsPage';
 import RatingsPage from './RatingsPage';
-import FormBuilderPage from './FormBuilderPage';
 import CarRequestsPage from './CarRequestsPage';
 import DriverRequestsPage from './DriverRequestsPage'; 
 // --- НОВОЕ: Импорт страницы финансов ---
@@ -121,7 +120,6 @@ const DashboardLayout = () => {
             <NavLink to="/promos">Акції (Завдання)</NavLink>
             <NavLink to="/promocodes">Промокоди</NavLink>
             <NavLink to="/sectors">Сектори</NavLink>
-            <NavLink to="/form-builder">Конструктор форм</NavLink>
             <NavLink to="/settings">Налаштування</NavLink>
           </>
         )}
@@ -149,7 +147,6 @@ const DashboardLayout = () => {
               <Route path="/sectors" element={<SectorsPage />} />
               <Route path="/driver-requests" element={<DriverRequestsPage />} />
               <Route path="/car-requests" element={<CarRequestsPage />} />
-              <Route path="/form-builder" element={<FormBuilderPage />} />
               
               {/* --- НОВЫЙ РОУТ --- */}
               <Route path="/finance" element={<FinancePage />} />
@@ -171,7 +168,6 @@ const DashboardLayout = () => {
               {/* --- НОВОЕ: Защита новых страниц --- */}
               <Route path="/car-requests" element={<Navigate to="/" replace />} />
               <Route path="/driver-requests" element={<Navigate to="/" replace />} />
-              <Route path="/form-builder" element={<Navigate to="/" replace />} />
               
               <Route path="/settings" element={<Navigate to="/" replace />} />
             </>

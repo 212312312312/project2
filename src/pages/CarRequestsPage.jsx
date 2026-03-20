@@ -270,6 +270,7 @@ const CarRequestsPage = () => {
                                 <div style={{display:'flex', flexWrap:'wrap', gap:'10px'}}>
                                     <PhotoPreview url={car.photoSeatsFront} label="Передні сидіння" />
                                     <PhotoPreview url={car.photoSeatsBack} label="Задні сидіння" />
+                                    <PhotoPreview url={car.photoTrunk} label="Багажник" />
                                 </div>
 
                             </div>
