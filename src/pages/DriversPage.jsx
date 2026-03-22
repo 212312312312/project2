@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   getAllDrivers, 
+  getPendingDeletionDrivers,
   createDriver, 
   updateDriver, 
   deleteDriver,
@@ -477,6 +478,8 @@ const DriversPage = () => {
   
   const [availableTariffs, setAvailableTariffs] = useState([]);
 
+  const [viewMode, setViewMode] = useState('ALL'); // 'ALL' або 'PENDING_DELETE'
+
   // Модалка редагування
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState(null); 
@@ -489,10 +492,16 @@ const DriversPage = () => {
     try {
       setLoading(true);
       setError('');
-      const [driversData, tariffsData] = await Promise.all([
-        getAllDrivers(),
-        getAllTariffs()
-      ]);
+      
+      let driversData = [];
+      if (viewMode === 'ALL') {
+          driversData = await getAllDrivers();
+      } else {
+          driversData = await getPendingDeletionDrivers();
+      }
+      
+      const tariffsData = await getAllTariffs();
+      
       setDrivers(driversData);
       setAvailableTariffs(tariffsData); 
     } catch (err) {
@@ -502,9 +511,10 @@ const DriversPage = () => {
     }
   };
 
+  // Додаємо viewMode в залежності useEffect, щоб при перемиканні список оновлювався
   useEffect(() => {
     fetchData(); 
-  }, []); 
+  }, [viewMode]);
 
   const filteredDrivers = useMemo(() => {
     if (!searchTerm) return drivers;
@@ -613,6 +623,32 @@ const DriversPage = () => {
     <div className="table-page-container">
       <div className="table-header">
         <h2>Список Водіїв ({filteredDrivers.length})</h2>
+        
+        {/* --- НОВИЙ БЛОК ПЕРЕМИКАЧА --- */}
+        <div style={{ display: 'flex', gap: '10px', margin: '0 20px' }}>
+            <button 
+                onClick={() => setViewMode('ALL')}
+                style={{
+                    padding: '8px 16px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold',
+                    background: viewMode === 'ALL' ? '#1976d2' : '#e0e0e0',
+                    color: viewMode === 'ALL' ? '#fff' : '#333'
+                }}
+            >
+                Всі водії
+            </button>
+            <button 
+                onClick={() => setViewMode('PENDING_DELETE')}
+                style={{
+                    padding: '8px 16px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold',
+                    background: viewMode === 'PENDING_DELETE' ? '#d32f2f' : '#e0e0e0',
+                    color: viewMode === 'PENDING_DELETE' ? '#fff' : '#333'
+                }}
+            >
+                В черзі на видалення
+            </button>
+        </div>
+        {/* ----------------------------- */}
+
         <div className="controls">
           <input
             type="text"

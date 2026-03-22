@@ -25,6 +25,15 @@ export const getOnlineDriversForMap = async () => {
   }
 };
 
+export const getPendingDeletionDrivers = async () => {
+  try {
+    const response = await api.get('/admin/drivers/pending-deletion');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Не вдалося завантажити список водіїв на видалення');
+  }
+};
+
 /**
  * (Create) Створює нового водія
  */
