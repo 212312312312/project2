@@ -18,7 +18,6 @@ const TariffsPage = () => {
   const [editingTariff, setEditingTariff] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Load data (no change)
   const fetchTariffs = async () => {
     try {
       setLoading(true);
@@ -36,8 +35,6 @@ const TariffsPage = () => {
     fetchTariffs();
   }, []);
 
-  // --- 2. CRUD Handlers (Updated) ---
-
   const handleAddClick = () => {
     setEditingTariff(null);
     setIsModalOpen(true);
@@ -53,21 +50,17 @@ const TariffsPage = () => {
     setEditingTariff(null);
   };
 
-  // --- THIS IS THE MAIN CHANGE ---
-  // It now receives 'formData' and 'file' separately
   const handleFormSubmit = async (formData, file) => {
     setIsSubmitting(true);
     setError('');
     try {
       if (editingTariff) {
-        // === UPDATE ===
         await updateTariff(editingTariff.id, formData, file);
       } else {
-        // === CREATE ===
         await createTariff(formData, file);
       }
       handleModalClose();
-      fetchTariffs(); // Reload list
+      fetchTariffs(); 
     } catch (err) {
       setError(err.message);
     } finally {
@@ -79,14 +72,13 @@ const TariffsPage = () => {
     if (window.confirm('Are you sure? This will delete the tariff and its image.')) {
       try {
         await deleteTariff(tariffId);
-        fetchTariffs(); // Reload list
+        fetchTariffs(); 
       } catch (err) {
         setError(err.message);
       }
     }
   };
 
-  // 3. Render
   if (loading) return <div>Loading tariffs...</div>;
 
   return (
@@ -106,7 +98,7 @@ const TariffsPage = () => {
         <table>
           <thead>
             <tr>
-              <th>Icon</th> {/* <-- NEW COLUMN */}
+              <th>Icon</th>
               <th>ID</th>
               <th>Name</th>
               <th>Status</th>
@@ -121,8 +113,11 @@ const TariffsPage = () => {
           <tbody>
             {tariffs.length > 0 ? (
               tariffs.map((tariff) => (
-                <tr key={tariff.id}>
-                  {/* --- NEW CELL --- */}
+                <tr 
+                  key={tariff.id} 
+                  /* --- Если недоступен, делаем строку полупрозрачной (серой) --- */
+                  style={{ opacity: tariff.isUnavailable ? 0.4 : 1, background: tariff.isUnavailable ? '#f5f5f5' : 'transparent' }}
+                >
                   <td>
                     {tariff.imageUrl ? (
                       <img 
@@ -135,7 +130,24 @@ const TariffsPage = () => {
                     )}
                   </td>
                   <td>{tariff.id}</td>
-                  <td><strong>{tariff.name}</strong></td>
+                  <td>
+                    <strong>{tariff.name}</strong>
+                    {/* --- ПЛАШКА BETA --- */}
+                    {tariff.isBeta && (
+                      <span style={{ 
+                        marginLeft: '8px', fontSize: '10px', background: '#d32f2f', 
+                        color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' 
+                      }}>
+                        BETA
+                      </span>
+                    )}
+                    {/* --- ТЕКСТ НЕДОСТУПНО --- */}
+                    {tariff.isUnavailable && (
+                      <div style={{ fontSize: '10px', color: '#757575', marginTop: '2px' }}>
+                        UNAVAILABLE
+                      </div>
+                    )}
+                  </td>
                   <td>
                     <span className={tariff.isActive ? 'status-online' : 'status-offline'}>
                       {tariff.isActive ? 'ACTIVE' : 'OFF'}
@@ -160,14 +172,13 @@ const TariffsPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="9">No tariffs found. Create the first one.</td>
+                <td colSpan="10">No tariffs found. Create the first one.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* --- Modal (no change) --- */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleModalClose}

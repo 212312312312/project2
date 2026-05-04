@@ -6,10 +6,12 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     name: '',
     basePrice: 0.0,
     pricePerKm: 0.0,
-    pricePerKmOutCity: 0.0, // <-- НОВЕ ПОЛЕ
+    pricePerKmOutCity: 0.0,
     freeWaitingMinutes: 3,
     pricePerWaitingMinute: 0.0,
     isActive: true,
+    isBeta: false,        // <-- НОВОЕ ПОЛЕ
+    isUnavailable: false, // <-- НОВОЕ ПОЛЕ
   });
   
   const [selectedFile, setSelectedFile] = useState(null);
@@ -23,16 +25,19 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
         name: initialData.name,
         basePrice: initialData.basePrice,
         pricePerKm: initialData.pricePerKm,
-        pricePerKmOutCity: initialData.pricePerKmOutCity || 0.0, // <-- Завантажуємо
+        pricePerKmOutCity: initialData.pricePerKmOutCity || 0.0,
         freeWaitingMinutes: initialData.freeWaitingMinutes,
         pricePerWaitingMinute: initialData.pricePerWaitingMinute,
         isActive: initialData.isActive,
+        isBeta: initialData.isBeta || false,               // <-- Загружаем
+        isUnavailable: initialData.isUnavailable || false, // <-- Загружаем
       });
       setExistingImageUrl(initialData.imageUrl); 
     } else {
       setFormData({
-        name: '', basePrice: 0.0, pricePerKm: 0.0, pricePerKmOutCity: 0.0, // <-- Скидаємо
-        freeWaitingMinutes: 3, pricePerWaitingMinute: 0.0, isActive: true,
+        name: '', basePrice: 0.0, pricePerKm: 0.0, pricePerKmOutCity: 0.0,
+        freeWaitingMinutes: 3, pricePerWaitingMinute: 0.0, 
+        isActive: true, isBeta: false, isUnavailable: false, // <-- Сбрасываем
       });
       setExistingImageUrl(null);
     }
@@ -59,9 +64,10 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
       ...formData,
       basePrice: parseFloat(formData.basePrice),
       pricePerKm: parseFloat(formData.pricePerKm),
-      pricePerKmOutCity: parseFloat(formData.pricePerKmOutCity), // <-- Конвертуємо
+      pricePerKmOutCity: parseFloat(formData.pricePerKmOutCity),
       freeWaitingMinutes: parseInt(formData.freeWaitingMinutes),
       pricePerWaitingMinute: parseFloat(formData.pricePerWaitingMinute),
+      // isBeta и isUnavailable - булевы, уйдут как есть
     };
     
     onSubmit(dataToSend, selectedFile);
@@ -86,12 +92,10 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
             <input type="number" step="0.01" name="pricePerKm" value={formData.pricePerKm} onChange={handleChange} required />
           </div>
           
-          {/* --- НОВЕ ПОЛЕ --- */}
           <div className="form-group">
             <label>Price per 1 km (Out of City)</label>
             <input type="number" step="0.01" name="pricePerKmOutCity" value={formData.pricePerKmOutCity} onChange={handleChange} required style={{ borderColor: '#ff9800' }}/>
           </div>
-          {/* ----------------- */}
 
           <div className="form-group">
             <label>Free waiting (min)</label>
@@ -101,9 +105,21 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
             <label>Price per waiting min</label>
             <input type="number" step="0.01" name="pricePerWaitingMinute" value={formData.pricePerWaitingMinute} onChange={handleChange} required />
           </div>
+
+          {/* --- ЧЕКБОКСЫ СТАТУСОВ --- */}
           <div className="form-group checkbox-label" style={{alignItems: 'center'}}>
             <input type="checkbox" name="isActive" checked={formData.isActive} onChange={handleChange} />
-            <label>Tariff Active</label>
+            <label>Active (Visible)</label>
+          </div>
+          
+          <div className="form-group checkbox-label" style={{alignItems: 'center'}}>
+            <input type="checkbox" name="isBeta" checked={formData.isBeta} onChange={handleChange} />
+            <label style={{color: '#d32f2f', fontWeight: 'bold'}}>BETA Mode</label>
+          </div>
+
+          <div className="form-group checkbox-label" style={{alignItems: 'center'}}>
+            <input type="checkbox" name="isUnavailable" checked={formData.isUnavailable} onChange={handleChange} />
+            <label style={{color: '#757575'}}>Make Unavailable (Grey out)</label>
           </div>
         </div>
       </fieldset>
