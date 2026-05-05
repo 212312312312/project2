@@ -15,6 +15,19 @@ export const getOnlineDriversForMap = async () => {
   }
 };
 
+// Зміна ціни (додавання надбавки)
+export const updateOrderPrice = async (orderId, addedValue) => {
+    // В зависимости от того, как настроен твой api.js, используем его
+    const response = await api.put(`/orders/${orderId}/price?addedValue=${addedValue}`);
+    return response.data;
+};
+
+// Зміна типу оплати
+export const updateOrderPaymentMethod = async (orderId, method) => {
+    const response = await api.put(`/orders/${orderId}/payment-method?method=${method}`);
+    return response.data;
+};
+
 // --- API для Заказов (Orders) ---
 
 /**
