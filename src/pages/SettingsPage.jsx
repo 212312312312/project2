@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getAllSettings, uploadSettingImage, saveTextSettings } from '../services/settingsService';
-// Імпортуємо модалку
 import CancellationReasonsModal from '../components/CancellationReasonsModal';
 import '../assets/Form.css'; 
 
@@ -8,8 +7,8 @@ const SettingsPage = () => {
     const [settings, setSettings] = useState({});
     const [loading, setLoading] = useState(false);
     
-    // Стейт для модалки причин
-    const [showReasonsModal, setShowReasonsModal] = useState(false);
+    // ЄДИНИЙ стейт для модалки причин ('DRIVER' | 'CLIENT' | null)
+    const [reasonModalTarget, setReasonModalTarget] = useState(null);
 
     useEffect(() => {
         loadSettings();
@@ -67,16 +66,25 @@ const SettingsPage = () => {
                     <div>
                         <h3 style={{ fontSize: '1.1rem', marginBottom: '5px' }}>⛔ Причини скасування</h3>
                         <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>
-                            Налаштування списку причин, які водії можуть обирати при скасуванні, та штрафів за них.
+                            Налаштування списку причин, які можуть обирати водії та клієнти при скасуванні замовлення.
                         </p>
                     </div>
-                    <button 
-                        className="btn-primary" 
-                        onClick={() => setShowReasonsModal(true)}
-                        style={{ width: '100%' }}
-                    >
-                        Налаштувати список
-                    </button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button 
+                            className="btn-primary" 
+                            onClick={() => setReasonModalTarget('DRIVER')}
+                            style={{ flex: 1, padding: '10px 5px', fontSize: '0.9rem' }}
+                        >
+                            Для водіїв
+                        </button>
+                        <button 
+                            className="btn-secondary" 
+                            onClick={() => setReasonModalTarget('CLIENT')}
+                            style={{ flex: 1, padding: '10px 5px', fontSize: '0.9rem' }}
+                        >
+                            Для клієнтів
+                        </button>
+                    </div>
                 </div>
 
                 <SettingCard 
@@ -98,9 +106,12 @@ const SettingsPage = () => {
                 />
             </div>
 
-            {/* Рендер модалки */}
-            {showReasonsModal && (
-                <CancellationReasonsModal onClose={() => setShowReasonsModal(false)} />
+            {/* Коректний рендер модалки: показуємо тільки якщо reasonModalTarget не null */}
+            {reasonModalTarget && (
+                <CancellationReasonsModal 
+                    target={reasonModalTarget} 
+                    onClose={() => setReasonModalTarget(null)} 
+                />
             )}
         </div>
     );

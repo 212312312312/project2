@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getArchivedOrders, searchArchiveByPhone } from '../services/orderService';
+import { getArchivedOrders, searchArchiveByPhone, getCancellationStats } from '../services/orderService';
 import '../assets/TableStyles.css';
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
@@ -65,6 +65,10 @@ const ArchiveOrders = () => {
   const [dateTo, setDateTo] = useState(getTodayStr());
 
   const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 0 });
+
+  // Стейт для модалки статистики
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [cancelStatsData, setCancelStatsData] = useState([]);
 
   const fetchArchive = async () => {
     try {
@@ -164,6 +168,16 @@ const ArchiveOrders = () => {
       
       setDateFrom(start.toISOString().split('T')[0]);
       setDateTo(end.toISOString().split('T')[0]);
+  };
+
+  const handleOpenStats = async () => {
+    try {
+        const data = await getCancellationStats();
+        setCancelStatsData(data);
+        setStatsModalOpen(true);
+    } catch (err) {
+        alert(err.message);
+    }
   };
 
   // --- РЕНДЕР: ДЕТАЛЬНИЙ ПЕРЕГЛЯД ---
@@ -330,8 +344,13 @@ const ArchiveOrders = () => {
       {/* ХЕДЕР СТОРІНКИ */}
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
           <h2 style={{margin: 0}}>Архів Замовлень</h2>
-          <div style={{ fontSize: '0.9em', color: '#666' }}>
-            ℹ️ Подвійний клік по рядку відкриває деталі
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            <button className="btn-primary" onClick={handleOpenStats}>
+                📊 Статистика скасувань
+            </button>
+            <div style={{ fontSize: '0.9em', color: '#666' }}>
+                ℹ️ Подвійний клік по рядку відкриває деталі
+            </div>
           </div>
       </div>
 
@@ -479,6 +498,50 @@ const ArchiveOrders = () => {
           </tbody>
         </table>
       </div>
+
+      {/* --- МОДАЛЬНЕ ВІКНО СТАТИСТИКИ СКАСУВАНЬ --- */}
+      {statsModalOpen && (
+          <div className="modal-overlay" style={{ zIndex: 1000 }}>
+              <div className="modal-content" style={{ maxWidth: '500px' }}>
+                  <div className="modal-header">
+                      <h3>📊 Статистика скасувань (Загальна)</h3>
+                      <button className="close-button" onClick={() => setStatsModalOpen(false)}>&times;</button>
+                  </div>
+                  <div className="modal-body" style={{ marginTop: '15px' }}>
+                      {cancelStatsData.length === 0 ? (
+                          <p style={{ textAlign: 'center', color: '#666' }}>Немає даних про скасовані замовлення з вказаною причиною.</p>
+                      ) : (
+                          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ddd' }}>
+                              <thead style={{ backgroundColor: '#f4f4f4' }}>
+                                  <tr>
+                                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Причина</th>
+                                      <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '100px' }}>Кількість</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {cancelStatsData.map((stat, index) => (
+                                      <tr key={index}>
+                                          <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{stat.reason}</td>
+                                          <td style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>
+                                              {stat.count}
+                                          </td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      )}
+                      <button 
+                          className="btn-secondary" 
+                          style={{ marginTop: '20px', width: '100%', padding: '10px' }} 
+                          onClick={() => setStatsModalOpen(false)}
+                      >
+                          Закрити
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };

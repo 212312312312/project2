@@ -107,3 +107,12 @@ export const assignDriverToOrder = async (orderId, driverId) => {
     throw new Error(error.response?.data?.message || 'Ошибка назначения водителя');
   }
 };
+
+export const getCancellationStats = async () => {
+  try {
+      const response = await api.get('/admin/stats/cancellations');
+      return response.data;
+  } catch (error) {
+      throw new Error(error.response?.data?.message || 'Не вдалося завантажити статистику скасувань');
+  }
+};

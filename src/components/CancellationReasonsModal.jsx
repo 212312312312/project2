@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { getCancellationReasons, createCancellationReason, deleteCancellationReason } from '../services/cancellationReasonService';
-import '../assets/Modal.css'; // Використовуємо існуючі стилі модалок
+import '../assets/Modal.css'; 
 
-const CancellationReasonsModal = ({ onClose }) => {
+const CancellationReasonsModal = ({ onClose, target }) => {
     const [reasons, setReasons] = useState([]);
     const [newText, setNewText] = useState('');
-    const [newPenalty, setNewPenalty] = useState(50); // Дефолтний штраф
+    const [newPenalty, setNewPenalty] = useState(50); 
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetchReasons();
-    }, []);
+    }, [target]); // Перезавантажуємо, якщо змінюється target
 
     const fetchReasons = async () => {
         try {
-            const data = await getCancellationReasons();
+            const data = await getCancellationReasons(target);
             setReasons(data);
         } catch (e) {
             console.error(e);
@@ -26,7 +26,7 @@ const CancellationReasonsModal = ({ onClose }) => {
         if (!newText) return;
         setLoading(true);
         try {
-            await createCancellationReason(newText, newPenalty);
+            await createCancellationReason(newText, newPenalty, target);
             setNewText('');
             setNewPenalty(50);
             fetchReasons();
@@ -47,18 +47,21 @@ const CancellationReasonsModal = ({ onClose }) => {
         }
     };
 
+    const isClient = target === 'CLIENT';
+
     return (
         <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '600px' }}>
                 <div className="modal-header">
-                    <h3>⛔ Причини скасування замовлення</h3>
+                    <h3>⛔ Причини скасування ({isClient ? 'Клієнти' : 'Водії'})</h3>
                     <button className="close-button" onClick={onClose}>&times;</button>
                 </div>
                 
                 <div className="modal-body">
                     <p style={{fontSize: '0.9em', color: '#666', marginBottom: '15px'}}>
-                        Водій зможе обрати одну з цих причин при скасуванні замовлення. 
-                        Якщо штраф > 0, рейтинг водія буде знижено автоматично.
+                        {isClient 
+                            ? 'Клієнт зможе обрати одну з цих причин у додатку при скасуванні замовлення. Штрафи для клієнтів не застосовуються.'
+                            : 'Водій зможе обрати одну з цих причин при скасуванні замовлення. Якщо штраф > 0, рейтинг водія буде знижено автоматично.'}
                     </p>
 
                     {/* Форма додавання */}
@@ -78,21 +81,25 @@ const CancellationReasonsModal = ({ onClose }) => {
                                 className="form-input" 
                                 value={newText} 
                                 onChange={e => setNewText(e.target.value)} 
-                                placeholder="Напр: Клієнт не вийшов"
+                                placeholder={isClient ? "Напр: Довго чекати машину" : "Напр: Клієнт не вийшов"}
                                 required
                                 style={{ width: '100%', marginTop: '5px' }}
                             />
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ fontSize: '0.85em', fontWeight: 'bold' }}>Штраф (бали)</label>
-                            <input 
-                                type="number" 
-                                className="form-input" 
-                                value={newPenalty} 
-                                onChange={e => setNewPenalty(e.target.value)}
-                                style={{ width: '100%', marginTop: '5px' }}
-                            />
-                        </div>
+                        
+                        {!isClient && (
+                            <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '0.85em', fontWeight: 'bold' }}>Штраф (бали)</label>
+                                <input 
+                                    type="number" 
+                                    className="form-input" 
+                                    value={newPenalty} 
+                                    onChange={e => setNewPenalty(e.target.value)}
+                                    style={{ width: '100%', marginTop: '5px' }}
+                                />
+                            </div>
+                        )}
+
                         <div style={{ alignSelf: 'flex-end' }}>
                             <button type="submit" className="btn-primary" disabled={loading} style={{ height: '38px' }}>
                                 {loading ? '...' : '+ Додати'}
@@ -106,7 +113,7 @@ const CancellationReasonsModal = ({ onClose }) => {
                             <thead style={{ background: '#eee', position: 'sticky', top: 0 }}>
                                 <tr>
                                     <th style={{ padding: '10px', textAlign: 'left' }}>Причина</th>
-                                    <th style={{ padding: '10px', textAlign: 'center' }}>Штраф</th>
+                                    {!isClient && <th style={{ padding: '10px', textAlign: 'center' }}>Штраф</th>}
                                     <th style={{ padding: '10px', textAlign: 'right' }}>Дія</th>
                                 </tr>
                             </thead>
@@ -114,9 +121,11 @@ const CancellationReasonsModal = ({ onClose }) => {
                                 {reasons.map(r => (
                                     <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                                         <td style={{ padding: '10px' }}>{r.reasonText}</td>
-                                        <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: r.penaltyScore > 0 ? '#d32f2f' : '#388e3c' }}>
-                                            {r.penaltyScore > 0 ? `-${r.penaltyScore}` : '0'}
-                                        </td>
+                                        {!isClient && (
+                                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: r.penaltyScore > 0 ? '#d32f2f' : '#388e3c' }}>
+                                                {r.penaltyScore > 0 ? `-${r.penaltyScore}` : '0'}
+                                            </td>
+                                        )}
                                         <td style={{ padding: '10px', textAlign: 'right' }}>
                                             <button 
                                                 className="btn-secondary" 
@@ -130,7 +139,7 @@ const CancellationReasonsModal = ({ onClose }) => {
                                 ))}
                                 {reasons.length === 0 && (
                                     <tr>
-                                        <td colSpan="3" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                                        <td colSpan={isClient ? "2" : "3"} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
                                             Список порожній. Додайте першу причину.
                                         </td>
                                     </tr>
