@@ -105,6 +105,9 @@ const TariffsPage = () => {
               <th>Base Price</th>
               <th>Price/km</th>
               <th>Out City $/km</th>
+              {/* --- НОВА КОЛОНКА --- */}
+              <th>Waypoint $</th>
+              {/* -------------------- */}
               <th>Free Wait (min)</th>
               <th>Wait Price/min</th>
               <th>Actions</th>
@@ -115,7 +118,6 @@ const TariffsPage = () => {
               tariffs.map((tariff) => (
                 <tr 
                   key={tariff.id} 
-                  /* --- Если недоступен, делаем строку полупрозрачной (серой) --- */
                   style={{ opacity: tariff.isUnavailable ? 0.4 : 1, background: tariff.isUnavailable ? '#f5f5f5' : 'transparent' }}
                 >
                   <td>
@@ -132,7 +134,6 @@ const TariffsPage = () => {
                   <td>{tariff.id}</td>
                   <td>
                     <strong>{tariff.name}</strong>
-                    {/* --- ПЛАШКА BETA --- */}
                     {tariff.isBeta && (
                       <span style={{ 
                         marginLeft: '8px', fontSize: '10px', background: '#d32f2f', 
@@ -141,7 +142,6 @@ const TariffsPage = () => {
                         BETA
                       </span>
                     )}
-                    {/* --- ТЕКСТ НЕДОСТУПНО --- */}
                     {tariff.isUnavailable && (
                       <div style={{ fontSize: '10px', color: '#757575', marginTop: '2px' }}>
                         UNAVAILABLE
@@ -158,6 +158,11 @@ const TariffsPage = () => {
                   <td style={{ color: '#e65100', fontWeight: 'bold' }}>
                       {tariff.pricePerKmOutCity ? tariff.pricePerKmOutCity.toFixed(2) : '-'}
                   </td>
+                  {/* --- НОВЕ ДАНІ ДЛЯ КОЛОНКИ --- */}
+                  <td style={{ color: '#4caf50', fontWeight: 'bold' }}>
+                      {tariff.extraWaypointPrice ? tariff.extraWaypointPrice.toFixed(2) : '0.00'}
+                  </td>
+                  {/* ----------------------------- */}
                   <td>{tariff.freeWaitingMinutes} min</td>
                   <td>{tariff.pricePerWaitingMinute.toFixed(2)}</td>
                   <td>
@@ -172,7 +177,7 @@ const TariffsPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="10">No tariffs found. Create the first one.</td>
+                <td colSpan="11">No tariffs found. Create the first one.</td>
               </tr>
             )}
           </tbody>

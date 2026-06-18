@@ -66,7 +66,7 @@ const SettingsPage = () => {
                     <div>
                         <h3 style={{ fontSize: '1.1rem', marginBottom: '5px' }}>⛔ Причини скасування</h3>
                         <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>
-                            Налаштування списку причин, які можуть обирати водії та клієнти при скасуванні замовлення.
+                            Налаштування списку причин, які можуть обирать водії та клієнти при скасуванні замовлення.
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
@@ -124,6 +124,14 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
     const [width, setWidth] = useState(settingsData[`${settingKey}_width`] || 40);
     const [height, setHeight] = useState(settingsData[`${settingKey}_height`] || 40);
 
+    // ИСПРАВЛЕНО: Динамически вычисляем хост бэкенда (работает и локально, и на проде)
+    const backendHost = window.location.hostname === 'localhost' ? 'http://localhost:8080' : `${window.location.protocol}//${window.location.host}`;
+    
+    // ИСПРАВЛЕНО: Если путь относительный, принудительно подставляем хост бэкенда. Объявлено строго один раз!
+    const currentUrl = settingsData[settingKey] 
+        ? (settingsData[settingKey].startsWith('http') ? settingsData[settingKey] : `${backendHost}${settingsData[settingKey]}`) 
+        : null;
+
     useEffect(() => {
         if (settingsData[`${settingKey}_width`]) setWidth(settingsData[`${settingKey}_width`]);
         if (settingsData[`${settingKey}_height`]) setHeight(settingsData[`${settingKey}_height`]);
@@ -136,8 +144,6 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
             setPreview(URL.createObjectURL(selectedFile));
         }
     };
-
-    const currentUrl = settingsData[settingKey];
 
     return (
         <div className="card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>

@@ -80,6 +80,62 @@ const formatTime = (isoString) => {
     return date.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
+// --- КОМПОНЕНТ ПЛАВНОГО МАРКЕРА ВОДИТЕЛЯ ---
+const SmoothDriverMarker = ({ position, icon, children }) => {
+  const markerRef = useRef(null);
+  const prevPositionRef = useRef(position);
+
+  useEffect(() => {
+    const marker = markerRef.current;
+    if (!marker) return;
+
+    const startPos = prevPositionRef.current;
+    const endPos = position;
+
+    // Если координаты не изменились, ничего не анимируем
+    if (startPos[0] === endPos[0] && startPos[1] === endPos[1]) {
+      return;
+    }
+
+    let startTime = null;
+    const duration = 2500; // Анимация движения займет 2.5 секунды
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Линейная интерполяция (LERP) между старой и новой точкой
+      const currentLat = startPos[0] + (endPos[0] - startPos[0]) * progress;
+      const currentLng = startPos[1] + (endPos[1] - startPos[1]) * progress;
+
+      marker.setLatLng([currentLat, currentLng]);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        prevPositionRef.current = endPos;
+      }
+    };
+
+    requestAnimationFrame(animate);
+
+    return () => {
+      // Если координаты поменялись во время движения, фиксируем промежуточную точку как старт
+      if (marker && marker.getLatLng) {
+        const currentLatLng = marker.getLatLng();
+        prevPositionRef.current = [currentLatLng.lat, currentLatLng.lng];
+      }
+    };
+  }, [position]);
+
+  return (
+    <Marker ref={markerRef} position={prevPositionRef.current} icon={icon}>
+      {children}
+    </Marker>
+  );
+};
+
 // --- КОНТРОЛЛЕР ФОКУСА ---
 const MapFocusController = ({ selectedOrder, drivers }) => {
   const map = useMap(); 
@@ -148,13 +204,14 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
         }
 
         return (
-            <Marker key={`driver-${driver.id}-${lat}-${lng}`} position={[lat, lng]} icon={iconToUse}>
+            /* ИСПРАВЛЕНО: Заменили стандартный Marker на кастомный SmoothDriverMarker */
+            <SmoothDriverMarker key={`driver-${driver.id}`} position={[lat, lng]} icon={iconToUse}>
               <Popup>
                 <strong>{driver.fullName}</strong><br/>
                 ID: {driver.id}<br/>
                 {driver.isOnline ? '🟢 НА ЛІНІЇ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
               </Popup>
-            </Marker>
+            </SmoothDriverMarker>
         );
       })}
 
@@ -288,7 +345,6 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
                 <div>🔴 {order.toAddress}</div>
             </div>
             
-            {/* Добавлена логика отображения финальной цены с учетом ожидания для In_Progress */}
             <p><strong>Ціна:</strong> {Math.round(order.price)} грн {order.paymentMethod === 'CARD' ? '💳' : '💵'}</p>
             <p><strong>Водій:</strong> {order.driver ? order.driver.fullName : (order.status === 'SCHEDULED' ? 'Буде призначено' : 'Пошук...')}</p>
 
@@ -331,7 +387,10 @@ const ActiveOrders = () => {
           if (!w) w = 40;
           if (!h) h = 40;
 
-          const imageUrl = `${settings.driver_map_icon}?t=${new Date().getTime()}`;
+          // ИСПРАВЛЕНО: Подставляем хост бэкенда для корректной загрузки кастомного маркера на карте
+          const backendHost = window.location.hostname === 'localhost' ? 'http://localhost:8080' : `${window.location.protocol}//${window.location.host}`;
+          const imageUrl = `${backendHost}${settings.driver_map_icon}?t=${new Date().getTime()}`;
+          
           const customIcon = new L.Icon({
             iconUrl: imageUrl,
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -385,6 +444,35 @@ const ActiveOrders = () => {
                 const msg = JSON.parse(message.body);
                 handleSocketMessage(msg);
             });
+
+          client.subscribe('/topic/admin/drivers/locations', (message) => {
+                const driverUpdate = JSON.parse(message.body);
+                setMapDrivers(prevDrivers => {
+                    const driverId = driverUpdate.driverId;
+                    const exists = prevDrivers.some(d => (d.id === driverId || d.driverId === driverId));
+                    
+                    if (exists) {
+                        return prevDrivers.map(d => 
+                            (d.id === driverId || d.driverId === driverId)
+                                ? { 
+                                    ...d, 
+                                    ...driverUpdate, 
+                                    id: driverId, 
+                                    latitude: driverUpdate.lat, 
+                                    longitude: driverUpdate.lng 
+                                  }
+                                : d
+                        );
+                    }
+                    // Если водителя почему-то не было в стартовом списке, добавляем его на карту
+                    return [...prevDrivers, { 
+                        ...driverUpdate, 
+                        id: driverId, 
+                        latitude: driverUpdate.lat, 
+                        longitude: driverUpdate.lng 
+                    }];
+                });
+            });
         },
         onStompError: (frame) => {
             console.error('WS Error:', frame);
@@ -407,12 +495,12 @@ const ActiveOrders = () => {
             const existingIndex = prevOrders.findIndex(o => o.id === msg.orderId);
             
             if (existingIndex !== -1) {
-                // Якщо є — миттєво оновлюємо його дані (щоб не стрибало по екрану)
+                // Если есть — мгновенно обновляем его данные (чтобы не прыгало по экрану)
                 const updated = [...prevOrders];
                 updated[existingIndex] = msg.order;
                 return updated;
             }
-            // Якщо замовлення не було — додаємо його на самий верх списку
+            // Если заказа не было — добавляем его на самый верх списка
             return [msg.order, ...prevOrders];
         });
     } else if (msg.action === 'REMOVE') {
@@ -421,7 +509,6 @@ const ActiveOrders = () => {
     }
   };
 
-  useInterval(fetchMapDrivers, 5000);
 
   const handleCancel = async (orderId) => { 
       if (window.confirm(`Скасувати #${orderId}?`)) {
@@ -442,7 +529,11 @@ const ActiveOrders = () => {
 
   // --- ЛОГИКА ФИЛЬТРАЦИИ ---
   const filteredOrders = orders.filter(o => {
-    const matchSearch = o.client.phoneNumber.includes(searchTerm) || o.id.toString().includes(searchTerm);
+    // ИСПРАВЛЕНО: заменено phoneNumber на userPhone + добавлена защита от undefined
+    const clientPhone = o.client?.userPhone || '';
+    const orderIdStr = o.id?.toString() || '';
+    
+    const matchSearch = clientPhone.includes(searchTerm) || orderIdStr.includes(searchTerm);
     
     if (activeTab === 'SCHEDULED') {
         return matchSearch && o.status === 'SCHEDULED';

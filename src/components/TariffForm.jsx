@@ -7,6 +7,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     basePrice: 0.0,
     pricePerKm: 0.0,
     pricePerKmOutCity: 0.0,
+    extraWaypointPrice: 0.0,
     freeWaitingMinutes: 3,
     pricePerWaitingMinute: 0.0,
     isActive: true,
@@ -26,6 +27,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
         basePrice: initialData.basePrice,
         pricePerKm: initialData.pricePerKm,
         pricePerKmOutCity: initialData.pricePerKmOutCity || 0.0,
+        extraWaypointPrice: initialData.extraWaypointPrice || 0.0,
         freeWaitingMinutes: initialData.freeWaitingMinutes,
         pricePerWaitingMinute: initialData.pricePerWaitingMinute,
         isActive: initialData.isActive,
@@ -36,6 +38,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     } else {
       setFormData({
         name: '', basePrice: 0.0, pricePerKm: 0.0, pricePerKmOutCity: 0.0,
+        extraWaypointPrice: 0.0,
         freeWaitingMinutes: 3, pricePerWaitingMinute: 0.0, 
         isActive: true, isBeta: false, isUnavailable: false, // <-- Сбрасываем
       });
@@ -65,6 +68,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
       basePrice: parseFloat(formData.basePrice),
       pricePerKm: parseFloat(formData.pricePerKm),
       pricePerKmOutCity: parseFloat(formData.pricePerKmOutCity),
+      extraWaypointPrice: parseFloat(formData.extraWaypointPrice),
       freeWaitingMinutes: parseInt(formData.freeWaitingMinutes),
       pricePerWaitingMinute: parseFloat(formData.pricePerWaitingMinute),
       // isBeta и isUnavailable - булевы, уйдут как есть
@@ -86,6 +90,10 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
           <div className="form-group">
             <label>Base Price</label>
             <input type="number" step="0.01" name="basePrice" value={formData.basePrice} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Extra Waypoint Price</label>
+            <input type="number" step="0.01" name="extraWaypointPrice" value={formData.extraWaypointPrice} onChange={handleChange} required style={{ borderColor: '#4caf50' }}/>
           </div>
           <div className="form-group">
             <label>Price per 1 km (City)</label>

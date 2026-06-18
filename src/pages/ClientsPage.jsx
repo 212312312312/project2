@@ -97,6 +97,7 @@ const ClientsPage = () => {
               <th>ФИО</th>
               <th>Телефон</th>
               <th>Статус</th>
+              <th>Поездок</th>
               <th>Действия</th>
             </tr>
           </thead>
@@ -113,6 +114,9 @@ const ClientsPage = () => {
                     ) : (
                       <span style={{ color: 'green' }}>Активен</span>
                     )}
+                  </td>
+                  <td style={{ fontWeight: 'bold', textAlign: 'center' }}>
+                    {client.tripsCount ?? 0}
                   </td>
                   <td>
                     <button 
