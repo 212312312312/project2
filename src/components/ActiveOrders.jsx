@@ -57,6 +57,7 @@ const getStatusLabel = (status) => {
         case 'ACCEPTED': return 'Водій їде';
         case 'DRIVER_ARRIVED': return 'Водій чекає';
         case 'IN_PROGRESS': return 'В дорозі';
+        case 'ARRIVED_AT_WAYPOINT': return 'На проміжній точці'; // 👈 ДОБАВЛЕНО
         case 'COMPLETED': return 'Завершено';
         case 'CANCELLED': return 'Скасовано';
         default: return status;
@@ -188,6 +189,7 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
     <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       
+      {/* 1. Если заказ НЕ выбран — показываем абсолютно всех водителей на карте */}
       {!selectedOrder && safeDrivers.map(driver => {
         const { lat, lng } = getCoords(driver);
         if (lat === null || lng === null || lat === 0) return null;
@@ -204,8 +206,8 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
         }
 
         return (
-            /* ИСПРАВЛЕНО: Заменили стандартный Marker на кастомный SmoothDriverMarker */
-            <SmoothDriverMarker key={`driver-${driver.id}`} position={[lat, lng]} icon={iconToUse}>
+    /* Защищаем уникальность ключа Leaflet, используя любое доступное имя поля идентификатора */
+    <SmoothDriverMarker key={`driver-${driver.id || driver.driverId}`} position={[lat, lng]} icon={iconToUse}>
               <Popup>
                 <strong>{driver.fullName}</strong><br/>
                 ID: {driver.id}<br/>
@@ -215,8 +217,36 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
         );
       })}
 
+      {/* 2. Если заказ выбран — рисуем его маршрут, точечные маркеры и ТОЛЬКО привязанную машину */}
       {selectedOrder && (
         <>
+          {/* 🔥 ДОБАВЛЕНО: Рендеринг назначенного водителя на маршруте */}
+          {selectedOrder.driver && (() => {
+              // Ищем этого водителя в общем массиве онлайн-карт по его ID
+              // Проверяем как стандартный id, так и бэкендовый driverId из DriverLocationDto
+const assignedDriver = safeDrivers.find(d => (d.id === selectedOrder.driver.id || d.driverId === selectedOrder.driver.id));
+              if (!assignedDriver) return null;
+
+              const { lat, lng } = getCoords(assignedDriver);
+              if (lat === null || lng === null || lat === 0) return null;
+
+              let iconToUse = assignedDriver.isOnline ? defaultOnlineIcon : offlineIcon;
+              if (assignedDriver.isOnline && customOnlineIcon) {
+                  const [w, h] = customOnlineIcon.options.iconSize;
+                  if (w > 0 && h > 0) iconToUse = customOnlineIcon;
+              }
+
+              return (
+                  <SmoothDriverMarker key={`driver-assigned-${assignedDriver.id}`} position={[lat, lng]} icon={iconToUse}>
+                    <Popup>
+                      <strong>{assignedDriver.fullName} (Призначений)</strong><br/>
+                      ID водія: {assignedDriver.id}<br/>
+                      Статус поїздки: {getStatusLabel(selectedOrder.status)}
+                    </Popup>
+                  </SmoothDriverMarker>
+              );
+          })()}
+
           <Marker position={[selectedOrder.originLat, selectedOrder.originLng]} icon={originIcon}>
              <Popup>А: {selectedOrder.fromAddress}</Popup>
           </Marker>
@@ -244,21 +274,31 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
     setNow(new Date());
   }, 1000);
 
-  // --- ДОБАВЛЕНО: Вычисляем и рисуем статус ожидания ---
   const renderWaitingInfo = (order) => {
     // 1. Водитель приехал, идет таймер ожидания
-    if (order.status === 'DRIVER_ARRIVED' && order.arrivedAt) {
-        const arrivedTime = new Date(order.arrivedAt).getTime();
-        const diffMs = now.getTime() - arrivedTime;
+    if (order.status === 'DRIVER_ARRIVED' && (order.waitingStartTime || order.arrivedAt)) {
+        // 💡 Берем новое поле waitingStartTime, а если его нет — падаем на arrivedAt
+        const targetTime = new Date(order.waitingStartTime || order.arrivedAt).getTime();
+        const diffMs = now.getTime() - targetTime;
         
-        if (diffMs < 0) return null; // Защита от расхождения времени сервера и клиента
+        if (diffMs < 0) {
+            // 💡 Время подачи еще не пришло! Показываем диспетчеру обратный отсчет до старта ожидания
+            const absDiffMs = Math.abs(diffMs);
+            const remMin = Math.floor(absDiffMs / (1000 * 60));
+            const remSec = Math.floor((absDiffMs / 1000) % 60);
+            return (
+                <div style={{ color: '#1c7ed6', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px', padding: '6px', backgroundColor: '#ebf5ff', borderRadius: '4px', border: '1px solid #d0ebff' }}>
+                    ⏱ До початку очікування: {remMin}хв {remSec}с
+                </div>
+            );
+        }
 
         const diffMinutesFull = diffMs / (1000 * 60);
         const freeMinutes = order.freeWaitingMinutes || 3;
         const pricePerMin = order.pricePerWaitingMinute || 0;
 
         if (diffMinutesFull <= freeMinutes) {
-            // Бесплатное ожидание (зеленая плашка)
+            // Безкоштовне очікування (зелена плашка)
             const remainingMs = (freeMinutes * 60 * 1000) - diffMs;
             const remMin = Math.floor(remainingMs / (1000 * 60));
             const remSec = Math.floor((remainingMs / 1000) % 60);
@@ -268,7 +308,7 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
                 </div>
             );
         } else {
-            // Платное ожидание (красная плашка)
+            // Платне очікування (червона плашка)
             const paidMinutes = Math.floor(diffMinutesFull - freeMinutes);
             const currentExtraCost = paidMinutes * pricePerMin;
             return (
@@ -353,9 +393,9 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
 
           </div>
           <div className="order-card-actions">
-            {order.status === 'REQUESTED' && <button className="btn-primary" onClick={(e) => { e.stopPropagation(); onAssign(order.id); }}>Призначити</button>}
-            <button className="btn-danger" onClick={(e) => { e.stopPropagation(); onCancel(order.id); }}>Скасувати</button>
-          </div>
+  {order.status === 'REQUESTED' && <button className="btn-primary" onClick={(e) => { e.stopPropagation(); onAssign(order); }}>Призначити</button>}
+  <button className="btn-danger" onClick={(e) => { e.stopPropagation(); onCancel(order); }}>Скасувати</button>
+</div>
         </div>
       ))}
     </div>
@@ -423,12 +463,8 @@ const ActiveOrders = () => {
   };
 
   useEffect(() => {
-    fetchActiveOrders(); 
-    fetchMapDrivers(); 
-
     // Динамичне формування URL для WebSocket (працює і локально, і на сервері)
     const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    // Якщо ми локально на Vite (порт 5173), стукаємо на 8080. Якщо на сервері - використовуємо поточний домен
     const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
     const wsUrl = `${protocol}//${host}/ws-taxi`;
     
@@ -440,12 +476,20 @@ const ActiveOrders = () => {
         reconnectDelay: 5000,
         onConnect: () => {
             console.log('Connected to Dispatcher WebSocket');
+            
+            // 🔥 СТРАТЕГИЯ "ПУТЬ Б": Перенесли функции СЮДА.
+            // Теперь при первом входе, а также при КАЖДОМ автоматическом реконнекте сокета,
+            // диспетчерская будет делать тихий фоновый HTTP-запрос к БД, скачивать 100% точный
+            // срез живых данных, а сокет будет бесшовно подхватывать последующие микро-изменения.
+            fetchActiveOrders(); 
+            fetchMapDrivers(); 
+
             client.subscribe('/topic/admin/orders', (message) => {
                 const msg = JSON.parse(message.body);
                 handleSocketMessage(msg);
             });
 
-          client.subscribe('/topic/admin/drivers/locations', (message) => {
+            client.subscribe('/topic/admin/drivers/locations', (message) => {
                 const driverUpdate = JSON.parse(message.body);
                 setMapDrivers(prevDrivers => {
                     const driverId = driverUpdate.driverId;
@@ -464,7 +508,6 @@ const ActiveOrders = () => {
                                 : d
                         );
                     }
-                    // Если водителя почему-то не было в стартовом списке, добавляем его на карту
                     return [...prevDrivers, { 
                         ...driverUpdate, 
                         id: driverId, 
@@ -510,20 +553,26 @@ const ActiveOrders = () => {
   };
 
 
-  const handleCancel = async (orderId) => { 
-      if (window.confirm(`Скасувати #${orderId}?`)) {
+  const handleCancel = async (order) => { 
+      // В алерте показываем понятный числовой ID для диспетчера
+      if (window.confirm(`Скасувати замовлення #${order.idLong}?`)) {
           try { 
-              await cancelOrder(orderId); 
-              if (selectedOrder?.id === orderId) setSelectedOrder(null); 
+              // На сервер шлем числовой idLong для контроллера (исчезнет ошибка 400 Bad Request)
+              await cancelOrder(order.idLong); 
+              
+              // Для внутренней чистки UI используем строковый UUID брокера сокетов, ничего не ломая!
+              if (selectedOrder?.id === order.id) setSelectedOrder(null); 
           } catch (err) { alert(err.message); } 
       }
   };
 
-  const handleAssign = async (orderId) => { 
+  const handleAssign = async (order) => { 
       const did = prompt(`ID водія:`); 
       if (did) {
-          try { await assignDriverToOrder(orderId, parseInt(did)); } 
-          catch (err) { alert(err.message); }
+          try { 
+              // На сервер для привязки шлем числовой idLong
+              await assignDriverToOrder(order.idLong, parseInt(did)); 
+          } catch (err) { alert(err.message); }
       }
   };
 
@@ -539,13 +588,14 @@ const ActiveOrders = () => {
         return matchSearch && o.status === 'SCHEDULED';
     } else {
         // ACTIVE TAB
-        if (o.status === 'SCHEDULED') return false; // Hide scheduled from active tab
+        if (o.status === 'SCHEDULED') return false;
 
-        let matchStatus = true;
-        if (statusFilter === 'REQUESTED') matchStatus = o.status === 'REQUESTED';
-        else if (statusFilter === 'ACTIVE') matchStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS', 'OFFERING'].includes(o.status);
-        
-        return matchSearch && matchStatus;
+let matchStatus = true;
+if (statusFilter === 'REQUESTED') matchStatus = o.status === 'REQUESTED';
+// 👈 ДОБАВЛЕНО 'ARRIVED_AT_WAYPOINT' в список разрешенных стейтов:
+else if (statusFilter === 'ACTIVE') matchStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS', 'OFFERING', 'ARRIVED_AT_WAYPOINT'].includes(o.status); 
+
+return matchSearch && matchStatus;
     }
   });
 
