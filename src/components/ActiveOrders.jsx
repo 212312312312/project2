@@ -455,12 +455,7 @@ const ActiveOrders = () => {
     } catch (err) {}
   };
   
-  const fetchMapDrivers = async () => {
-    try {
-      const data = await getOnlineDriversForMap();
-      setMapDrivers(data || []); 
-    } catch (err) { console.error(err); }
-  };
+
 
   useEffect(() => {
     // Динамичне формування URL для WebSocket (працює і локально, і на сервері)
@@ -477,44 +472,21 @@ const ActiveOrders = () => {
         onConnect: () => {
             console.log('Connected to Dispatcher WebSocket');
             
-            // 🔥 СТРАТЕГИЯ "ПУТЬ Б": Перенесли функции СЮДА.
-            // Теперь при первом входе, а также при КАЖДОМ автоматическом реконнекте сокета,
-            // диспетчерская будет делать тихий фоновый HTTP-запрос к БД, скачивать 100% точный
-            // срез живых данных, а сокет будет бесшовно подхватывать последующие микро-изменения.
+            // Загружаем только активные заказы из БД при коннекте/реконнекте
             fetchActiveOrders(); 
-            fetchMapDrivers(); 
 
+            // Подписка на системные события заказов
             client.subscribe('/topic/admin/orders', (message) => {
                 const msg = JSON.parse(message.body);
                 handleSocketMessage(msg);
             });
 
-            client.subscribe('/topic/admin/drivers/locations', (message) => {
-                const driverUpdate = JSON.parse(message.body);
-                setMapDrivers(prevDrivers => {
-                    const driverId = driverUpdate.driverId;
-                    const exists = prevDrivers.some(d => (d.id === driverId || d.driverId === driverId));
-                    
-                    if (exists) {
-                        return prevDrivers.map(d => 
-                            (d.id === driverId || d.driverId === driverId)
-                                ? { 
-                                    ...d, 
-                                    ...driverUpdate, 
-                                    id: driverId, 
-                                    latitude: driverUpdate.lat, 
-                                    longitude: driverUpdate.lng 
-                                  }
-                                : d
-                        );
-                    }
-                    return [...prevDrivers, { 
-                        ...driverUpdate, 
-                        id: driverId, 
-                        latitude: driverUpdate.lat, 
-                        longitude: driverUpdate.lng 
-                    }];
-                });
+            // 🔥 ИСПРАВЛЕНО И ОПТИМИЗИРОВАНО: 
+            // Слушаем новый пакетный топик. Никаких циклов и переборов! 
+            // Сервер присылает из Redis готовый массив, мы его мгновенно реактивно рендерим.
+            client.subscribe('/topic/admin/drivers-location', (message) => {
+                const driverBatch = JSON.parse(message.body);
+                setMapDrivers(driverBatch || []);
             });
         },
         onStompError: (frame) => {
