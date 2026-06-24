@@ -16,14 +16,18 @@ export const AuthProvider = ({ children }) => {
   // 3. Проверяем localStorage при первой загрузке
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
+    const storedRefreshToken = localStorage.getItem('refreshToken');
     const storedUser = localStorage.getItem('user');
     
-    if (storedToken && storedUser) {
+    if (storedToken && storedRefreshToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
       setIsAuthenticated(true);
+    } else {
+      // Защита: если конфиг нарушен — чистим во избежание обхода авторизации
+      localStorage.clear();
     }
-    setIsLoading(false); // Проверка завершена
+    setIsLoading(false); 
   }, []);
 
   // 4. Функция Входа
@@ -42,6 +46,7 @@ export const AuthProvider = ({ children }) => {
 
       // Сохраняем в localStorage (для перезагрузки)
       localStorage.setItem('token', data.token);
+      localStorage.setItem('refreshToken', data.refreshToken); // 👈 Фиксируем рефреш-токен
       localStorage.setItem('user', JSON.stringify({
         id: data.userId,
         fullName: data.fullName,
@@ -62,8 +67,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setIsAuthenticated(false);
     
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  localStorage.clear(); // Safe & Clean: гарантированно выжигает и token, и refreshToken, и user стейты
     
     navigate('/login');
   };
