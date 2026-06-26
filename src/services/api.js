@@ -2,15 +2,8 @@ import axios from 'axios';
 
 // 1. Создаем "экземпляр" (instance) axios
 const api = axios.create({
-  // ВАЖНО: Используем относительный путь. 
   baseURL: '/api/v1',
-  
-  // !!! ВИДАЛЯЄМО ЦЕЙ РЯДОК !!!
-  // headers: { 'Content-Type': 'application/json' }, 
-  
-  // Axios САМ визначить:
-  // - Якщо шлемо об'єкт -> поставить application/json
-  // - Якщо шлемо FormData (файли) -> поставить multipart/form-data
+  withCredentials: true // 👈 ДОБАВЛЕНО: автоматически пересылать HttpOnly куки бэкенду
 });
 
 // 2. Создаем "Перехватчик Запросов"
@@ -54,53 +47,34 @@ api.interceptors.response.use(
     // Если это не страница регистрации, сервер вернул 401 и этот запрос еще не пытался повториться
     if (!isRegistrationPage && error.response && error.response.status === 401 && !originalRequest._retry) {
       
-      // Если мы уже в процессе обновления токена — ставим запрос в очередь ожидания
+      // Если мы уже в процессе обновления — ждем завершения и повторяем исходный запрос
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then((token) => {
-            originalRequest.headers['Authorization'] = `Bearer ${token}`;
-            return api(originalRequest);
-          })
+          .then(() => api(originalRequest))
           .catch((err) => Promise.reject(err));
       }
 
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
-
-      if (!refreshToken) {
-        // Если рефреш-токена вообще нет — принудительный разлогин
-        localStorage.clear();
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
-
       try {
-        // Запрашиваем новый Access Token через бэкенд, передавая старый рефреш в Body (согласно нашему AuthController)
-        const response = await axios.post('/api/v1/auth/refresh', { refreshToken });
-        const { token: newAccessToken, refreshToken: newRefreshToken } = response.data;
+        // Вызываем обновление сессии. Тело запроса пустое {}, 
+        // бэкенд прочитает куку refreshToken сам!
+        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
 
-        // Сохраняем новые данные сессии
-        localStorage.setItem('token', newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-
-        // Обновляем заголовок текущего упавшего запроса
-        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-
-        // Пропускаем все скопившиеся в очереди запросы с новым токеном
-        processQueue(null, newAccessToken);
+        // Уведомляем очередь, что рефреш прошел успешно
+        processQueue(null);
         isRefreshing = false;
 
-        // Повторяем наш изначальный запрос
+        // Повторяем упавший запрос (он автоматически отправится с новой accessToken кукой)
         return api(originalRequest);
       } catch (refreshError) {
-        // Если рефреш-токен тоже протух или украден — сжигаем сессию полностью
-        processQueue(refreshError, null);
+        // Если кука рефреша протухла — сжигаем данные профиля и перенаправляем на логин
+        processQueue(refreshError);
         isRefreshing = false;
-        localStorage.clear();
+        localStorage.clear(); // Чистим оставшийся кэш (user, role) во избежание багов UI
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }

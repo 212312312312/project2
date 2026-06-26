@@ -168,10 +168,24 @@ const MapFocusController = ({ selectedOrder, drivers }) => {
   return null;
 };
 
+// --- ХЕЛПЕР РАСЧЕТА НАПРАВЛЕНИЯ (BEARING) НА ФРОНТЕНДЕ ---
+const calculateBearing = (lat1, lng1, lat2, lng2) => {
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const lat1Rad = lat1 * Math.PI / 180;
+  const lat2Rad = lat2 * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2Rad);
+  const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+  const brng = Math.atan2(y, x) * 180 / Math.PI;
+  return (brng + 360) % 360;
+};
+
 // --- КАРТА ---
 const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
   const position = [50.45, 30.52]; 
   
+  // Хранилище предыдущих позиций и углов для каждого водителя
+  const prevPositionsRef = useRef({});
+
   let routePath = null;
   if (selectedOrder) {
     if (selectedOrder.googleRoutePolyline) {
@@ -185,6 +199,46 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
 
   const safeDrivers = Array.isArray(drivers) ? drivers : [];
 
+  // Функция генерации иконки с углом поворота
+  const getRotatedIcon = (driver, lat, lng) => {
+    const driverId = driver.id || driver.driverId;
+    let bearing = 0;
+    
+    const prev = prevPositionsRef.current[driverId];
+    if (prev) {
+      // Если координаты изменились — считаем новый угол, если нет — сохраняем старый
+      if (prev.lat === lat && prev.lng === lng) {
+        bearing = prev.bearing || 0;
+      } else {
+        bearing = calculateBearing(prev.lat, prev.lng, lat, lng);
+        prevPositionsRef.current[driverId] = { lat, lng, bearing };
+      }
+    } else {
+      prevPositionsRef.current[driverId] = { lat, lng, bearing: 0 };
+    }
+
+    let iconUrl = driver.isOnline 
+      ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
+      : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png';
+    let size = [25, 41];
+    
+    if (driver.isOnline && customOnlineIcon) {
+      iconUrl = customOnlineIcon.options.iconUrl;
+      size = customOnlineIcon.options.iconSize || [40, 40];
+    }
+    
+    // Оборачиваем маркер в divIcon и плавно крутим через CSS transform
+    return L.divIcon({
+      html: `<div style="transform: rotate(${Math.round(bearing)}deg); transform-origin: center; width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center; transition: transform 0.5s ease;">
+               <img src="${iconUrl}" style="width: 100%; height: 100%; object-fit: contain;" />
+             </div>`,
+      className: 'rotated-driver-container',
+      iconSize: size,
+      iconAnchor: [size[0] / 2, size[1] / 2],
+      popupAnchor: [0, -size[1] / 2]
+    });
+  };
+
   return (
     <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
@@ -194,50 +248,34 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
         const { lat, lng } = getCoords(driver);
         if (lat === null || lng === null || lat === 0) return null;
 
-        let iconToUse;
-        if (driver.isOnline) {
-             iconToUse = defaultOnlineIcon;
-             if (customOnlineIcon) {
-                 const [w, h] = customOnlineIcon.options.iconSize;
-                 if (w > 0 && h > 0) iconToUse = customOnlineIcon;
-             }
-        } else {
-             iconToUse = offlineIcon; 
-        }
+        const rotatedIcon = getRotatedIcon(driver, lat, lng);
 
         return (
-    /* Защищаем уникальность ключа Leaflet, используя любое доступное имя поля идентификатора */
-    <SmoothDriverMarker key={`driver-${driver.id || driver.driverId}`} position={[lat, lng]} icon={iconToUse}>
-              <Popup>
-                <strong>{driver.fullName}</strong><br/>
-                ID: {driver.id}<br/>
-                {driver.isOnline ? '🟢 НА ЛІНІЇ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
-              </Popup>
-            </SmoothDriverMarker>
+          <SmoothDriverMarker key={`driver-${driver.id || driver.driverId}`} position={[lat, lng]} icon={rotatedIcon}>
+            <Popup>
+              <strong>{driver.fullName}</strong><br/>
+              ID: {driver.id}<br/>
+              {driver.isOnline ? '🟢 НА ЛІНІЇ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
+            </Popup>
+          </SmoothDriverMarker>
         );
       })}
 
       {/* 2. Если заказ выбран — рисуем его маршрут, точечные маркеры и ТОЛЬКО привязанную машину */}
       {selectedOrder && (
         <>
-          {/* 🔥 ДОБАВЛЕНО: Рендеринг назначенного водителя на маршруте */}
+          {/* Рендеринг назначенного водителя на маршруте с поворотом */}
           {selectedOrder.driver && (() => {
-              // Ищем этого водителя в общем массиве онлайн-карт по его ID
-              // Проверяем как стандартный id, так и бэкендовый driverId из DriverLocationDto
-const assignedDriver = safeDrivers.find(d => (d.id === selectedOrder.driver.id || d.driverId === selectedOrder.driver.id));
+              const assignedDriver = safeDrivers.find(d => (d.id === selectedOrder.driver.id || d.driverId === selectedOrder.driver.id));
               if (!assignedDriver) return null;
 
               const { lat, lng } = getCoords(assignedDriver);
               if (lat === null || lng === null || lat === 0) return null;
 
-              let iconToUse = assignedDriver.isOnline ? defaultOnlineIcon : offlineIcon;
-              if (assignedDriver.isOnline && customOnlineIcon) {
-                  const [w, h] = customOnlineIcon.options.iconSize;
-                  if (w > 0 && h > 0) iconToUse = customOnlineIcon;
-              }
+              const rotatedIcon = getRotatedIcon(assignedDriver, lat, lng);
 
               return (
-                  <SmoothDriverMarker key={`driver-assigned-${assignedDriver.id}`} position={[lat, lng]} icon={iconToUse}>
+                  <SmoothDriverMarker key={`driver-assigned-${assignedDriver.id}`} position={[lat, lng]} icon={rotatedIcon}>
                     <Popup>
                       <strong>{assignedDriver.fullName} (Призначений)</strong><br/>
                       ID водія: {assignedDriver.id}<br/>
@@ -354,11 +392,26 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
   return (
     <div className="orders-list">
       {orders.length === 0 && <p style={{padding: '1.5rem', textAlign: 'center', color: '#888'}}>Список порожній.</p>}
-      {orders.map(order => (
-        <div key={order.id} className={`order-card ${selectedOrderId === order.id ? 'selected' : ''}`} onClick={() => onSelectOrder(order)}>
+      {orders.map(order => {
+        // Вычисляем км и грн/км на основе данных из TaxiOrderDto
+        const distanceKm = order.distanceMeters ? (order.distanceMeters / 1000).toFixed(1) : 0;
+        const pricePerKm = distanceKm > 0 ? (order.price / distanceKm).toFixed(1) : 0;
+
+        return (
+        <div key={order.id} className={`order-card ${selectedOrderId === order.id ? 'selected' : ''}`} onClick={() => {
+            if (selectedOrderId === order.id) onSelectOrder(null);
+            else onSelectOrder(order);
+        }}>
           <div className="order-card-header">
             <h4>#{order.id} ({order.tariffName})</h4>
-            <span className={`status status-${order.status}`}>{getStatusLabel(order.status)}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                <span className={`status status-${order.status}`}>{getStatusLabel(order.status)}</span>
+                {order.distanceMeters > 0 && (
+                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#495057', background: '#e9ecef', padding: '2px 6px', borderRadius: '4px' }}>
+                        📏 {distanceKm} км ({pricePerKm} ₴/км)
+                    </span>
+                )}
+            </div>
           </div>
           
           {order.status === 'SCHEDULED' && order.scheduledAt && (
@@ -379,25 +432,61 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
                 </div>
             )}
 
-            <p><strong>Клієнт:</strong> {order.client.fullName} ({order.client.userPhone})</p>
+            {/* Ссылка на выделенную карточку клиента */}
+            {(() => {
+                const clientPhone = order.client?.phoneNumber || order.client?.userPhone || '';
+                return (
+                    <p>
+                        <strong>Клієнт:</strong>{' '}
+                        <a 
+                            href={`/client-info?phone=${clientPhone}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()} 
+                            style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 'bold' }}
+                        >
+                            {order.client.fullName}
+                        </a>{' '}
+                        ({clientPhone})
+                    </p>
+                );
+            })()}
+            
             <div className="route-details" style={{marginTop: '5px'}}>
                 <div>🟢 {order.fromAddress}</div>
                 <div>🔴 {order.toAddress}</div>
             </div>
             
             <p><strong>Ціна:</strong> {Math.round(order.price)} грн {order.paymentMethod === 'CARD' ? '💳' : '💵'}</p>
-            <p><strong>Водій:</strong> {order.driver ? order.driver.fullName : (order.status === 'SCHEDULED' ? 'Буде призначено' : 'Пошук...')}</p>
+            
+            {/* Ссылка на карточку назначенного водителя */}
+            <p>
+                <strong>Водій:</strong>{' '}
+                {order.driver ? (
+                    <a 
+                        href={`/drivers?openId=${order.driver.id}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()} // Защита от клика по карте
+                        style={{ color: '#2e7d32', textDecoration: 'underline', fontWeight: 'bold' }}
+                    >
+                        {order.driver.fullName}
+                    </a>
+                ) : (
+                    order.status === 'SCHEDULED' ? 'Буде призначено' : 'Пошук...'
+                )}
+            </p>
 
             {/* ВЫВОД ИНФОРМАЦИИ ОБ ОЖИДАНИИ */}
             {renderWaitingInfo(order)}
 
           </div>
           <div className="order-card-actions">
-  {order.status === 'REQUESTED' && <button className="btn-primary" onClick={(e) => { e.stopPropagation(); onAssign(order); }}>Призначити</button>}
-  <button className="btn-danger" onClick={(e) => { e.stopPropagation(); onCancel(order); }}>Скасувати</button>
-</div>
+            {order.status === 'REQUESTED' && <button className="btn-primary" onClick={(e) => { e.stopPropagation(); onAssign(order); }}>Призначити</button>}
+            <button className="btn-danger" onClick={(e) => { e.stopPropagation(); onCancel(order); }}>Скасувати</button>
+          </div>
         </div>
-      ))}
+      )})}
     </div>
   );
 };
@@ -550,7 +639,6 @@ const ActiveOrders = () => {
 
   // --- ЛОГИКА ФИЛЬТРАЦИИ ---
   const filteredOrders = orders.filter(o => {
-    // ИСПРАВЛЕНО: заменено phoneNumber на userPhone + добавлена защита от undefined
     const clientPhone = o.client?.userPhone || '';
     const orderIdStr = o.id?.toString() || '';
     
@@ -562,12 +650,16 @@ const ActiveOrders = () => {
         // ACTIVE TAB
         if (o.status === 'SCHEDULED') return false;
 
-let matchStatus = true;
-if (statusFilter === 'REQUESTED') matchStatus = o.status === 'REQUESTED';
-// 👈 ДОБАВЛЕНО 'ARRIVED_AT_WAYPOINT' в список разрешенных стейтов:
-else if (statusFilter === 'ACTIVE') matchStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS', 'OFFERING', 'ARRIVED_AT_WAYPOINT'].includes(o.status); 
+        let matchStatus = true;
+        if (statusFilter === 'ACTIVE') {
+            // "В работе (все)" — показывает все типы активных поездок
+            matchStatus = ['ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS', 'OFFERING', 'ARRIVED_AT_WAYPOINT'].includes(o.status);
+        } else if (statusFilter !== 'ALL') {
+            // Конкретный выбранный статус (например, только IN_PROGRESS или только REQUESTED)
+            matchStatus = o.status === statusFilter;
+        }
 
-return matchSearch && matchStatus;
+        return matchSearch && matchStatus;
     }
   });
 
@@ -605,9 +697,14 @@ return matchSearch && matchStatus;
               
               {activeTab === 'ACTIVE' && (
                   <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                      <option value="ALL">Всі</option>
-                      <option value="REQUESTED">Пошук</option>
-                      <option value="ACTIVE">В роботі</option>
+                      <option value="ALL">Всі активні (з пошуком)</option>
+                      <option value="ACTIVE">В роботі (всі)</option>
+                      <option value="REQUESTED">Пошук водія</option>
+                      <option value="OFFERING">Пропонуємо поїздку</option>
+                      <option value="ACCEPTED">Водій їде до клієнта</option>
+                      <option value="DRIVER_ARRIVED">Водій очікує</option>
+                      <option value="IN_PROGRESS">В дорозі з клієнтом</option>
+                      <option value="ARRIVED_AT_WAYPOINT">На проміжній точці</option>
                   </select>
               )}
           </div>

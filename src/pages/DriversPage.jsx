@@ -34,12 +34,18 @@ const WalletEditor = ({ driverId, currentBalance, onUpdate }) => {
     const [loading, setLoading] = useState(false);
     const [history, setHistory] = useState([]);
 
-    // Завантаження історії при відкритті
-    useEffect(() => {
-        if (driverId) {
-        loadHistory();
-        }            
-    }, [driverId]);
+   useEffect(() => {
+    if (drivers.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const openId = params.get('openId');
+      if (openId) {
+        const targetDriver = drivers.find(d => d.id.toString() === openId.toString());
+        if (targetDriver) {
+          setDetailsDriver(targetDriver); // Автоматом открываем модалку деталей водителя
+        }
+      }
+    }
+  }, [drivers]);
 
     const loadHistory = async () => {
         try {

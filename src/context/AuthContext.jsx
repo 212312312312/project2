@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../services/authService';
+import api from '../services/api';
 
 // 1. Создаем Контекст
 const AuthContext = createContext(null);
@@ -8,26 +9,36 @@ const AuthContext = createContext(null);
 // 2. Создаем "Провайдер"
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Для проверки при загрузке
   const navigate = useNavigate();
 
-  // 3. Проверяем localStorage при первой загрузке
+  // 3. Проверяем сессию через HttpOnly куку при первой загрузке
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedRefreshToken = localStorage.getItem('refreshToken');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedToken && storedRefreshToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    } else {
-      // Защита: если конфиг нарушен — чистим во избежание обхода авторизации
-      localStorage.clear();
-    }
-    setIsLoading(false); 
+    const checkAuth = async () => {
+      try {
+        // Делаем тихий POST запрос на рефреш. 
+        // Если кука жива — бэкенд вернет свежие данные юзера.
+        const response = await api.post('/auth/refresh');
+        const data = response.data;
+        
+        setUser({
+          id: data.userId,
+          fullName: data.fullName,
+          role: data.role
+        });
+        setIsAuthenticated(true);
+      } catch (error) {
+        // Если кук нет или они протухли — тихо сбрасываем сессию
+        setUser(null);
+        setIsAuthenticated(false);
+        localStorage.clear();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   // 4. Функция Входа
@@ -35,8 +46,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await loginUser(loginInput, password); 
       
-      // Сохраняем в React
-      setToken(data.token);
       setUser({
         id: data.userId,
         fullName: data.fullName,
@@ -44,9 +53,7 @@ export const AuthProvider = ({ children }) => {
       });
       setIsAuthenticated(true);
 
-      // Сохраняем в localStorage (для перезагрузки)
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('refreshToken', data.refreshToken); // 👈 Фиксируем рефреш-токен
+      // Сохраняем в localStorage ТОЛЬКО данные профиля для UI (без токенов!)
       localStorage.setItem('user', JSON.stringify({
         id: data.userId,
         fullName: data.fullName,
@@ -54,10 +61,9 @@ export const AuthProvider = ({ children }) => {
       }));
       
       navigate('/');
-      
     } catch (error) {
       console.error('Login error:', error);
-      throw error; // Передаем ошибку в LoginPage
+      throw error;
     }
   };
 
@@ -74,7 +80,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    token,
+    // строку token, удаляем отсюда
     isAuthenticated,
     isLoading,
     login,

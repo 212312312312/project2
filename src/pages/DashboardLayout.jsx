@@ -19,6 +19,7 @@ import SectorsPage from './SectorsPage';
 import RatingsPage from './RatingsPage';
 import CarRequestsPage from './CarRequestsPage';
 import DriverRequestsPage from './DriverRequestsPage'; 
+import ClientInfoPage from './ClientInfoPage';
 // --- НОВОЕ: Импорт страницы финансов ---
 import FinancePage from './FinancePage';
 
@@ -131,6 +132,7 @@ const DashboardLayout = () => {
           <Route path="/" element={<OrdersPage />} />
           <Route path="/drivers" element={<DriversPage />} />
           <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/client-info" element={<ClientInfoPage />} />
           
           {/* Роуты ТОЛЬКО ДЛЯ АДМИНА */}
           {isAdmin ? (
