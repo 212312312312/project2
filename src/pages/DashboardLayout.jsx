@@ -8,6 +8,7 @@ import SockJS from 'sockjs-client';
 import OrdersPage from './OrdersPage';
 import DriversPage from './DriversPage'; 
 import ClientsPage from './ClientsPage';
+import AnalyticsPage from './AnalyticsPage';
 import TariffsPage from './TariffsPage'; 
 import DispatchersPage from './DispatchersPage';
 import PromosPage from './PromosPage';         
@@ -95,6 +96,8 @@ const DashboardLayout = () => {
         <NavLink to="/" end>Заказы</NavLink>
         <NavLink to="/drivers">Водители</NavLink>
         <NavLink to="/clients">Клиенты</NavLink>
+        {/* --- НОВОЕ: Вкладка Аналитика --- */}
+<NavLink to="/analytics" style={{ color: '#0288d1', fontWeight: '500' }}>Аналітика 📊</NavLink>
         
         {/* Вкладки ТОЛЬКО ДЛЯ АДМИНА */}
         {isAdmin && (
@@ -122,6 +125,7 @@ const DashboardLayout = () => {
             <NavLink to="/promocodes">Промокоди</NavLink>
             <NavLink to="/sectors">Сектори</NavLink>
             <NavLink to="/settings">Налаштування</NavLink>
+            <NavLink to="/analytics" style={{ color: '#0288d1', fontWeight: '500' }}>Аналітика 📊</NavLink>
           </>
         )}
       </nav>
@@ -130,6 +134,8 @@ const DashboardLayout = () => {
         <Routes>
           {/* Общие роуты */}
           <Route path="/" element={<OrdersPage />} />
+          {/* --- НОВЫЙ РОУТ АНАЛИТИКИ --- */}
+<Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/drivers" element={<DriversPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/client-info" element={<ClientInfoPage />} />
