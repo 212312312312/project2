@@ -116,3 +116,12 @@ export const getCancellationStats = async () => {
       throw new Error(error.response?.data?.message || 'Не вдалося завантажити статистику скасувань');
   }
 };
+
+export const getOrderTrackHistory = async (orderId) => {
+  try {
+    const response = await api.get(`/admin/orders/${orderId}/track-history`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Не вдалося завантажити хронологію треку');
+  }
+};

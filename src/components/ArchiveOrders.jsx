@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { getArchivedOrders, searchArchiveByPhone, getCancellationStats } from '../services/orderService';
 import '../assets/TableStyles.css';
+
+// Оставь только эту ОДНУ строку импорта из orderService:
+import { getArchivedOrders, searchArchiveByPhone, getCancellationStats, getOrderTrackHistory } from '../services/orderService';
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import polyline from '@mapbox/polyline';
 import 'leaflet/dist/leaflet.css';
+
 
 // --- ИКОНКИ ---
 const originIcon = new L.Icon({
@@ -60,10 +63,21 @@ const ArchiveOrders = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [trackHistory, setTrackHistory] = useState([]);
+  const [sliderIndex, setSliderIndex] = useState(0);
 
   const [dateFrom, setDateFrom] = useState(getTodayStr());
   const [dateTo, setDateTo] = useState(getTodayStr());
-
+    useEffect(() => {
+    if (selectedOrder) {
+      setSliderIndex(0);
+      getOrderTrackHistory(selectedOrder.idLong || selectedOrder.id)
+        .then(res => setTrackHistory(res))
+        .catch(err => console.error("Помилка історії координат:", err));
+    } else {
+      setTrackHistory([]);
+    }
+  }, [selectedOrder]);
   const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 0 });
 
   // Стейт для модалки статистики
@@ -198,6 +212,15 @@ const ArchiveOrders = () => {
         pricePerKm = selectedOrder.price / distKm;
     }
 
+    // Расчет времени выполнения заказа
+    const calculateDuration = (start, end) => {
+        if (!start || !end) return '—';
+        const diffMs = new Date(end) - new Date(start);
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffSecs = Math.floor((diffMs % 60000) / 1000);
+        return `${diffMins} хв ${diffSecs} с`;
+    };
+
     return (
         <div className="detail-view-container" style={{ 
             padding: '20px', 
@@ -234,7 +257,6 @@ const ArchiveOrders = () => {
                 
                 <div style={{ flex: '0 0 400px', overflowY: 'auto', paddingRight: '5px' }}>
                     
-                    {/* --- ВІДОБРАЖЕННЯ ПРИЧИНИ СКАСУВАННЯ --- */}
                     {isCancelled && selectedOrder.cancellationReason && (
                         <div style={{ 
                             backgroundColor: '#ffebee', 
@@ -249,21 +271,54 @@ const ArchiveOrders = () => {
                             {selectedOrder.cancellationReason}
                         </div>
                     )}
-                    {/* ---------------------------------------- */}
 
                     <div className="order-card" style={{ cursor: 'default', backgroundColor: '#fff', border: '1px solid #ddd', height: 'auto' }}>
                         
                         <div className="info-group" style={{ marginBottom: '15px' }}>
-                            <p><strong>Клієнт:</strong> {selectedOrder.client.fullName}</p>
-                            <p><strong>Телефон:</strong> {selectedOrder.client.phoneNumber}</p>
+                            <p>
+                                <strong>Клієнт:</strong>{' '}
+                                <a 
+                                    href={`/client-info?phone=${selectedOrder.client.phoneNumber}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 'bold' }}
+                                >
+                                    {selectedOrder.client.fullName}
+                                </a>
+                            </p>
+                            <p><strong>Телефон пасажира:</strong> {selectedOrder.client.phoneNumber}</p>
+                            
                             <hr style={{margin: '10px 0', border: '0', borderTop: '1px solid #eee'}}/>
-                            <p><strong>Водій:</strong> {selectedOrder.driver ? `${selectedOrder.driver.fullName} (${selectedOrder.driver.carPlateNumber})` : '—'}</p>
+                            
+                            <p>
+                                <strong>Водій:</strong>{' '}
+                                {selectedOrder.driver ? (
+                                    <a 
+                                        href={`/drivers?openId=${selectedOrder.driver.id}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#2e7d32', textDecoration: 'underline', fontWeight: 'bold' }}
+                                    >
+                                        {selectedOrder.driver.fullName}
+                                    </a>
+                                ) : '—'}
+                            </p>
+                            {selectedOrder.driver && (
+                                <>
+                                    <p><strong>Телефон водія:</strong> {selectedOrder.driver.phone || '—'}</p>
+                                    <p><strong>Номерний знак:</strong> {selectedOrder.driver.carPlateNumber || '—'}</p>
+                                </>
+                            )}
                             <p><strong>Тариф:</strong> {selectedOrder.tariffName}</p>
                         </div>
 
                         <div style={{ backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '5px', marginBottom: '15px' }}>
                             <p>🕐 <strong>Створено:</strong> {formatDate(selectedOrder.createdAt)}</p>
+                            <p>🚀 <strong>Старт поїздки:</strong> {formatDate(selectedOrder.startedAt)}</p>
                             <p>🏁 <strong>Завершено:</strong> {formatDate(selectedOrder.completedAt)}</p>
+                            <p style={{ marginTop: '5px', color: '#0d47a1' }}>
+                                ⏱️ <strong>Час виконання:</strong> {calculateDuration(selectedOrder.startedAt, selectedOrder.completedAt)}
+                            </p>
                         </div>
 
                         <div className="route-details" style={{ marginBottom: '15px' }}>
@@ -276,13 +331,11 @@ const ArchiveOrders = () => {
 
                         <div style={{ fontSize: '1.1em', marginBottom: '15px' }}>
                             <p>💵 <strong>Ціна:</strong> {Math.round(selectedOrder.price)} ₴</p>
-                            
                             {distKm > 0 && (
                                 <p style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
                                     📏 {distKm.toFixed(1)} км • <strong>{pricePerKm.toFixed(2)} грн/км</strong>
                                 </p>
                             )}
-
                             {selectedOrder.addedValue > 0 && (
                                 <p style={{ color: '#d32f2f' }}>🔥 Надбавка: +{Math.round(selectedOrder.addedValue)} ₴</p>
                             )}
@@ -291,14 +344,6 @@ const ArchiveOrders = () => {
                             </p>
                         </div>
 
-                        {selectedOrder.services && selectedOrder.services.length > 0 && (
-                            <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#e3f2fd', borderRadius: '5px' }}>
-                                <strong>🛠 Послуги:</strong>
-                                <ul style={{ margin: '5px 0 0 20px', padding: 0 }}>
-                                    {selectedOrder.services.map(s => <li key={s.id}>{s.name} ({Math.round(s.price)} ₴)</li>)}
-                                </ul>
-                            </div>
-                        )}
                         {selectedOrder.comment && (
                             <div style={{ padding: '10px', backgroundColor: '#fff3cd', borderRadius: '5px', border: '1px solid #ffeeba' }}>
                                 <strong>📝 Коментар:</strong><br/>
@@ -326,9 +371,67 @@ const ArchiveOrders = () => {
                                  <Popup>{s.address}</Popup>
                              </Marker>
                         ))}
-                        {routePositions && <Polyline positions={routePositions} color="blue" weight={4} />}
+
+                        {/* 🔥 РЕАЛЬНЫЙ ТРЕКИНГ: Відображаємо тільки фактичний шлях водія з Redis суцільною чіткою лінією */}
+                        {trackHistory.length > 0 && (
+                            <Polyline 
+                                positions={trackHistory.map(p => [p.lat, p.lng])} 
+                                color="#d32f2f" 
+                                weight={4} 
+                                title="Фактичний шлях водія"
+                            />
+                        )}    
+
+                        {/* ОТОБРАЖЕНИЕ ВОДИТЕЛЯ НА КАРТЕ ПО ДАННЫМ ПОЛЗУНКА */}
+                        {trackHistory.length > 0 && trackHistory[sliderIndex] && (
+                            <Marker 
+                                position={[trackHistory[sliderIndex].lat, trackHistory[sliderIndex].lng]}
+                                icon={new L.Icon({
+                                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+                                    iconSize: [25, 41], iconAnchor: [12, 41]
+                                })}
+                            >
+                                <Popup>
+                                    🚗 <b>Положення водія в цей момент часу</b><br/>
+                                    ⏱️ Час фіксації: {new Date(trackHistory[sliderIndex].timestamp).toLocaleTimeString('uk-UA')}
+                                </Popup>
+                            </Marker>
+                        )}
+
                         <MapFocusController order={selectedOrder} />
                     </MapContainer>
+
+                    {/* ИНТЕРАКТИВНЫЙ ПОЛЗУНОК ХРОНОЛОГИИ (ТАЙМ-СЛАЙДЕР) */}
+                    {trackHistory.length > 0 && (
+                        <div style={{
+                            position: 'absolute', bottom: '15px', left: '15px', right: '15px',
+                            background: 'rgba(255, 255, 255, 0.95)', padding: '12px 20px',
+                            borderRadius: '8px', zIndex: 1000, boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                            display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid #ccc'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#333' }}>
+                                    🎛️ Хронологія переміщення водія на замовленні
+                                </span>
+                                <span style={{ background: '#e3f2fd', color: '#0d47a1', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                    ⏰ {new Date(trackHistory[sliderIndex]?.timestamp).toLocaleTimeString('uk-UA')}
+                                </span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max={trackHistory.length - 1} 
+                                value={sliderIndex} 
+                                onChange={(e) => setSliderIndex(parseInt(e.target.value))}
+                                style={{ width: '100%', cursor: 'pointer', accentColor: '#0d47a1', height: '6px' }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#666' }}>
+                                <span>Початок ({new Date(trackHistory[0]?.timestamp).toLocaleTimeString('uk-UA')})</span>
+                                <span>Точка треку: {sliderIndex + 1} / {trackHistory.length}</span>
+                                <span>Кінець ({new Date(trackHistory[trackHistory.length - 1]?.timestamp).toLocaleTimeString('uk-UA')})</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
