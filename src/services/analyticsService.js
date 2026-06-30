@@ -2,7 +2,8 @@ import api from './api';
 
 export const analyticsService = {
   getGeneralAnalytics: async () => {
-    const response = await api.get('/api/v1/admin/analytics/general');
+    // Стало (исправлено):
+const response = await api.get('/admin/analytics/general');
     return response.data;
   }
 };
