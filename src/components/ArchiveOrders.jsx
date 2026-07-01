@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../assets/TableStyles.css';
 
-// Оставь только эту ОДНУ строку импорта из orderService:
+// Импорт необходимых сервисов из orderService
 import { getArchivedOrders, searchArchiveByPhone, getCancellationStats, getOrderTrackHistory } from '../services/orderService';
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
@@ -64,13 +64,12 @@ const ArchiveOrders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [trackHistory, setTrackHistory] = useState([]);
-  const [sliderIndex, setSliderIndex] = useState(0);
 
   const [dateFrom, setDateFrom] = useState(getTodayStr());
   const [dateTo, setDateTo] = useState(getTodayStr());
-    useEffect(() => {
+
+  useEffect(() => {
     if (selectedOrder) {
-      setSliderIndex(0);
       getOrderTrackHistory(selectedOrder.idLong || selectedOrder.id)
         .then(res => setTrackHistory(res))
         .catch(err => console.error("Помилка історії координат:", err));
@@ -78,6 +77,7 @@ const ArchiveOrders = () => {
       setTrackHistory([]);
     }
   }, [selectedOrder]);
+
   const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 0 });
 
   // Стейт для модалки статистики
@@ -196,13 +196,6 @@ const ArchiveOrders = () => {
 
   // --- РЕНДЕР: ДЕТАЛЬНИЙ ПЕРЕГЛЯД ---
   if (selectedOrder) {
-    let routePositions = null;
-    if (selectedOrder.googleRoutePolyline) {
-        try {
-            routePositions = polyline.decode(selectedOrder.googleRoutePolyline);
-        } catch (e) {}
-    }
-
     const isCancelled = selectedOrder.status === 'CANCELLED';
 
     let distKm = 0;
@@ -212,7 +205,7 @@ const ArchiveOrders = () => {
         pricePerKm = selectedOrder.price / distKm;
     }
 
-    // Расчет времени выполнения заказа
+    // Расчет времени выполнения или времени ожидания до отмены
     const calculateDuration = (start, end) => {
         if (!start || !end) return '—';
         const diffMs = new Date(end) - new Date(start);
@@ -314,11 +307,22 @@ const ArchiveOrders = () => {
 
                         <div style={{ backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '5px', marginBottom: '15px' }}>
                             <p>🕐 <strong>Створено:</strong> {formatDate(selectedOrder.createdAt)}</p>
-                            <p>🚀 <strong>Старт поїздки:</strong> {formatDate(selectedOrder.startedAt)}</p>
-                            <p>🏁 <strong>Завершено:</strong> {formatDate(selectedOrder.completedAt)}</p>
-                            <p style={{ marginTop: '5px', color: '#0d47a1' }}>
-                                ⏱️ <strong>Час виконання:</strong> {calculateDuration(selectedOrder.startedAt, selectedOrder.completedAt)}
-                            </p>
+                            {isCancelled ? (
+                                <>
+                                    <p>⏱️ <strong>Скасовано:</strong> {formatDate(selectedOrder.completedAt)}</p>
+                                    <p style={{ marginTop: '5px', color: '#c62828' }}>
+                                        ⏳ <strong>Час очікування до скасування:</strong> {calculateDuration(selectedOrder.createdAt, selectedOrder.completedAt)}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p>🚀 <strong>Старт поїздки:</strong> {formatDate(selectedOrder.startedAt)}</p>
+                                    <p>🏁 <strong>Завершено:</strong> {formatDate(selectedOrder.completedAt)}</p>
+                                    <p style={{ marginTop: '5px', color: '#0d47a1' }}>
+                                        ⏱️ <strong>Час виконання:</strong> {calculateDuration(selectedOrder.startedAt, selectedOrder.completedAt)}
+                                    </p>
+                                </>
+                            )}
                         </div>
 
                         <div className="route-details" style={{ marginBottom: '15px' }}>
@@ -382,56 +386,8 @@ const ArchiveOrders = () => {
                             />
                         )}    
 
-                        {/* ОТОБРАЖЕНИЕ ВОДИТЕЛЯ НА КАРТЕ ПО ДАННЫМ ПОЛЗУНКА */}
-                        {trackHistory.length > 0 && trackHistory[sliderIndex] && (
-                            <Marker 
-                                position={[trackHistory[sliderIndex].lat, trackHistory[sliderIndex].lng]}
-                                icon={new L.Icon({
-                                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
-                                    iconSize: [25, 41], iconAnchor: [12, 41]
-                                })}
-                            >
-                                <Popup>
-                                    🚗 <b>Положення водія в цей момент часу</b><br/>
-                                    ⏱️ Час фіксації: {new Date(trackHistory[sliderIndex].timestamp).toLocaleTimeString('uk-UA')}
-                                </Popup>
-                            </Marker>
-                        )}
-
                         <MapFocusController order={selectedOrder} />
                     </MapContainer>
-
-                    {/* ИНТЕРАКТИВНЫЙ ПОЛЗУНОК ХРОНОЛОГИИ (ТАЙМ-СЛАЙДЕР) */}
-                    {trackHistory.length > 0 && (
-                        <div style={{
-                            position: 'absolute', bottom: '15px', left: '15px', right: '15px',
-                            background: 'rgba(255, 255, 255, 0.95)', padding: '12px 20px',
-                            borderRadius: '8px', zIndex: 1000, boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                            display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid #ccc'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#333' }}>
-                                    🎛️ Хронологія переміщення водія на замовленні
-                                </span>
-                                <span style={{ background: '#e3f2fd', color: '#0d47a1', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                                    ⏰ {new Date(trackHistory[sliderIndex]?.timestamp).toLocaleTimeString('uk-UA')}
-                                </span>
-                            </div>
-                            <input 
-                                type="range" 
-                                min="0" 
-                                max={trackHistory.length - 1} 
-                                value={sliderIndex} 
-                                onChange={(e) => setSliderIndex(parseInt(e.target.value))}
-                                style={{ width: '100%', cursor: 'pointer', accentColor: '#0d47a1', height: '6px' }}
-                            />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#666' }}>
-                                <span>Початок ({new Date(trackHistory[0]?.timestamp).toLocaleTimeString('uk-UA')})</span>
-                                <span>Точка треку: {sliderIndex + 1} / {trackHistory.length}</span>
-                                <span>Кінець ({new Date(trackHistory[trackHistory.length - 1]?.timestamp).toLocaleTimeString('uk-UA')})</span>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
