@@ -3,7 +3,8 @@ import {
   getAllTariffs,
   createTariff,
   updateTariff,
-  deleteTariff
+  deleteTariff,
+  reorderTariff // 👈 ДОБАВЬ СЮДА
 } from '../services/tariffService';
 
 import Modal from '../components/Modal';
@@ -39,7 +40,17 @@ const TariffsPage = () => {
     setEditingTariff(null);
     setIsModalOpen(true);
   };
-
+  const handleReorder = async (id, direction) => {
+  try {
+    // Вызываем сервис перестановки
+    const updatedTariffs = await reorderTariff(id, direction);
+    // Сразу обновляем стейт тарифов на фронте новыми данными от сервера
+    setTariffs(updatedTariffs); 
+  } catch (error) {
+    console.error("Помилка изменения порядка тарифов:", error);
+    alert("Не удалось изменить порядок тарифа");
+  }
+};
   const handleEditClick = (tariff) => {
     setEditingTariff(tariff);
     setIsModalOpen(true);
@@ -165,6 +176,35 @@ const TariffsPage = () => {
                   {/* ----------------------------- */}
                   <td>{tariff.freeWaitingMinutes} min</td>
                   <td>{tariff.pricePerWaitingMinute.toFixed(2)}</td>
+                  <td>
+                    {/* 🚀 НАШИ НОВЫЕ КНОПКИ СОРТИРОВКИ */}
+                    <div className="reorder-actions" style={{ display: 'inline-flex', gap: '4px', marginRight: '8px' }}>
+                      <button 
+                        onClick={() => handleReorder(tariff.id, 'UP')}
+                        className="btn-reorder-up"
+                        title="Перемістити вгору"
+                        style={{ padding: '4px 8px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        ↑
+                      </button>
+                      <button 
+                        onClick={() => handleReorder(tariff.id, 'DOWN')}
+                        className="btn-reorder-down"
+                        title="Перемістити вниз"
+                        style={{ padding: '4px 8px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        ↓
+                      </button>
+                    </div>
+
+                    {/* ТВОИ СТАРЫЕ КНОПКИ */}
+                    <button className="btn-secondary" onClick={() => handleEditClick(tariff)}>
+                      Edit
+                    </button>
+                    <button className="btn-danger" onClick={() => handleDeleteClick(tariff.id)}>
+                      Delete
+                    </button>
+                  </td>
                   <td>
                     <button className="btn-secondary" onClick={() => handleEditClick(tariff)}>
                       Edit

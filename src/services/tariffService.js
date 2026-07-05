@@ -12,7 +12,15 @@ export const getAllTariffs = async () => {
     throw new Error(error.response?.data?.message || 'Failed to load tariffs');
   }
 };
-
+export const reorderTariff = async (id, direction) => {
+  try {
+    // 🔥 ФИКС: Возвращаем правильный префикс пути /admin/tariffs
+    const response = await api.post(`/admin/tariffs/${id}/reorder?direction=${direction}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка изменения порядка тарифов');
+  }
+};
 /**
  * (Create) Creates a new tariff with an optional image
  * @param {object} tariffData - The form data (JS object)
