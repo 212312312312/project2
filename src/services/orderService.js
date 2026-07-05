@@ -125,3 +125,8 @@ export const getOrderTrackHistory = async (orderId) => {
     throw new Error(error.response?.data?.message || 'Не вдалося завантажити хронологію треку');
   }
 };
+
+export const getOrderTrack = async (orderId) => {
+  const response = await api.get(`/admin/orders/${orderId}/track`);
+  return response.data;
+};

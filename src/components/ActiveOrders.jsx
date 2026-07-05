@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getActiveOrders, cancelOrder, assignDriverToOrder } from '../services/orderService';
+import { getActiveOrders, cancelOrder, assignDriverToOrder, getOrderTrack } from '../services/orderService'; // 👈 ИЗМЕНЕНО
 import { getOnlineDriversForMap } from '../services/driverService'; 
 import { getAllSettings } from '../services/settingsService';
 
@@ -239,7 +239,7 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
     });
   };
 
-  return (
+ return (
     <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       
@@ -295,6 +295,16 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
              <Popup>Б: {selectedOrder.toAddress}</Popup>
           </Marker>
           {routePath && <Polyline positions={routePath} color="blue" />}
+
+          {/* 🔥 НАШ НОВЫЙ ДОВЕСОК: Рисуем реальный пройденный путь водителя из БД зеленой пунктирной линией */}
+          {dbTrack && dbTrack.length > 0 && (
+            <Polyline 
+              positions={dbTrack.map(p => [p.lat, p.lng])} 
+              color="#2b8a3e" 
+              weight={5} 
+              dashArray="5, 10" 
+            />
+          )}
         </>
       )}
       
@@ -497,6 +507,7 @@ const ActiveOrders = () => {
   const [mapDrivers, setMapDrivers] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null); 
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOrderTrack, setSelectedOrderTrack] = useState([]);
   
   // Tabs & Filters
   const [activeTab, setActiveTab] = useState('ACTIVE'); // 'ACTIVE' | 'SCHEDULED'
@@ -543,6 +554,33 @@ const ActiveOrders = () => {
       setOrders(data.sort((a, b) => b.id - a.id));
     } catch (err) {}
   };
+
+  useEffect(() => {
+    if (selectedOrder) {
+      const targetId = selectedOrder.idLong || selectedOrder.id;
+      
+      const fetchTrackPoints = async () => {
+        try {
+          const points = await getOrderTrack(targetId);
+          setSelectedOrderTrack(points);
+        } catch (err) {
+          console.error("Не вдалося завантажити трек:", err);
+        }
+      };
+
+      fetchTrackPoints();
+
+      // Если поездка активна — каждые 10 секунд подтягиваем новые точки из БД
+      let intervalId;
+      if (['IN_PROGRESS', 'DRIVER_ARRIVED', 'ACCEPTED', 'ARRIVED_AT_WAYPOINT'].includes(selectedOrder.status)) {
+        intervalId = setInterval(fetchTrackPoints, 10000);
+      }
+
+      return () => clearInterval(intervalId);
+    } else {
+      setSelectedOrderTrack([]);
+    }
+  }, [selectedOrder]);
   
 
 
@@ -727,7 +765,7 @@ const ActiveOrders = () => {
           
           {selectedOrder && <button onClick={() => setSelectedOrder(null)}>Скинути</button>}
         </div>
-        <DriverMap drivers={mapDrivers} selectedOrder={selectedOrder} customOnlineIcon={onlineIcon} />
+        <DriverMap drivers={mapDrivers} selectedOrder={selectedOrder} customOnlineIcon={onlineIcon} dbTrack={selectedOrderTrack} /> // 👈 ИЗМЕНЕНО
       </div>
     </div>
   );
