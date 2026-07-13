@@ -4,7 +4,9 @@ import {
   createTariff,
   updateTariff,
   deleteTariff,
-  reorderTariff // 👈 ДОБАВЬ СЮДА
+  reorderTariff,
+  getMinDistance,    // 👈 ДОБАВЛЕНО
+  updateMinDistance  // 👈 ДОБАВЛЕНО
 } from '../services/tariffService';
 
 import Modal from '../components/Modal';
@@ -18,6 +20,9 @@ const TariffsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTariff, setEditingTariff] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [minDistance, setMinDistance] = useState(3.0); // 👈 ДОБАВЛЕНО: Стейт значения километража
+  const [isSavingDistance, setIsSavingDistance] = useState(false); // 👈 ДОБАВЛЕНО: Стейт загрузки сохранения
 
   const fetchTariffs = async () => {
     try {
@@ -25,6 +30,10 @@ const TariffsPage = () => {
       setError('');
       const data = await getAllTariffs();
       setTariffs(data);
+      
+      // 🔥 ДОБАВЛЕНО: Автоматически загружаем километраж минималки с бэкенда Unit при старте страницы
+      const distData = await getMinDistance();
+      setMinDistance(distData.minDistance);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -40,17 +49,17 @@ const TariffsPage = () => {
     setEditingTariff(null);
     setIsModalOpen(true);
   };
+
   const handleReorder = async (id, direction) => {
-  try {
-    // Вызываем сервис перестановки
-    const updatedTariffs = await reorderTariff(id, direction);
-    // Сразу обновляем стейт тарифов на фронте новыми данными от сервера
-    setTariffs(updatedTariffs); 
-  } catch (error) {
-    console.error("Помилка изменения порядка тарифов:", error);
-    alert("Не удалось изменить порядок тарифа");
-  }
-};
+    try {
+      const updatedTariffs = await reorderTariff(id, direction);
+      setTariffs(updatedTariffs); 
+    } catch (error) {
+      console.error("Помилка изменения порядка тарифов:", error);
+      alert("Не удалось изменить порядок тарифа");
+    }
+  };
+
   const handleEditClick = (tariff) => {
     setEditingTariff(tariff);
     setIsModalOpen(true);
@@ -90,13 +99,49 @@ const TariffsPage = () => {
     }
   };
 
+  // 🔥 ДОБАВЛЕНО: Обработчик сохранения глобального километража
+  const handleSaveMinDistance = async () => {
+    setIsSavingDistance(true);
+    try {
+      await updateMinDistance(minDistance);
+      alert('Мінімальний кілометраж успішно оновлено для всіх тарифів!');
+      fetchTariffs(); 
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSavingDistance(false);
+    }
+  };
+
   if (loading) return <div>Loading tariffs...</div>;
 
   return (
     <div className="table-page-container">
       <div className="table-header">
         <h2>Tariff Settings ({tariffs.length})</h2>
-        <div className="controls">
+        <div className="controls" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          
+          {/* 🔥 ДОБАВЛЕНО: Минималистичный и аккуратный блок настройки километража минималки Unit */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#232329', padding: '6px 12px', borderRadius: '8px', border: '1px solid #3f3f46' }}>
+            <span style={{ fontSize: '13px', color: '#a1a1aa' }}>Минималка (КМ):</span>
+            <input 
+              type="number" 
+              step="0.1" 
+              min="0"
+              value={minDistance} 
+              onChange={(e) => setMinDistance(parseFloat(e.target.value) || 0)}
+              style={{ width: '65px', padding: '6px', borderRadius: '6px', border: '1px solid #52525b', background: '#18181b', color: '#fff', textAlign: 'center', fontWeight: 'bold' }}
+            />
+            <button 
+              className="btn-primary" 
+              onClick={handleSaveMinDistance} 
+              disabled={isSavingDistance}
+              style={{ padding: '6px 12px', fontSize: '13px', background: '#008080', border: 'none', cursor: 'pointer' }}
+            >
+              {isSavingDistance ? '...' : 'Сохранить'}
+            </button>
+          </div>
+
           <button className="btn-primary" onClick={handleAddClick}>
             + Create Tariff
           </button>
@@ -116,9 +161,7 @@ const TariffsPage = () => {
               <th>Base Price</th>
               <th>Price/km</th>
               <th>Out City $/km</th>
-              {/* --- НОВА КОЛОНКА --- */}
               <th>Waypoint $</th>
-              {/* -------------------- */}
               <th>Free Wait (min)</th>
               <th>Wait Price/min</th>
               <th>Actions</th>
@@ -169,15 +212,13 @@ const TariffsPage = () => {
                   <td style={{ color: '#e65100', fontWeight: 'bold' }}>
                       {tariff.pricePerKmOutCity ? tariff.pricePerKmOutCity.toFixed(2) : '-'}
                   </td>
-                  {/* --- НОВЕ ДАНІ ДЛЯ КОЛОНКИ --- */}
                   <td style={{ color: '#4caf50', fontWeight: 'bold' }}>
                       {tariff.extraWaypointPrice ? tariff.extraWaypointPrice.toFixed(2) : '0.00'}
                   </td>
-                  {/* ----------------------------- */}
                   <td>{tariff.freeWaitingMinutes} min</td>
                   <td>{tariff.pricePerWaitingMinute.toFixed(2)}</td>
                   <td>
-                    {/* 🚀 НАШИ НОВЫЕ КНОПКИ СОРТИРОВКИ */}
+                    {/* КНОПКИ СОРТИРОВКИ ПОРЯДКА */}
                     <div className="reorder-actions" style={{ display: 'inline-flex', gap: '4px', marginRight: '8px' }}>
                       <button 
                         onClick={() => handleReorder(tariff.id, 'UP')}
@@ -197,16 +238,8 @@ const TariffsPage = () => {
                       </button>
                     </div>
 
-                    {/* ТВОИ СТАРЫЕ КНОПКИ */}
-                    <button className="btn-secondary" onClick={() => handleEditClick(tariff)}>
-                      Edit
-                    </button>
-                    <button className="btn-danger" onClick={() => handleDeleteClick(tariff.id)}>
-                      Delete
-                    </button>
-                  </td>
-                  <td>
-                    <button className="btn-secondary" onClick={() => handleEditClick(tariff)}>
+                    {/* КНОПКИ УПРАВЛЕНИЯ ТАРИФОМ */}
+                    <button className="btn-secondary" onClick={() => handleEditClick(tariff)} style={{ marginRight: '4px' }}>
                       Edit
                     </button>
                     <button className="btn-danger" onClick={() => handleDeleteClick(tariff.id)}>

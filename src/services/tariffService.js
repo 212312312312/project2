@@ -85,3 +85,28 @@ export const deleteTariff = async (id) => {
     throw new Error(error.response?.data?.message || 'Error deleting tariff');
   }
 };
+
+
+/**
+ * Получает глобальный минимальный километраж поездки (в км)
+ */
+export const getMinDistance = async () => {
+  try {
+    const response = await api.get('/admin/tariffs/min-distance');
+    return response.data; // Ожидаем { minDistance: X }
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка завантаження мінімального кілометражу');
+  }
+};
+
+/**
+ * Обновляет глобальный минимальный километраж поездки для всех тарифов
+ */
+export const updateMinDistance = async (distance) => {
+  try {
+    const response = await api.put(`/admin/tariffs/min-distance?distance=${distance}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка оновлення мінімального кілометражу');
+  }
+};
