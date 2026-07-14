@@ -53,24 +53,37 @@ const getTimelineStatus = (tickTimeStr, order) => {
   return { text: '🟡 Водій їде до клієнта', color: '#fcc419' };
 };
 // --- Focus Controller ---
-const MapFocusController = ({ order }) => {
+const MapFocusController = ({ order, trackHistory }) => {
   const map = useMap();
   useEffect(() => {
+    const bounds = [];
+    
+    // 1. Первоочередно берем реальный исторический трек водителя
+    if (trackHistory && trackHistory.length > 0) {
+      trackHistory.forEach(p => {
+        const lat = p.latitude ?? p.lat;
+        const lng = p.longitude ?? p.lng;
+        if (lat && lng) bounds.push([lat, lng]);
+      });
+    }
+
+    // 2. Добавляем теоретические точки заказа для полноты картины
     if (order && order.originLat && order.destLat) {
-      const bounds = [
-        [order.originLat, order.originLng],
-        [order.destLat, order.destLng]
-      ];
+      bounds.push([order.originLat, order.originLng]);
+      bounds.push([order.destLat, order.destLng]);
       if (order.stops && order.stops.length > 0) {
         order.stops.forEach(stop => {
             if (stop.lat && stop.lng) bounds.push([stop.lat, stop.lng]);
         });
       }
+    }
+
+    if (bounds.length > 0) {
       try {
-        map.fitBounds(bounds, { padding: [50, 50] });
+        map.fitBounds(bounds, { padding: [60, 60] });
       } catch(e) {}
     }
-  }, [order, map]);
+  }, [order, trackHistory, map]);
   return null;
 };
 
@@ -463,35 +476,41 @@ const ArchiveOrders = () => {
 
                             {/* Загальний фактичний маршрут (сірий пунктир) */}
                             {trackHistory.length > 0 && (
-                                <Polyline 
-                                    positions={trackHistory.map(p => [p.lat, p.lng])} 
-                                    color="#9e9e9e" 
-                                    weight={3} 
-                                    dashArray="5, 5"
-                                />
-                            )}    
+    <Polyline 
+        positions={trackHistory.map(p => [p.latitude ?? p.lat, p.longitude ?? p.lng])} 
+        color="#9e9e9e" 
+        weight={3} 
+        dashArray="5, 5"
+    />
+)}    
 
-                            {/* Лінія пройденого шляху строго до поточного стану слайдера */}
-                            {trackHistory.length > 0 && (
-                                <Polyline 
-                                    positions={trackHistory.slice(0, currentTrackIndex + 1).map(p => [p.lat, p.lng])} 
-                                    color="#d32f2f" 
-                                    weight={5} 
-                                />
-                            )}
+{/* Лінія пройденого шляху строго до поточного стану слайдера */}
+{trackHistory.length > 0 && (
+    <Polyline 
+        positions={trackHistory.slice(0, currentTrackIndex + 1).map(p => [p.latitude ?? p.lat, p.longitude ?? p.lng])} 
+        color="#d32f2f" 
+        weight={5} 
+    />
+)}
 
-                            {/* Історичний маркер машини */}
-                            {trackHistory.length > 0 && trackHistory[currentTrackIndex] && (
-                                <Marker 
-                                    position={[trackHistory[currentTrackIndex].lat, trackHistory[currentTrackIndex].lng]} 
-                                    icon={driverHistoryIcon}
-                                >
-                                    <Popup>
-                                        🚗 Водій був тут об:<br/>
-                                        <strong>{new Date(trackHistory[currentTrackIndex].timestamp).toLocaleTimeString('uk-UA')}</strong>
-                                    </Popup>
-                                </Marker>
-                            )}
+{/* Історичний маркер машини */}
+{trackHistory.length > 0 && trackHistory[currentTrackIndex] && (
+    <Marker 
+        position={[
+            trackHistory[currentTrackIndex].latitude ?? trackHistory[currentTrackIndex].lat, 
+            trackHistory[currentTrackIndex].longitude ?? trackHistory[currentTrackIndex].lng
+        ]} 
+        icon={driverHistoryIcon}
+    >
+        <Popup>
+            🚗 Водій був тут об:<br/>
+            <strong>{new Date(trackHistory[currentTrackIndex].timestamp).toLocaleTimeString('uk-UA')}</strong>
+        </Popup>
+    </Marker>
+)}
+
+{/* Передаем trackHistory в контроллер камеры */}
+<MapFocusController order={selectedOrder} trackHistory={trackHistory} />
 
                             <MapFocusController order={selectedOrder} />
                         </MapContainer>

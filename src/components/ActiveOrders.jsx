@@ -180,7 +180,7 @@ const calculateBearing = (lat1, lng1, lat2, lng2) => {
 };
 
 // --- КАРТА ---
-const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
+const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
   const position = [50.45, 30.52]; 
   
   // Хранилище предыдущих позиций и углов для каждого водителя
@@ -315,7 +315,6 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon }) => {
 
 // --- СПИСОК ЗАКАЗОВ ---
 const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId }) => {
-  // --- ДОБАВЛЕНО: Состояние для таймера реального времени ---
   const [now, setNow] = useState(new Date());
 
   useInterval(() => {
@@ -323,19 +322,16 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
   }, 1000);
 
   const renderWaitingInfo = (order) => {
-    // 1. Водитель приехал, идет таймер ожидания
     if (order.status === 'DRIVER_ARRIVED' && (order.waitingStartTime || order.arrivedAt)) {
-        // 💡 Берем новое поле waitingStartTime, а если его нет — падаем на arrivedAt
         const targetTime = new Date(order.waitingStartTime || order.arrivedAt).getTime();
         const diffMs = now.getTime() - targetTime;
         
         if (diffMs < 0) {
-            // 💡 Время подачи еще не пришло! Показываем диспетчеру обратный отсчет до старта ожидания
             const absDiffMs = Math.abs(diffMs);
             const remMin = Math.floor(absDiffMs / (1000 * 60));
             const remSec = Math.floor((absDiffMs / 1000) % 60);
             return (
-                <div style={{ color: '#1c7ed6', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px', padding: '6px', backgroundColor: '#ebf5ff', borderRadius: '4px', border: '1px solid #d0ebff' }}>
+                <div style={{ color: '#1c7ed6', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '8px', padding: '8px', backgroundColor: '#ebf5ff', borderRadius: '6px', border: '1px solid #d0ebff', textAlign: 'center' }}>
                     ⏱ До початку очікування: {remMin}хв {remSec}с
                 </div>
             );
@@ -346,55 +342,50 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
         const pricePerMin = order.pricePerWaitingMinute || 0;
 
         if (diffMinutesFull <= freeMinutes) {
-            // Безкоштовне очікування (зелена плашка)
             const remainingMs = (freeMinutes * 60 * 1000) - diffMs;
             const remMin = Math.floor(remainingMs / (1000 * 60));
             const remSec = Math.floor((remainingMs / 1000) % 60);
             return (
-                <div style={{ color: '#2b8a3e', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px', padding: '6px', backgroundColor: '#ebfbee', borderRadius: '4px', border: '1px solid #b2f2bb' }}>
+                <div style={{ color: '#2b8a3e', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '8px', padding: '8px', backgroundColor: '#ebfbee', borderRadius: '6px', border: '1px solid #b2f2bb', textAlign: 'center' }}>
                     ⏱ Безкоштовне очікування: {remMin}хв {remSec}с
                 </div>
             );
         } else {
-            // Платне очікування (червона плашка)
             const paidMinutes = Math.floor(diffMinutesFull - freeMinutes);
             const currentExtraCost = paidMinutes * pricePerMin;
             return (
-                <div style={{ color: '#c92a2a', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px', padding: '6px', backgroundColor: '#fff5f5', borderRadius: '4px', border: '1px solid #ffc9c9' }}>
+                <div style={{ color: '#c92a2a', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '8px', padding: '8px', backgroundColor: '#fff5f5', borderRadius: '6px', border: '1px solid #ffc9c9', textAlign: 'center' }}>
                     ⏳ Платне очікування: {paidMinutes} хв (+{currentExtraCost.toFixed(2)} грн)
                 </div>
             );
         }
     } 
     
-    // 2. Заказ уже в пути или завершен — показываем финальную сумму за ожидание
     if ((order.status === 'IN_PROGRESS' || order.status === 'COMPLETED') && order.waitingPrice > 0) {
         return (
-            <div style={{ color: '#d9480f', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px', padding: '6px', backgroundColor: '#fff4e6', borderRadius: '4px', border: '1px solid #ffd8a8' }}>
+            <div style={{ color: '#d9480f', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '8px', padding: '8px', backgroundColor: '#fff4e6', borderRadius: '6px', border: '1px solid #ffd8a8', textAlign: 'center' }}>
                 💰 Додано за очікування: {order.waitingPrice.toFixed(2)} грн
             </div>
         );
     }
-
     return null;
   };
 
-  // Функція для відображення статусу підтвердження водієм
   const renderConfirmationStatus = (order) => {
       if (order.status !== 'SCHEDULED') return null;
-      if (!order.driver) return <span style={{fontSize: '0.85em', color: '#666'}}>🔍 Пошук водія...</span>;
+      if (!order.driver) return <span style={{fontSize: '0.8rem', color: '#868e96', fontWeight: '700'}}>🔍 ПОШУК ВОДІЯ...</span>;
 
       if (order.isDriverConfirmed) {
-          return <span style={{color: 'green', fontWeight: 'bold', fontSize: '0.9em'}}>✅ Водій підтвердив</span>;
+          return <span style={{color: '#2b8a3e', fontWeight: 'bold', fontSize: '0.85rem'}}>✅ Підтверджено водієм</span>;
       } else {
           const nowTime = new Date();
           const scheduled = new Date(order.scheduledAt);
           const diffMinutes = (scheduled - nowTime) / 1000 / 60;
 
           if (diffMinutes < 35) {
-              return <span style={{color: 'red', fontWeight: 'bold', fontSize: '0.9em', animation: 'blink 1s infinite'}}>⚠️ НЕ ПІДТВЕРДЖЕНО!</span>;
+              return <span style={{color: '#c92a2a', fontWeight: 'bold', fontSize: '0.85rem', animation: 'blink 1s infinite'}}>⚠️ НЕ ПІДТВЕРДЖЕНО!</span>;
           } else {
-              return <span style={{color: '#d9480f', fontSize: '0.9em'}}>⏳ Очікує підтвердження</span>;
+              return <span style={{color: '#d9480f', fontSize: '0.85rem', fontWeight: '500'}}>⏳ Очікує підтвердження</span>;
           }
       }
   };
@@ -403,99 +394,170 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
     <div className="orders-list">
       {orders.length === 0 && <p style={{padding: '1.5rem', textAlign: 'center', color: '#888'}}>Список порожній.</p>}
       {orders.map(order => {
-        // Вычисляем км и грн/км на основе данных из TaxiOrderDto
         const distanceKm = order.distanceMeters ? (order.distanceMeters / 1000).toFixed(1) : 0;
         const pricePerKm = distanceKm > 0 ? (order.price / distanceKm).toFixed(1) : 0;
+        const clientPhone = order.client?.phoneNumber || order.client?.userPhone || '';
 
         return (
-        <div key={order.id} className={`order-card ${selectedOrderId === order.id ? 'selected' : ''}`} onClick={() => {
-            if (selectedOrderId === order.id) onSelectOrder(null);
-            else onSelectOrder(order);
-        }}>
-          <div className="order-card-header">
-            <h4>#{order.id} ({order.tariffName})</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                <span className={`status status-${order.status}`}>{getStatusLabel(order.status)}</span>
-                {order.distanceMeters > 0 && (
-                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#495057', background: '#e9ecef', padding: '2px 6px', borderRadius: '4px' }}>
-                        📏 {distanceKm} км ({pricePerKm} ₴/км)
-                    </span>
-                )}
-            </div>
-          </div>
-          
-          {order.status === 'SCHEDULED' && order.scheduledAt && (
-              <div className="scheduled-time-badge">
-                  🕒 {formatScheduledTime(order.scheduledAt)}
-              </div>
-          )}
+<div 
+  key={order.id} 
+  className={`order-card ${selectedOrderId === order.id ? 'selected' : ''}`} 
+  style={{ 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: '16px', 
+    padding: '24px',
+    backgroundColor: '#ffffff',
+    border: selectedOrderId === order.id ? '2px solid #1976d2' : '1px solid #e9ecef',
+    borderRadius: '12px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
+    transition: 'all 0.2s ease-in-out',
+    cursor: 'pointer',
+    marginBottom: '16px'
+  }} 
+  onClick={() => {
+    if (selectedOrderId === order.id) onSelectOrder(null);
+    else onSelectOrder(order);
+  }}
+>
+  
+  {/* КРУПНЫЙ ХЕДЕР КАРТОЧКИ */}
+  <div className="order-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div>
+        <h4 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', color: '#212529' }}>#{order.id}</h4>
+        <span style={{ backgroundColor: '#212529', color: '#fff', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', display: 'inline-block', marginTop: '6px', letterSpacing: '0.5px' }}>
+            {order.tariffName || 'Стандарт'}
+        </span>
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+        <span className={`status status-${order.status}`} style={{ padding: '6px 14px', fontSize: '0.9rem', fontWeight: '700', borderRadius: '6px' }}>
+            {getStatusLabel(order.status)}
+        </span>
+        {order.distanceMeters > 0 && (
+            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#495057', background: '#e9ecef', padding: '4px 10px', borderRadius: '6px', border: '1px solid #dee2e6' }}>
+                📏 {distanceKm} км ({pricePerKm} ₴/км)
+            </span>
+        )}
+    </div>
+  </div>
 
-          <div className="order-card-body">
-            {order.status === 'SCHEDULED' && (
-                <div style={{marginBottom: '8px', padding: '5px', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #eee'}}>
-                    <div style={{color: '#d9480f', fontWeight: 'bold'}}>
-                        ⏰ Подача: {formatTime(order.scheduledAt)}
-                    </div>
-                    <div style={{marginTop: '4px'}}>
-                        {renderConfirmationStatus(order)}
-                    </div>
-                </div>
-            )}
-
-            {/* Ссылка на выделенную карточку клиента */}
-            {(() => {
-                const clientPhone = order.client?.phoneNumber || order.client?.userPhone || '';
-                return (
-                    <p>
-                        <strong>Клієнт:</strong>{' '}
-                        <a 
-                            href={`/client-info?phone=${clientPhone}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()} 
-                            style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 'bold' }}
-                        >
-                            {order.client.fullName}
-                        </a>{' '}
-                        ({clientPhone})
-                    </p>
-                );
-            })()}
-            
-            <div className="route-details" style={{marginTop: '5px'}}>
-                <div>🟢 {order.fromAddress}</div>
-                <div>🔴 {order.toAddress}</div>
+  {/* МАСШТАБНОЕ БОДИ КАРТОЧКИ */}
+  <div className="order-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 0 }}>
+    
+    {/* Блок 1: Участники (Крупный шрифт и рамки) */}
+    <div style={{ border: '1px solid #dee2e6', borderRadius: '10px', padding: '14px', backgroundColor: '#fdfdfd', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div>
+            <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Пасажир</div>
+            <div style={{ fontWeight: '700', color: '#343a40', fontSize: '1.05rem' }}>
+                <a href={`/client-info?phone=${clientPhone}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#1976d2', textDecoration: 'underline' }}>
+                    {order.client?.fullName || 'Гість'}
+                </a> 
+                <span style={{ fontWeight: '600', color: '#6c757d', marginLeft: '6px' }}>📞 {clientPhone}</span>
             </div>
-            
-            <p><strong>Ціна:</strong> {Math.round(order.price)} грн {order.paymentMethod === 'CARD' ? '💳' : '💵'}</p>
-            
-            {/* Ссылка на карточку назначенного водителя */}
-            <p>
-                <strong>Водій:</strong>{' '}
-                {order.driver ? (
-                    <a 
-                        href={`/drivers?openId=${order.driver.id}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()} // Защита от клика по карте
-                        style={{ color: '#2e7d32', textDecoration: 'underline', fontWeight: 'bold' }}
-                    >
+        </div>
+        <div style={{ borderTop: '1px dashed #dee2e6', paddingTop: '10px' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Водій та Авто</div>
+            {order.driver ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', color: '#343a40', fontSize: '1.05rem' }}>
+                    <a href={`/drivers?openId=${order.driver.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#2e7d32', textDecoration: 'underline' }}>
                         {order.driver.fullName}
                     </a>
-                ) : (
-                    order.status === 'SCHEDULED' ? 'Буде призначено' : 'Пошук...'
-                )}
-            </p>
-
-            {/* ВЫВОД ИНФОРМАЦИИ ОБ ОЖИДАНИИ */}
-            {renderWaitingInfo(order)}
-
-          </div>
-          <div className="order-card-actions">
-            {order.status === 'REQUESTED' && <button className="btn-primary" onClick={(e) => { e.stopPropagation(); onAssign(order); }}>Призначити</button>}
-            <button className="btn-danger" onClick={(e) => { e.stopPropagation(); onCancel(order); }}>Скасувати</button>
-          </div>
+                    <span style={{ backgroundColor: '#f1f3f5', color: '#212529', padding: '3px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '800', border: '1px solid #ced4da', letterSpacing: '0.5px' }}>
+                        {order.carNumber || order.driver?.carLicensePlate || '—'}
+                    </span>
+                </div>
+            ) : (
+                <div style={{ color: '#9bc2c1', fontStyle: 'italic', fontSize: '0.95rem', fontWeight: '500', padding: '2px 0' }}>
+                    {order.status === 'SCHEDULED' ? '🤖 Буде призначено автоматично' : '🔍 Пошук вільної машини...'}
+                </div>
+            )}
         </div>
+    </div>
+
+    {/* Блок 2: Маршрут (Заметные маркеры) */}
+    <div style={{ border: '1px solid #dee2e6', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: '#fff' }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Маршрут поїздки</div>
+        <div style={{ fontSize: '1rem', color: '#212529', fontWeight: '600', display: 'flex', gap: '6px' }}>
+            <span>🟢</span> <span>{order.fromAddress}</span>
+        </div>
+        {order.stops?.map((stop, i) => (
+            <div key={i} style={{ fontSize: '0.95rem', color: '#495057', fontWeight: '500', paddingLeft: '16px', borderLeft: '3px dashed #ced4da', marginLeft: '6px' }}>
+                • {stop.address}
+            </div>
+        ))}
+        <div style={{ fontSize: '1rem', color: '#212529', fontWeight: '600', display: 'flex', gap: '6px' }}>
+            <span>🔴</span> <span>{order.toAddress}</span>
+        </div>
+    </div>
+
+    {/* Блок 3: Временные отметки */}
+    <div style={{ border: '1px solid #dee2e6', borderRadius: '10px', padding: '14px', backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.95rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#495057' }}>
+            <span style={{ fontWeight: '500' }}>📅 Створено:</span>
+            <span style={{ fontWeight: '700', color: '#212529' }}>{formatTime(order.createdAt)}</span>
+        </div>
+        {order.status === 'SCHEDULED' && order.scheduledAt && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d9480f', fontWeight: '800', borderTop: '1px dashed #ced4da', paddingTop: '6px', marginTop: '4px' }}>
+                <span>⏰ Час подачі:</span>
+                <span>{formatTime(order.scheduledAt)}</span>
+            </div>
+        )}
+        {order.status === 'SCHEDULED' && (
+            <div style={{ marginTop: '4px', textAlign: 'center', backgroundColor: '#fff', padding: '4px', borderRadius: '4px', border: '1px solid #e9ecef' }}>
+                {renderConfirmationStatus(order)}
+            </div>
+        )}
+    </div>
+
+    {/* Блок ожидания */}
+    {renderWaitingInfo(order)}
+
+    {/* Блок 4: Стоимость и Оплата (Большая финальная плашка) */}
+    <div style={{ border: '2px solid #212529', borderRadius: '10px', padding: '16px', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)' }}>
+        <div>
+            <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#868e96', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Оплата</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#212529', marginTop: '4px' }}>
+                {order.paymentMethod === 'CARD' ? '💳 Банківська картка' : '💵 Готівка'}
+            </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#868e96', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Вартість</div>
+            <div style={{ fontSize: '1.9rem', fontWeight: '900', color: '#2b8a3e', lineHeight: '1', marginTop: '2px' }}>
+                {Math.round(order.price)} ₴
+            </div>
+        </div>
+    </div>
+
+  </div>
+
+  {/* КРУПНЫЕ КНОПКИ ДЕЙСТВИЙ */}
+  <div className="order-card-actions" style={{ marginTop: '6px', display: 'flex', gap: '10px' }}>
+    {order.status === 'REQUESTED' && (
+        <button 
+          className="btn-primary" 
+          style={{ flex: 1, padding: '12px', fontSize: '1rem', fontWeight: '700', borderRadius: '8px', cursor: 'pointer' }} 
+          onClick={(e) => { e.stopPropagation(); onAssign(order); }}
+        >
+            Призначити водія
+        </button>
+    )}
+    <button 
+      className="btn-danger" 
+      style={{ 
+        flex: order.status === 'REQUESTED' ? 1 : 'none', 
+        width: order.status === 'REQUESTED' ? 'auto' : '100%',
+        padding: '12px',
+        fontSize: '1rem',
+        fontWeight: '700',
+        borderRadius: '8px',
+        cursor: 'pointer'
+      }} 
+      onClick={(e) => { e.stopPropagation(); onCancel(order); }}
+    >
+        Скасувати замовлення
+    </button>
+  </div>
+</div>
       )})}
     </div>
   );
@@ -765,7 +827,7 @@ const ActiveOrders = () => {
           
           {selectedOrder && <button onClick={() => setSelectedOrder(null)}>Скинути</button>}
         </div>
-        <DriverMap drivers={mapDrivers} selectedOrder={selectedOrder} customOnlineIcon={onlineIcon} dbTrack={selectedOrderTrack} /> // 👈 ИЗМЕНЕНО
+        <DriverMap drivers={mapDrivers} selectedOrder={selectedOrder} customOnlineIcon={onlineIcon} dbTrack={selectedOrderTrack} />
       </div>
     </div>
   );
