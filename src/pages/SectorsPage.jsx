@@ -53,7 +53,7 @@ const SectorsPage = () => {
     
     // Стан форми
     const [name, setName] = useState('');
-    const [isCity, setIsCity] = useState(true); // <-- НОВИЙ СТАН: true = Місто, false = За містом
+    const [isCity, setIsCity] = useState(true);
 
     const position = [50.45, 30.52];
 
@@ -62,7 +62,7 @@ const SectorsPage = () => {
     const loadSectors = async () => {
         try {
             const data = await sectorService.getAllSectors();
-            setSectors(data);
+            setSectors(Array.isArray(data) ? data : []);
         } catch (e) { console.error(e); }
     };
 
@@ -74,10 +74,8 @@ const SectorsPage = () => {
     const handleSave = async () => {
         if (!name) return alert("Введіть назву сектора");
         try {
-            // Передаємо параметр isCity на сервер
             await sectorService.createSector({ name, isCity, points: newPoints });
             
-            // Скидаємо форму
             setName('');
             setIsCity(true); 
             setNewPoints(null);
@@ -96,6 +94,18 @@ const SectorsPage = () => {
         if (window.confirm("Видалити цей сектор?")) {
             await sectorService.deleteSector(id);
             loadSectors();
+        }
+    };
+
+    const handleRename = async (id, currentName) => {
+        const newName = window.prompt("Введіть нову назву сектора:", currentName);
+        if (newName && newName.trim() !== '' && newName !== currentName) {
+            try {
+                await sectorService.updateSectorName(id, newName.trim());
+                loadSectors();
+            } catch (e) {
+                alert("Помилка при зміні назви сектора");
+            }
         }
     };
 
@@ -124,7 +134,6 @@ const SectorsPage = () => {
                             onChange={(e) => setName(e.target.value)}
                         />
                         
-                        {/* --- ЧЕКБОКС: ЦЕ МІСТО? --- */}
                         <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
                             <input 
                                 type="checkbox" 
@@ -138,7 +147,6 @@ const SectorsPage = () => {
                             </label>
                         </div>
                         {!isCity && <small style={{color: '#ff9800'}}>Буде діяти тариф "За містом"</small>}
-                        {/* ------------------------- */}
 
                         <div className="box-actions">
                             <button onClick={handleSave} className="save-btn">Зберегти</button>
@@ -156,7 +164,10 @@ const SectorsPage = () => {
                                     {s.isCity ? "🏙️ Місто" : "🌲 За містом"}
                                 </span>
                             </div>
-                            <button className="del-btn" onClick={() => handleDelete(s.id)}>🗑️</button>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <button className="edit-btn" onClick={() => handleRename(s.id, s.name)} style={{ background: 'none', border: 'none', cursor: 'pointer' }} title="Перейменувати">✏️</button>
+                                <button className="del-btn" onClick={() => handleDelete(s.id)}>🗑️</button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -166,7 +177,6 @@ const SectorsPage = () => {
                 <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     
-                    {/* ВІДОБРАЖЕННЯ ІСНУЮЧИХ СЕКТОРІВ З РІЗНИМИ КОЛЬОРАМИ */}
                     {sectors.map(s => (
                         <Polygon 
                             key={s.id}
