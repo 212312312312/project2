@@ -522,9 +522,20 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
         </div>
         <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#868e96', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Вартість</div>
-            <div style={{ fontSize: '1.9rem', fontWeight: '900', color: '#2b8a3e', lineHeight: '1', marginTop: '2px' }}>
-                {Math.round(order.price)} ₴
-            </div>
+            {order.companyDiscountCompensation > 0 ? (
+                <div style={{ marginTop: '2px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#2b8a3e', lineHeight: '1' }}>
+                        {Math.round(order.clientPayAmount)} ₴ <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#495057' }}>від клієнта</span>
+                    </div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#0b7285' }}>
+                        +{Math.round(order.companyDiscountCompensation)} ₴ доплата
+                    </div>
+                </div>
+            ) : (
+                <div style={{ fontSize: '1.9rem', fontWeight: '900', color: '#2b8a3e', lineHeight: '1', marginTop: '2px' }}>
+                    {Math.round(order.price)} ₴
+                </div>
+            )}
         </div>
     </div>
 

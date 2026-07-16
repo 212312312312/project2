@@ -58,3 +58,39 @@ export const deletePromoCode = async (id) => {
     throw new Error(error.response?.data?.message || 'Помилка видалення промокоду');
   }
 };
+
+export const getAllPromoPlans = async () => {
+  try {
+    const response = await api.get('/admin/promos/plans');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Не вдалося завантажити плани акцій');
+  }
+};
+
+export const createPromoPlan = async (planData) => {
+  try {
+    // planData: { title, description, startDate, endDate, isActive }
+    const response = await api.post('/admin/promos/plans', planData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка створення плану акції');
+  }
+};
+
+export const deletePromoPlan = async (id) => {
+  try {
+    await api.delete(`/admin/promos/plans/${id}`);
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка видалення плану акції');
+  }
+};
+
+export const togglePromoPlan = async (id, isActive) => {
+  try {
+    const response = await api.post(`/admin/promos/plans/${id}/toggle?active=${isActive}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка зміни статусу акції');
+  }
+};
