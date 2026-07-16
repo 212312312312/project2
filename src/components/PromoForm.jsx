@@ -13,7 +13,8 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
     requiredTariffId: '',
     isOneTime: true,
     maxDiscountAmount: '',
-    activeDaysDuration: ''
+    activeDaysDuration: '',
+    maxAllocations: '' // Лимит мест для клиентов
   });
 
   useEffect(() => {
@@ -22,7 +23,6 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    // Если это чекбокс, берем 'checked', иначе 'value'
     const val = type === 'checkbox' ? checked : value;
     setFormData(prev => ({ ...prev, [name]: val }));
   };
@@ -39,11 +39,25 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
       requiredTariffId: formData.requiredTariffId ? parseInt(formData.requiredTariffId) : null,
       isOneTime: formData.isOneTime,
       maxDiscountAmount: formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : null,
-      activeDaysDuration: formData.activeDaysDuration ? parseInt(formData.activeDaysDuration) : null
+      activeDaysDuration: formData.activeDaysDuration ? parseInt(formData.activeDaysDuration) : null,
+      maxAllocations: formData.maxAllocations ? parseInt(formData.maxAllocations) : null
     };
 
     onSubmit(dataToSend);
   };
+
+  // Внутренний калькулятор максимального бюджета компенсации
+  const calculateMaxBudget = () => {
+    const allocations = parseInt(formData.maxAllocations);
+    const maxDiscount = parseFloat(formData.maxDiscountAmount);
+    
+    if (!allocations || !maxDiscount || allocations <= 0 || maxDiscount <= 0) {
+      return null;
+    }
+    return allocations * maxDiscount;
+  };
+
+  const maxBudget = calculateMaxBudget();
 
   return (
     <form onSubmit={handleSubmit} className="entity-form">
@@ -103,6 +117,19 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
           <small style={{color: '#666', fontSize: '0.8rem'}}>Залиште пустим, якщо ліміту немає</small>
         </div>
 
+        {/* --- ПОЛЕ: Лимит мест для ограничения рисков --- */}
+        <div className="form-group">
+          <label>Загальна кількість місць (Ліміт клієнтів)</label>
+          <input 
+            type="number" name="maxAllocations" min="1" 
+            placeholder="Пусто = без ліміту (для всіх)"
+            value={formData.maxAllocations} onChange={handleChange} 
+          />
+          <small style={{color: '#666', fontSize: '0.8rem'}}>
+            Скільки всього клієнтів зможуть отримати це завдання (з пріоритетом за поїздками)
+          </small>
+        </div>
+
         <div className="form-group">
           <label>Клас авто (Тариф)</label>
           <select 
@@ -118,7 +145,6 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
           </select>
         </div>
 
-        {/* --- НОВЫЙ ЧЕКБОКС --- */}
         <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <input 
             type="checkbox" 
@@ -132,7 +158,38 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
             Це одноразова акція?
           </label>
         </div>
+
+        <div className="form-group">
+          <label>Термін дії знижки (днів)</label>
+          <input 
+            type="number" name="activeDaysDuration" min="1"
+            placeholder="Пусто = безстрокова"
+            value={formData.activeDaysDuration} onChange={handleChange} 
+          />
+          <small style={{color:'#666'}}>Скільки днів є у клієнта, щоб використати знижку після отримання.</small>
+        </div>
       </div>
+
+      {/* --- ВИЗУАЛЬНЫЙ КАЛЬКУЛЯТОР РАСХОДОВ --- */}
+      {maxBudget !== null && (
+        <div className="budget-calculator" style={{
+          background: '#fff0f5',
+          padding: '15px',
+          borderRadius: '6px',
+          borderLeft: '4px solid #e91e63',
+          margin: '20px 0 10px 0'
+        }}>
+          <h4 style={{ margin: '0 0 5px 0', color: '#c2185b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            📊 Фінансовий калькулятор лімітів:
+          </h4>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: '#333', lineHeight: '1.4' }}>
+            При виділенні <strong>{formData.maxAllocations}</strong> місць та обмеженні знижки у <strong>{formData.maxDiscountAmount} грн</strong> на поїздку, максимальне навантаження на бюджет (виплата компенсацій водіям) складе не більше ніж:
+          </p>
+          <div style={{ marginTop: '8px', fontSize: '1.25rem', fontWeight: 'bold', color: '#e91e63' }}>
+            {maxBudget.toLocaleString()} грн
+          </div>
+        </div>
+      )}
 
       <div className="form-actions">
         <button type="button" className="btn-secondary" onClick={onCancel} disabled={isLoading}>
@@ -142,17 +199,6 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
           {isLoading ? 'Створення...' : 'Створити'}
         </button>
       </div>
-      
-      <div className="form-group">
-          <label>Термін дії знижки (днів)</label>
-          <input 
-            type="number" name="activeDaysDuration" min="1"
-            placeholder="Пусто = безстрокова"
-            value={formData.activeDaysDuration} onChange={handleChange} 
-          />
-          <small style={{color:'#666'}}>Скільки днів є у клієнта, щоб використати знижку після отримання.</small>
-        </div>
-        
     </form>
   );
 };

@@ -15,7 +15,9 @@ const PromosPage = () => {
   // Кастомные стейты для глобальных календарных планов
   const [plans, setPlans] = useState([]);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
-  const [newPlan, setNewPlan] = useState({ title: '', description: '', startDate: '', endDate: '' });
+  const [newPlan, setNewPlan] = useState({ 
+    title: '', description: '', startDate: '', endDate: '', maxUses: '' // <- ДОБАВЛЕНО maxUses
+  });
 
   const fetchPromos = async () => {
     try {
@@ -76,11 +78,12 @@ const PromosPage = () => {
         ...newPlan,
         startDate: newPlan.startDate ? `${newPlan.startDate}:00` : new Date().toISOString(),
         endDate: newPlan.endDate ? `${newPlan.endDate}:00` : new Date().toISOString(),
+        maxUses: newPlan.maxUses ? parseInt(newPlan.maxUses) : null, // <- ДОБАВЛЕНО
         isActive: true
       };
       await createPromoPlan(planData);
       setIsPlanModalOpen(false);
-      setNewPlan({ title: '', description: '', startDate: '', endDate: '' });
+      setNewPlan({ title: '', description: '', startDate: '', endDate: '', maxUses: '' }); // <- ИСПРАВЛЕНО
       fetchPlans();
     } catch (e) {
       alert(e.message);
@@ -130,6 +133,7 @@ const PromosPage = () => {
               <th>Знижка</th>
               <th>Термін дії</th>
               <th>Макс. сума</th>
+              <th>Ліміт місць</th>
               <th>Дії</th>
             </tr>
           </thead>
@@ -179,13 +183,20 @@ const PromosPage = () => {
                   )}
                 </td>
                 <td>
+                  {p.maxAllocations ? (
+                    <span style={{fontWeight: 'bold', color: '#e91e63'}}>{p.maxAllocations} чол.</span>
+                  ) : (
+                    <span style={{color: '#aaa'}}>∞</span>
+                  )}
+                </td>
+                <td>
                   <button className="btn-danger" onClick={() => handleDelete(p.id)}>
                     Видалити
                   </button>
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan="9">Акцій немає. Створіть першу!</td></tr>
+              <tr><td colSpan="10">Акцій немає. Створіть першу!</td></tr>
             )}
           </tbody>
         </table>
@@ -210,6 +221,7 @@ const PromosPage = () => {
               <th>Опис</th>
               <th>Дата початку</th>
               <th>Дата завершення</th>
+              <th>Ліміт активацій</th>
               <th>Статус</th>
               <th>Дії</th>
             </tr>
@@ -222,6 +234,13 @@ const PromosPage = () => {
                 <td>{plan.description || 'Без опису'}</td>
                 <td>{new Date(plan.startDate).toLocaleString()}</td>
                 <td>{new Date(plan.endDate).toLocaleString()}</td>
+                <td>
+                  {plan.maxUses ? (
+                    <span style={{fontWeight: 'bold', color: '#4CAF50'}}>{plan.maxUses} актт.</span>
+                  ) : (
+                    <span style={{color: '#aaa'}}>∞</span>
+                  )}
+                </td>
                 <td>
                   <span className={plan.isActive ? "status-online" : "status-offline"} style={{ marginRight: '10px' }}>
                     {plan.isActive ? 'Активний' : 'Вимкнено'}
@@ -241,7 +260,7 @@ const PromosPage = () => {
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan="7">Календарних планів немає. Створіть перший!</td></tr>
+              <tr><td colSpan="8">Календарних планів немає. Створіть перший!</td></tr>
             )}
           </tbody>
         </table>
@@ -282,7 +301,7 @@ const PromosPage = () => {
             <textarea 
               value={newPlan.description} 
               onChange={e => setNewPlan({...newPlan, description: e.target.value})} 
-              placeholder="Мінімальна вартість поїздки 0 грн! Доплачуємо тільки за км."
+              placeholder="Мінімальна вартість поїздки 0 грн! Доплачуємо только за км."
             />
           </div>
           <div className="form-group">
@@ -303,6 +322,20 @@ const PromosPage = () => {
               onChange={e => setNewPlan({...newPlan, endDate: e.target.value})} 
             />
           </div>
+          
+          <div className="form-group">
+            <label>Глобальний ліміт активацій (Кількість планів)</label>
+            <input 
+              type="number" min="1"
+              value={newPlan.maxUses} 
+              onChange={e => setNewPlan({...newPlan, maxUses: e.target.value})} 
+              placeholder="Пусто = без обмежень"
+            />
+            <small style={{color: '#666', display: 'block', marginTop: '4px'}}>
+              Скільки всього клієнтів в системі встигнуть скористатися планом
+            </small>
+          </div>
+
           <div className="form-actions">
             <button type="button" className="btn-secondary" onClick={() => setIsPlanModalOpen(false)}>
               Скасувати
