@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllSettings, saveTextSettings, getCompanyBalance, getAllTransactions } from '../services/settingsService';
-import '../assets/Form.css';
-import '../assets/TableStyles.css'; // Убедись, что этот файл существует (он был в твоем проекте)
+import '../assets/FinancePage.css';
 
 const FinancePage = () => {
     const [commission, setCommission] = useState('10');
@@ -22,7 +21,7 @@ const FinancePage = () => {
     const loadSettingsAndBalance = async () => {
         try {
             const settings = await getAllSettings();
-            if (settings.driver_commission_percent) {
+            if (settings && settings.driver_commission_percent) {
                 setCommission(settings.driver_commission_percent);
             }
             const balanceData = await getCompanyBalance();
@@ -30,19 +29,19 @@ const FinancePage = () => {
                 setCompanyBalance(balanceData.totalBalance);
             }
         } catch (error) {
-            console.error("Error loading finance data:", error);
+            console.error("Помилка завантаження фінансових даних:", error);
         }
     };
 
     const loadTransactions = async (pageNum) => {
         setLoadingTx(true);
         try {
-            const data = await getAllTransactions(pageNum, 20); // 20 на страницу
+            const data = await getAllTransactions(pageNum, 20);
             setTransactions(data.content || []);
-            setTotalPages(data.totalPages);
-            setPage(data.currentPage);
+            setTotalPages(data.totalPages || 0);
+            setPage(data.currentPage || pageNum);
         } catch (error) {
-            console.error("Error loading transactions:", error);
+            console.error("Помилка завантаження транзакцій:", error);
         } finally {
             setLoadingTx(false);
         }
@@ -52,7 +51,7 @@ const FinancePage = () => {
         setLoading(true);
         try {
             await saveTextSettings({ driver_commission_percent: commission });
-            alert("Комісію оновлено!");
+            alert("Комісію успішно оновлено!");
         } catch (e) {
             alert("Помилка: " + e.message);
         } finally {
@@ -60,52 +59,64 @@ const FinancePage = () => {
         }
     };
 
-    // Хелпер для форматирования даты
     const formatDate = (dateString) => {
-        if (!dateString) return "-";
-        return new Date(dateString).toLocaleString('uk-UA');
+        if (!dateString) return "—";
+        return new Date(dateString).toLocaleString('uk-UA', {
+            dateStyle: 'short',
+            timeStyle: 'short'
+        });
     };
 
-    // Хелпер для типа операции
-    const getTypeLabel = (type) => {
+    const getTypeBadge = (type) => {
         switch(type) {
             case 'DEPOSIT': return <span className="badge badge-success">Поповнення</span>;
-            case 'COMMISSION': return <span className="badge badge-warning">Комісія</span>;
+            case 'COMMISSION': return <span className="badge badge-info">Комісія</span>;
             case 'WITHDRAWAL': return <span className="badge badge-danger">Виведення</span>;
             case 'PENALTY': return <span className="badge badge-danger">Штраф</span>;
-            case 'BONUS': return <span className="badge badge-primary">Бонус</span>;
-            default: return type;
+            case 'BONUS': return <span className="badge badge-success">Бонус</span>;
+            default: return <span className="badge badge-muted">{type}</span>;
         }
     };
 
-    return (
-        <div className="page-container">
-            <div className="page-header">
-                <h2>💰 Фінанси компанії</h2>
-            </div>
+    const handleRefreshAll = () => {
+        loadSettingsAndBalance();
+        loadTransactions(0);
+    };
 
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+    return (
+        <div className="page-wrapper">
+            <header className="page-header">
+                <div className="header-title-group">
+                    <h1>Фінанси компанії</h1>
+                </div>
+                <button className="btn btn-secondary" onClick={handleRefreshAll}>
+                    Оновити
+                </button>
+            </header>
+
+            {/* ВЕРХНІ КАРТКИ: КОМІСІЯ ТА БАЛАНС */}
+            <div className="finance-grid-top mb-4">
                 
-                {/* --- CARD 1: Commission Settings --- */}
-                <div className="card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '10px', color: '#2e7d32' }}>⚙️ Налаштування Комісії</h3>
-                    <p style={{ color: '#666', marginBottom: '20px', fontSize: '0.9rem' }}>
+                {/* НАЛАШТУВАННЯ КОМІСІЇ */}
+                <div className="card">
+                    <h3 className="card-title">Налаштування комісії</h3>
+                    <p className="text-subtle text-sm mb-3">
                         Цей відсоток автоматично списується з балансу водія при успішному завершенні замовлення.
                     </p>
 
-                    <div className="form-group">
-                        <label style={{ fontWeight: 'bold' }}>Комісія сервісу (%):</label>
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                    <div className="input-group-field">
+                        <label className="field-label">Комісія сервісу (%)</label>
+                        <div className="inline-input-action">
                             <input 
                                 type="number" 
                                 step="0.1" 
-                                className="form-control"
-                                style={{ flex: 1 }}
+                                className="input-field"
                                 value={commission} 
                                 onChange={(e) => setCommission(e.target.value)}
+                                placeholder="10"
                             />
                             <button 
-                                className="btn-primary" 
+                                className="btn btn-primary" 
                                 onClick={handleSaveCommission}
                                 disabled={loading}
                             >
@@ -115,94 +126,103 @@ const FinancePage = () => {
                     </div>
                 </div>
 
-                {/* --- CARD 2: Company Wallet --- */}
-                <div className="card" style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px dashed #ccc', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '10px', color: '#555' }}>🏦 Дохід Компанії</h3>
-                    <p style={{ fontSize: '0.9rem', color: '#666' }}>Накопичена комісія за весь час (віртуальна)</p>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333', margin: '10px 0' }}>
-                        {companyBalance.toFixed(2)} ₴
+                {/* ДОХІД КОМПАНІЇ */}
+                <div className="card metric-card">
+                    <div>
+                        <span className="card-subtitle">Дохід компанії</span>
+                        <div className="metric-primary text-primary mt-1">
+                            {companyBalance.toFixed(2)} ₴
+                        </div>
+                        <p className="text-subtle text-sm mt-1">
+                            Накопичена комісія за весь час (віртуальний баланс)
+                        </p>
                     </div>
-                    <small style={{ color: '#2e7d32' }}>
-                        * Це сума всіх списаних комісій. Реальні гроші знаходяться на рахунку LiqPay.
-                    </small>
+                    <div className="finance-note">
+                        * Сума всіх списаних комісій. Реальні гроші знаходяться на рахунку LiqPay.
+                    </div>
                 </div>
+
             </div>
 
-            {/* --- ТАБЛИЦА ИСТОРИИ ТРАНЗАКЦИЙ --- */}
-            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <h3>📜 Історія транзакцій</h3>
-                    <button className="btn-secondary" onClick={() => loadTransactions(0)}>🔄 Оновити</button>
+            {/* ТАБЛИЦЯ ІСТОРІЇ ТРАНЗАКЦІЙ */}
+            <div className="table-card">
+                <div className="table-card-header">
+                    <h3 className="table-title">Історія транзакцій</h3>
+                    <button className="btn btn-sm btn-secondary" onClick={() => loadTransactions(page)}>
+                        Оновити історію
+                    </button>
                 </div>
-                
-                {loadingTx ? (
-                    <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Завантаження...</div>
-                ) : (
-                    <>
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Дата</th>
-                                    <th>Водій</th>
-                                    <th>Тип</th>
-                                    <th>Сума</th>
-                                    <th>Опис</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {transactions.length > 0 ? (
-                                    transactions.map(tx => (
-                                        <tr key={tx.id}>
-                                            <td>{tx.id}</td>
-                                            <td>{formatDate(tx.createdAt)}</td>
-                                            <td>
-                                                <div>{tx.driverName}</div>
-                                                <small style={{color: '#888'}}>{tx.driverPhone}</small>
-                                            </td>
-                                            <td>{getTypeLabel(tx.operationType)}</td>
-                                            <td style={{ 
-                                                fontWeight: 'bold', 
-                                                color: tx.amount >= 0 ? '#2e7d32' : '#c62828' 
-                                            }}>
-                                                {tx.amount > 0 ? '+' : ''}{tx.amount.toFixed(2)} ₴
-                                            </td>
-                                            <td>{tx.description}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
-                                            Транзакцій не знайдено
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
 
-                        {/* Пагинация */}
-                        <div className="pagination" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                            <button 
-                                className="btn-secondary" 
-                                disabled={page === 0} 
-                                onClick={() => loadTransactions(page - 1)}
-                            >
-                                ← Назад
-                            </button>
-                            <span style={{ display: 'flex', alignItems: 'center' }}>
-                                Сторінка {page + 1} з {totalPages || 1}
-                            </span>
-                            <button 
-                                className="btn-secondary" 
-                                disabled={page >= totalPages - 1} 
-                                onClick={() => loadTransactions(page + 1)}
-                            >
-                                Вперед →
-                            </button>
-                        </div>
-                    </>
+                <div className="table-responsive">
+                    <table className="main-table finance-table">
+                        <thead>
+                            <tr>
+                                <th className="text-center">ID</th>
+                                <th>Дата</th>
+                                <th>Водій</th>
+                                <th className="text-center">Тип</th>
+                                <th className="text-center">Сума</th>
+                                <th>Опис</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loadingTx ? (
+                                <tr>
+                                    <td colSpan="6" className="text-center text-subtle py-8">
+                                        Завантаження транзакцій...
+                                    </td>
+                                </tr>
+                            ) : transactions.length > 0 ? (
+                                transactions.map(tx => (
+                                    <tr key={tx.id}>
+                                        <td className="text-center text-subtle">{tx.id}</td>
+                                        <td className="text-subtle text-sm">{formatDate(tx.createdAt)}</td>
+                                        <td>
+                                            <div className="font-medium">{tx.driverName || "Система"}</div>
+                                            <div className="text-subtle text-sm">{tx.driverPhone || "—"}</div>
+                                        </td>
+                                        <td className="text-center">{getTypeBadge(tx.operationType)}</td>
+                                        <td className={`text-center font-medium ${tx.amount >= 0 ? 'text-success' : 'text-danger'}`}>
+                                            {tx.amount > 0 ? '+' : ''}{tx.amount.toFixed(2)} ₴
+                                        </td>
+                                        <td className="tx-desc-cell">{tx.description || "—"}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="text-center text-subtle py-8">
+                                        Транзакцій не знайдено
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Пагінація */}
+                {totalPages > 1 && (
+                    <div className="pagination-bar">
+                        <button 
+                            className="btn btn-sm btn-secondary" 
+                            disabled={page === 0 || loadingTx} 
+                            onClick={() => loadTransactions(page - 1)}
+                        >
+                            Назад
+                        </button>
+                        <span className="pagination-info">
+                            Сторінка {page + 1} з {totalPages}
+                        </span>
+                        <button 
+                            className="btn btn-sm btn-secondary" 
+                            disabled={page >= totalPages - 1 || loadingTx} 
+                            onClick={() => loadTransactions(page + 1)}
+                        >
+                            Вперед
+                        </button>
+                    </div>
                 )}
             </div>
+
         </div>
     );
 };

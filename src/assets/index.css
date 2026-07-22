@@ -1,10 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 @import './ActiveOrders.css';
 @import './Form.css';
 @import './OrdersPage.css';
 @import './Modal.css';
 @import './TableStyles.css';
+@import './DriversPage.css';
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
   background-color: #f4f7f6;
@@ -56,6 +59,7 @@ body {
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
+  font-family: inherit;
 }
 .login-form button:hover {
   background-color: #0056b3;
@@ -74,7 +78,9 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow: hidden; /* Фиксирует всю страницу, чтобы скроллился ТОЛЬКО контент, а навбар всегда стоял на месте */
 }
+
 .dashboard-header {
   display: flex;
   justify-content: space-between;
@@ -83,49 +89,78 @@ body {
   background-color: #fff;
   border-bottom: 1px solid #eee;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+  flex-shrink: 0; /* ФИКС: Хедер никогда не уходит вверх и не сжимается */
 }
+
 .dashboard-header h1 {
   margin: 0;
   font-size: 1.5rem;
+  font-weight: 700;
 }
+
 .user-info {
   display: flex;
   align-items: center;
 }
+
 .user-info span {
   margin-right: 1rem;
   font-weight: 500;
 }
+
 .user-info button {
   padding: 0.5rem 1rem;
   border: 1px solid #ddd;
   background: #f9f9f9;
   border-radius: 4px;
   cursor: pointer;
+  font-family: inherit;
 }
+
 .dashboard-nav {
   display: flex;
   background-color: #fff;
   border-bottom: 1px solid #eee;
+  flex-shrink: 0; /* ФИКС: Навбар мертво зафиксирован и не улетает при скролле */
+  width: 100%;
+  box-sizing: border-box;
 }
+
+/* === СТАЛО === */
 .dashboard-nav a {
-  padding: 1rem 1.5rem;
+  display: flex;               /* Включаем flex внутри кнопки */
+  align-items: center;         /* Центрируем текст по вертикали */
+  justify-content: center;     /* Центрируем текст по горизонтали */
+  flex: 1;                     /* Кнопки по-прежнему делят ширину поровну */
+  text-align: center;
+  padding: 0.5rem;             /* Уменьшили вертикальные отступы, чтобы панель не стала слишком огромной при переносе текста */
+  min-height: 3rem;            /* Задаем минимальную высоту, чтобы панель была аккуратной */
   text-decoration: none;
   color: #555;
   font-weight: 500;
   border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+
+  /* ГЛАВНЫЕ ИЗМЕНЕНИЯ ТУТ: */
+  white-space: normal;         /* РАЗРЕШАЕМ перенос текста на новую строку */
+  word-wrap: break-word;       /* Позволяет разбивать длинные слова, если совсем туго (на всякий случай) */
+  line-height: 1.2;            /* Уменьшаем межстрочный интервал для многострочного текста */
+  font-size: 0.9rem;           /* Можно чуть-чуть уменьшить шрифт */
 }
+
 .dashboard-nav a:hover {
   color: #007bff;
 }
+
 /* Этот класс NavLink добавит автоматически */
 .dashboard-nav a.active {
   color: #007bff;
   border-bottom-color: #007bff;
 }
+
 .dashboard-content {
   flex-grow: 1;
   padding: 2rem;
-  overflow-y: auto;
+  overflow-y: auto; /* Скроллится только этот блок с контентом */
   background-color: #f9fafb;
 }

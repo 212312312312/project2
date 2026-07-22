@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import '../assets/Form.css'; 
 
 const NewsForm = ({ onSubmit, onCancel, isLoading }) => {
   const [title, setTitle] = useState('');
@@ -20,13 +19,12 @@ const NewsForm = ({ onSubmit, onCancel, isLoading }) => {
     e.preventDefault();
 
     if (!target) {
-      alert('⚠️ Пожалуйста, выберите получателя (Водители, Клиенты или Все)!');
+      alert('Будь ласка, виберіть отримувача (Водії, Клієнти або Усі)!');
       return;
     }
 
     onSubmit({ title, content, target, image });
     
-    // Очищення форми
     setTitle('');
     setContent('');
     setTarget('');
@@ -44,110 +42,86 @@ const NewsForm = ({ onSubmit, onCancel, isLoading }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="form-container" style={{ width: '100%', maxWidth: '600px' }}>
-      <h3>Создать новость</h3>
-      
-      <div className="form-group" style={{ width: '100%' }}>
-        <label>Заголовок</label>
+    <form onSubmit={handleSubmit} className="news-form-container">
+      <div className="input-group-field">
+        <label className="field-label">Заголовок</label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
-          placeholder="Важное сообщение..."
+          placeholder="Заголовок сповіщення..."
           disabled={isLoading}
-          style={{ width: '100%', boxSizing: 'border-box' }} // На всю ширину
+          className="input-field"
         />
       </div>
 
-      <div className="form-group" style={{ width: '100%' }}>
-        <label>Текст новости</label>
+      <div className="input-group-field">
+        <label className="field-label">Текст новини</label>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           required
-          placeholder="Текст уведомления"
-          rows="6" // Збільшили висоту для зручності
+          placeholder="Введіть текст повідомлення для користувачів..."
+          rows="4"
           disabled={isLoading}
-          style={{ 
-            width: '100%', 
-            boxSizing: 'border-box', 
-            resize: 'vertical', // Дозволяє розтягувати вниз
-            minHeight: '100px'
-          }} 
+          className="input-field textarea-field"
         />
       </div>
 
-      <div className="form-group" style={{ width: '100%' }}>
-        <label style={{ color: target ? 'inherit' : 'red', fontWeight: 'bold' }}>
-          Получатель {target ? '✅' : '❗'}
-        </label>
+      <div className="input-group-field">
+        <label className="field-label">Отримувач</label>
         <select 
           value={target} 
           onChange={(e) => setTarget(e.target.value)}
-          className="form-select"
           required
           disabled={isLoading}
-          style={{ 
-            width: '100%', 
-            boxSizing: 'border-box',
-            border: target ? '1px solid #ddd' : '2px solid #ffeba7' 
-          }}
+          className="input-field"
         >
-          <option value="" disabled>-- Выберите получателя --</option>
-          <option value="ALL">📢 Все пользователи</option>
-          <option value="DRIVER">🚕 Только водители</option>
-          <option value="CLIENT">👤 Только клиенты</option>
+          <option value="" disabled>-- Виберіть отримувача --</option>
+          <option value="ALL">Усі користувачі</option>
+          <option value="DRIVER">Тільки водії</option>
+          <option value="CLIENT">Тільки клієнти</option>
         </select>
       </div>
 
-      <div className="form-group" style={{ width: '100%' }}>
-        <label>Изображение (для интерактива)</label>
+      <div className="input-group-field">
+        <label className="field-label">Зображення</label>
         <input 
           type="file" 
           accept="image/*"
           onChange={handleFileChange}
-          className="file-input"
           disabled={isLoading}
-          style={{ width: '100%' }}
+          className="file-input-field"
         />
         
         {previewUrl && (
-          <div style={{ marginTop: '15px', textAlign: 'center' }}>
-            <p style={{ marginBottom: '5px', fontSize: '0.9em', color: '#666' }}>Попередній перегляд:</p>
+          <div className="form-preview-box">
+            <span className="field-label">Попередній перегляд:</span>
             <img 
               src={previewUrl} 
               alt="Preview" 
-              style={{ 
-                width: '100%', 
-                maxWidth: '100%', // Адаптивно на всю ширину
-                maxHeight: '200px', // Обмеження висоти
-                objectFit: 'contain', 
-                borderRadius: '8px',
-                border: '1px solid #eee'
-              }}
+              className="form-preview-img"
             />
           </div>
         )}
       </div>
 
-      <div className="form-actions">
-        <button type="submit" className="btn-primary" disabled={isLoading} style={{ width: '100%' }}>
-          {isLoading ? 'Отправка...' : 'Отправить'}
+      <div className="form-actions-stack">
+        <button type="submit" className="btn btn-primary" disabled={isLoading}>
+          {isLoading ? 'Публікація...' : 'Опублікувати'}
         </button>
-      </div>
-      
-      {onCancel && (
-        <button 
+        {onCancel && (
+          <button 
             type="button" 
             onClick={onCancel} 
-            className="btn-secondary" 
+            className="btn btn-secondary" 
             disabled={isLoading}
-            style={{ width: '100%', marginTop: '10px' }}
-        >
-            Отмена
-        </button>
-      )}
+          >
+            Скасувати
+          </button>
+        )}
+      </div>
     </form>
   );
 };

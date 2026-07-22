@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../assets/Form.css';
 
 const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoading }) => {
-  // 1. Дані
+  // 1. Данные формы
   const [formData, setFormData] = useState({
     fullName: '', phoneNumber: '', password: '',
     email: '', rnokpp: '', driverLicense: '',
@@ -11,9 +11,8 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
     tariffIds: []
   });
 
-  // 2. Файли
-  const [selectedFile, setSelectedFile] = useState(null);    // Аватарка
-  const [selectedCarFile, setSelectedCarFile] = useState(null); // Фото авто
+  // 2. Файлы
+  const [selectedFile, setSelectedFile] = useState(null); // Аватарка водія
   
   const [docFiles, setDocFiles] = useState({
     techPassportFront: null, techPassportBack: null, insurancePhoto: null,
@@ -61,10 +60,6 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
     if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
   };
 
-  const handleCarFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) setSelectedCarFile(e.target.files[0]);
-  };
-
   const handleDocChange = (e) => {
     const { name, files } = e.target;
     if (files && files[0]) setDocFiles(prev => ({ ...prev, [name]: files[0] }));
@@ -77,31 +72,28 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
       delete dataToSend.password;
       delete dataToSend.phoneNumber; 
     }
-    const carFilesCollection = { carFile: selectedCarFile, ...docFiles };
+    const carFilesCollection = { ...docFiles };
     onSubmit(dataToSend, selectedFile, carFilesCollection);
   };
 
-  // --- ФУНКЦІЯ ПРЕВЬЮ (Магія тут) ---
-  // fileObj - новий файл (File), dbUrl - посилання з бази (String)
+  // Предпросмотр фото
   const renderPreview = (fileObj, dbUrl, placeholderText = "Немає фото") => {
     let src = null;
     
     if (fileObj) {
-        // Якщо обрали новий файл - створюємо тимчасове посилання
-        src = URL.createObjectURL(fileObj);
+      src = URL.createObjectURL(fileObj);
     } else if (isEditMode && dbUrl) {
-        // Якщо є посилання з бази
-        src = dbUrl;
+      src = dbUrl;
     }
 
     return (
-        <div className="image-preview-box">
-            {src ? (
-                <img src={src} alt="Preview" />
-            ) : (
-                <span>{placeholderText}</span>
-            )}
-        </div>
+      <div className="image-preview-box">
+        {src ? (
+          <img src={src} alt="Preview" />
+        ) : (
+          <span>{placeholderText}</span>
+        )}
+      </div>
     );
   };
 
@@ -110,205 +102,196 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
       <input type="text" style={{display:'none'}} />
       <input type="password" style={{display:'none'}} />
 
-      {/* --- СЕКЦІЯ 1: ОСОБИСТІ ДАНІ --- */}
+      {/* --- СЕКЦИЯ 1: ЛИЧНЫЕ ДАННЫЕ --- */}
       <div className="form-section">
-        {/* Колонка фото */}
         <div className="photo-column">
-            <label>Аватар водія</label>
-            {renderPreview(selectedFile, initialData?.photoUrl, "Фото водія")}
-            <label className="custom-file-upload">
-                <input type="file" onChange={handleFileChange} accept="image/*" style={{display:'none'}}/>
-                Обрати фото
-            </label>
+          <label>Аватар водія</label>
+          {renderPreview(selectedFile, initialData?.photoUrl, "Фото водія")}
+          <label className="custom-file-upload">
+            <input type="file" onChange={handleFileChange} accept="image/*" style={{display:'none'}}/>
+            Обрати фото
+          </label>
         </div>
 
-        {/* Колонка полів */}
         <div className="fields-column">
-            <h3 className="full-width">Особисті дані</h3>
-            
+          <h3 className="full-width">Особисті дані</h3>
+          
+          <div className="form-group">
+            <label>ПІБ *</label>
+            <input name="fullName" value={formData.fullName} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Телефон *</label>
+            <input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required disabled={isEditMode} />
+          </div>
+          <div className="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange} required />
+          </div>
+          {!isEditMode && (
             <div className="form-group">
-                <label>ПІБ *</label>
-                <input name="fullName" value={formData.fullName} onChange={handleChange} required />
+              <label>Пароль *</label>
+              <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} />
             </div>
-            <div className="form-group">
-                <label>Телефон *</label>
-                <input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required disabled={isEditMode} />
-            </div>
-            <div className="form-group">
-                <label>Email *</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required />
-            </div>
-            {!isEditMode && (
-                <div className="form-group">
-                    <label>Пароль *</label>
-                    <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} />
-                </div>
-            )}
-            <div className="form-group">
-                <label>РНОКПП *</label>
-                <input name="rnokpp" value={formData.rnokpp} onChange={handleChange} required />
-            </div>
-            <div className="form-group">
-                <label>Посвідчення водія *</label>
-                <input name="driverLicense" value={formData.driverLicense} onChange={handleChange} required />
-            </div>
+          )}
+          <div className="form-group">
+            <label>РНОКПП *</label>
+            <input name="rnokpp" value={formData.rnokpp} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Посвідчення водія *</label>
+            <input name="driverLicense" value={formData.driverLicense} onChange={handleChange} required />
+          </div>
         </div>
       </div>
 
-      {/* --- СЕКЦІЯ 2: АВТОМОБІЛЬ --- */}
-      <div className="form-section">
-        {/* Фото авто */}
-        <div className="photo-column">
-            <label>Фото авто (Головне)</label>
-            {renderPreview(selectedCarFile, initialData?.car?.photoUrl, "Фото машини")}
-            <label className="custom-file-upload">
-                <input type="file" onChange={handleCarFileChange} accept="image/*" style={{display:'none'}}/>
-                Обрати фото
-            </label>
-        </div>
-
-        {/* Дані авто */}
-        <div className="fields-column">
-            <h3 className="full-width">Дані автомобіля</h3>
-
-            <div className="form-group">
-                <label>Марка *</label>
-                <input name="make" value={formData.make} onChange={handleChange} required />
-            </div>
-            <div className="form-group">
-                <label>Модель *</label>
-                <input name="model" value={formData.model} onChange={handleChange} required />
-            </div>
-            <div className="form-group">
-                <label>Держ. номер *</label>
-                <input name="plateNumber" value={formData.plateNumber} onChange={handleChange} required />
-            </div>
-            <div className="form-group">
-                <label>Тип кузова *</label>
-                <select name="carType" value={formData.carType} onChange={handleChange} required>
-                    <option value="Седан">Седан</option>
-                    <option value="Хетчбек">Хетчбек</option>
-                    <option value="Універсал">Універсал</option>
-                    <option value="Кросовер">Кросовер</option>
-                    <option value="Пікап">Пікап</option>
-                    <option value="Мінівен">Мінівен</option> 
-                </select>
-            </div>
-            <div className="form-group">
-                <label>Колір *</label>
-                <input name="color" value={formData.color} onChange={handleChange} required placeholder="#FFFFFF або Назва" />
-            </div>
-            <div className="form-group">
-                <label>Рік випуску *</label>
-                <input type="number" name="year" value={formData.year} onChange={handleChange} required />
-            </div>
-            <div className="form-group full-width">
-                <label>VIN код *</label>
-                <input name="vin" value={formData.vin} onChange={handleChange} required />
-            </div>
-        </div>
-      </div>
-
-      {/* --- СЕКЦІЯ 3: ДОКУМЕНТИ ТА ОГЛЯД --- */}
+      {/* --- СЕКЦИЯ 2: АВТОМОБИЛЬ --- */}
       <div className="form-section" style={{flexDirection: 'column'}}>
-        <h3>Документи та Фотозвіт</h3>
+        <h3>Дані автомобіля</h3>
+
+        <div className="fields-column" style={{width: '100%'}}>
+          <div className="form-group">
+            <label>Марка *</label>
+            <input name="make" value={formData.make} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Модель *</label>
+            <input name="model" value={formData.model} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Держ. номер *</label>
+            <input name="plateNumber" value={formData.plateNumber} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Тип кузова *</label>
+            <select name="carType" value={formData.carType} onChange={handleChange} required>
+              <option value="Седан">Седан</option>
+              <option value="Хетчбек">Хетчбек</option>
+              <option value="Універсал">Універсал</option>
+              <option value="Кросовер">Кросовер</option>
+              <option value="Пікап">Пікап</option>
+              <option value="Мінівен">Мінівен</option> 
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Колір *</label>
+            <input name="color" value={formData.color} onChange={handleChange} required placeholder="Колір або HEX" />
+          </div>
+          <div className="form-group">
+            <label>Рік випуску *</label>
+            <input type="number" name="year" value={formData.year} onChange={handleChange} required />
+          </div>
+          
+          <div className="form-group full-width">
+            <label>VIN-код (необов'язково)</label>
+            <input 
+              name="vin" 
+              value={formData.vin} 
+              onChange={handleChange} 
+              placeholder="Введіть VIN (за наявності)" 
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* --- СЕКЦИЯ 3: ДОКУМЕНТЫ И ФОТООТЧЕТ --- */}
+      <div className="form-section" style={{flexDirection: 'column'}}>
+        <h3>Документи та фотозвіт</h3>
         
         <div className="docs-grid">
-            {/* Техпаспорт */}
-            <div className="doc-item">
-                <label>Тех. паспорт (Перед)</label>
-                {renderPreview(docFiles.techPassportFront, initialData?.car?.techPassportFront)}
-                <label className="custom-file-upload">
-                    <input type="file" name="techPassportFront" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
-            <div className="doc-item">
-                <label>Тех. паспорт (Зад)</label>
-                {renderPreview(docFiles.techPassportBack, initialData?.car?.techPassportBack)}
-                <label className="custom-file-upload">
-                    <input type="file" name="techPassportBack" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
-            <div className="doc-item">
-                <label>Страховка (ОСАГО)</label>
-                {renderPreview(docFiles.insurancePhoto, initialData?.car?.insurancePhoto)}
-                <label className="custom-file-upload">
-                    <input type="file" name="insurancePhoto" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
+          <div className="doc-item">
+            <label>Тех. паспорт (Перед)</label>
+            {renderPreview(docFiles.techPassportFront, initialData?.car?.techPassportFront)}
+            <label className="custom-file-upload">
+              <input type="file" name="techPassportFront" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
+          <div className="doc-item">
+            <label>Тех. паспорт (Зад)</label>
+            {renderPreview(docFiles.techPassportBack, initialData?.car?.techPassportBack)}
+            <label className="custom-file-upload">
+              <input type="file" name="techPassportBack" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
+          <div className="doc-item">
+            <label>Страховка (ОСАГО)</label>
+            {renderPreview(docFiles.insurancePhoto, initialData?.car?.insurancePhoto)}
+            <label className="custom-file-upload">
+              <input type="file" name="insurancePhoto" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
 
-            {/* Сторони авто */}
-            <div className="doc-item">
-                <label>Вид спереду</label>
-                {renderPreview(docFiles.photoFront, initialData?.car?.photoFront)}
-                <label className="custom-file-upload">
-                    <input type="file" name="photoFront" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
-            <div className="doc-item">
-                <label>Вид ззаду</label>
-                {renderPreview(docFiles.photoBack, initialData?.car?.photoBack)}
-                <label className="custom-file-upload">
-                    <input type="file" name="photoBack" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
-            <div className="doc-item">
-                <label>Вид зліва</label>
-                {renderPreview(docFiles.photoLeft, initialData?.car?.photoLeft)}
-                <label className="custom-file-upload">
-                    <input type="file" name="photoLeft" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
-            <div className="doc-item">
-                <label>Вид справа</label>
-                {renderPreview(docFiles.photoRight, initialData?.car?.photoRight)}
-                <label className="custom-file-upload">
-                    <input type="file" name="photoRight" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
-            <div className="doc-item">
-                <label>Салон (Перед)</label>
-                {renderPreview(docFiles.photoSeatsFront, initialData?.car?.photoSeatsFront)}
-                <label className="custom-file-upload">
-                    <input type="file" name="photoSeatsFront" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
-            <div className="doc-item">
-                <label>Салон (Зад)</label>
-                {renderPreview(docFiles.photoSeatsBack, initialData?.car?.photoSeatsBack)}
-                <label className="custom-file-upload">
-                    <input type="file" name="photoSeatsBack" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
-                    Завантажити
-                </label>
-            </div>
+          <div className="doc-item">
+            <label>Вид спереду</label>
+            {renderPreview(docFiles.photoFront, initialData?.car?.photoFront)}
+            <label className="custom-file-upload">
+              <input type="file" name="photoFront" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
+          <div className="doc-item">
+            <label>Вид ззаду</label>
+            {renderPreview(docFiles.photoBack, initialData?.car?.photoBack)}
+            <label className="custom-file-upload">
+              <input type="file" name="photoBack" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
+          <div className="doc-item">
+            <label>Вид зліва</label>
+            {renderPreview(docFiles.photoLeft, initialData?.car?.photoLeft)}
+            <label className="custom-file-upload">
+              <input type="file" name="photoLeft" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
+          <div className="doc-item">
+            <label>Вид справа (Головне фото авто)</label>
+            {renderPreview(docFiles.photoRight, initialData?.car?.photoRight)}
+            <label className="custom-file-upload">
+              <input type="file" name="photoRight" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
+          <div className="doc-item">
+            <label>Салон (Перед)</label>
+            {renderPreview(docFiles.photoSeatsFront, initialData?.car?.photoSeatsFront)}
+            <label className="custom-file-upload">
+              <input type="file" name="photoSeatsFront" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
+          <div className="doc-item">
+            <label>Салон (Зад)</label>
+            {renderPreview(docFiles.photoSeatsBack, initialData?.car?.photoSeatsBack)}
+            <label className="custom-file-upload">
+              <input type="file" name="photoSeatsBack" onChange={handleDocChange} accept="image/*" style={{display:'none'}}/>
+              Завантажити
+            </label>
+          </div>
         </div>
       </div>
 
-      {/* --- СЕКЦІЯ 4: ТАРИФИ --- */}
+      {/* --- СЕКЦИЯ 4: ТАРИФЫ --- */}
       <div className="form-section" style={{flexDirection: 'column'}}>
         <h3>Доступні тарифи</h3>
         <div className="checkbox-group">
-            {availableTariffs.length > 0 ? (
+          {availableTariffs.length > 0 ? (
             availableTariffs.map(tariff => (
-                <label key={tariff.id} className="checkbox-label">
+              <label key={tariff.id} className="checkbox-label">
                 <input 
-                    type="checkbox"
-                    value={tariff.id}
-                    checked={formData.tariffIds.includes(tariff.id)}
-                    onChange={handleTariffChange}
+                  type="checkbox"
+                  value={tariff.id}
+                  checked={formData.tariffIds.includes(tariff.id)}
+                  onChange={handleTariffChange}
                 />
                 {tariff.name}
-                </label>
+              </label>
             ))
-            ) : <p>Тарифи не знайдені</p>}
+          ) : <p className="text-subtle">Тарифи не знайдені</p>}
         </div>
       </div>
 

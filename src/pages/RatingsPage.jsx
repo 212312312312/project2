@@ -1,137 +1,201 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getAllRatings, toggleIgnoreRating } from '../services/ratingService';
-import '../assets/TableStyles.css';
+import '../assets/RatingsPage.css';
 
 const RatingsPage = () => {
   const [ratings, setRatings] = useState([]);
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadRatings();
   }, []);
 
   const loadRatings = async () => {
+    setLoading(true);
+    setError('');
     try {
       const data = await getAllRatings();
-      setRatings(data);
-    } catch (error) {
-      console.error("Не вдалося завантажити рейтинги", error);
+      const formattedData = Array.isArray(data) ? data : (data?.data || []);
+      setRatings(formattedData.map(r => ({ ...r, id: r.id || Math.random() })));
+    } catch (err) {
+      console.error("Помилка завантаження рейтингів:", err);
+      setError("Не вдалося завантажити список відгуків");
     } finally {
       setLoading(false);
     }
   };
 
   const handleToggleIgnore = async (id) => {
-    if(!window.confirm('Змінити статус врахування цієї оцінки?')) return;
+    if (!window.confirm('Змінити статус архівування цієї оцінки?')) return;
     try {
       await toggleIgnoreRating(id);
       loadRatings();
-    } catch (error) {
-      console.error("Помилка", error);
-      alert("Помилка при зміні статусу");
+    } catch (err) {
+      console.error("Помилка при зміні статусу:", err);
+      alert("Помилка при зміні статусу відгуку");
     }
   };
 
-  const getFilteredRatings = () => {
+  // Перехід до картки водія
+  const handleOpenDriver = (driverId) => {
+    if (!driverId) return;
+    window.location.href = `/drivers?openId=${driverId}`;
+  };
+
+  // Перехід до картки клієнта
+  const handleOpenClient = (clientId) => {
+    if (!clientId) return;
+    window.location.href = `/clients?openId=${clientId}`;
+  };
+
+  const filteredRatings = useMemo(() => {
     return ratings.filter(r => {
       if (filter === 'BAD') return r.score <= 3;
       if (filter === 'GOOD') return r.score > 3;
       return true;
     });
-  };
+  }, [ratings, filter]);
 
-  // ИСПРАВЛЕНО: Рисуем только закрашенные звезды
   const renderStars = (score) => {
-    return "★".repeat(score); 
+    const validScore = Math.max(1, Math.min(5, Number(score) || 5));
+    return "★".repeat(validScore);
   };
 
-  if (loading) return <div className="page-container">Завантаження...</div>;
+  if (loading) return <div className="loading-spinner">Завантаження відгуків...</div>;
 
   return (
-    <div className="page-container">
-      <div className="header-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2>Відгуки та Рейтинг</h2>
-        
-        <div className="filter-buttons">
-          <button 
-            className={filter === 'ALL' ? 'active-btn' : ''} 
-            onClick={() => setFilter('ALL')}
-            style={{ marginRight: '10px', padding: '5px 10px' }}
-          >
-            Всі
-          </button>
-          <button 
-            className={filter === 'BAD' ? 'active-btn' : ''} 
-            onClick={() => setFilter('BAD')}
-            style={{ marginRight: '10px', padding: '5px 10px', backgroundColor: '#ffcccc', color: '#000' }}
-          >
-            Скарги (1-3)
-          </button>
-          <button 
-            className={filter === 'GOOD' ? 'active-btn' : ''} 
-            onClick={() => setFilter('GOOD')}
-            style={{ padding: '5px 10px', backgroundColor: '#ccffcc', color: '#000' }}
-          >
-            Позитивні (4-5)
+    <div className="page-wrapper">
+      <header className="page-header">
+        <div className="header-title-group">
+          <h1>Відгуки та рейтинг</h1>
+          <span className="count-badge">{filteredRatings.length}</span>
+        </div>
+
+        <div className="header-actions">
+          <div className="toggle-group">
+            <button 
+              className={`toggle-btn ${filter === 'ALL' ? 'active' : ''}`} 
+              onClick={() => setFilter('ALL')}
+            >
+              Усі
+            </button>
+            <button 
+              className={`toggle-btn ${filter === 'BAD' ? 'active' : ''}`} 
+              onClick={() => setFilter('BAD')}
+            >
+              Скарги (1-3)
+            </button>
+            <button 
+              className={`toggle-btn ${filter === 'GOOD' ? 'active' : ''}`} 
+              onClick={() => setFilter('GOOD')}
+            >
+              Позитивні (4-5)
+            </button>
+          </div>
+
+          <button className="btn btn-secondary" onClick={loadRatings}>
+            Оновити
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="table-responsive">
-        <table className="custom-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Дата</th>
-              <th>Замовлення</th>
-              <th>Водій</th>
-              <th>Клієнт</th>
-              <th>Оцінка</th>
-              <th>Коментар</th>
-              <th>Дія</th>
-            </tr>
-          </thead>
-          <tbody>
-            {getFilteredRatings().map((rating) => (
-              <tr key={rating.id || Math.random()} style={{ opacity: rating.comment?.includes('[IGNORED]') ? 0.5 : 1 }}>
-                <td>#{rating.id}</td>
-                <td>{rating.date || '-'}</td>
-                <td>#{rating.orderId}</td>
-                <td>{rating.driverName || '---'}</td>
-                <td>{rating.clientName || '---'}</td>
+      {error && <div className="alert alert-danger">{error}</div>}
 
-                {/* ИСПРАВЛЕНО: Крупный шрифт, только желтые звезды */}
-                <td style={{ 
-                    color: '#FFD700', 
-                    fontWeight: 'bold', 
-                    fontSize: '1.5rem',  /* Крупнее */
-                    letterSpacing: '2px', 
-                    minWidth: '100px',
-                    textShadow: '1px 1px 2px rgba(0,0,0,0.2)' /* Небольшая тень для контраста */
-                }}>
-                  {renderStars(rating.score)}
-                </td>
-                
-                <td>{rating.comment || "-"}</td>
-                
-                <td>
-                  <button 
-                    onClick={() => handleToggleIgnore(rating.id)}
-                    style={{ fontSize: '0.8rem', padding: '4px 8px', cursor: 'pointer' }}
-                  >
-                    Архівувати
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {getFilteredRatings().length === 0 && (
+      <div className="table-card">
+        <div className="table-responsive">
+          <table className="main-table ratings-table">
+            <thead>
               <tr>
-                <td colSpan="8" style={{ textAlign: 'center' }}>Записів не знайдено</td>
+                <th className="text-center">ID</th>
+                <th>Дата</th>
+                <th className="text-center">Замовлення</th>
+                <th>Водій</th>
+                <th>Клієнт</th>
+                <th className="text-center">Оцінка</th>
+                <th>Коментар</th>
+                <th className="text-center">Дія</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredRatings.length > 0 ? (
+                filteredRatings.map((rating) => {
+                  const isIgnored = rating.comment?.includes('[IGNORED]') || rating.isIgnored;
+                  
+                  // Визначення ID з різних можливих структур DTO
+                  const driverId = rating.driverId || rating.driver?.id;
+                  const clientId = rating.clientId || rating.client?.id;
+                  
+                  const driverName = rating.driverName || rating.driver?.fullName || '—';
+                  const clientName = rating.clientName || rating.client?.fullName || '—';
+
+                  return (
+                    <tr 
+                      key={rating.id} 
+                      className={isIgnored ? 'row-archived' : ''}
+                    >
+                      <td className="text-center text-subtle">#{rating.id}</td>
+                      <td className="text-subtle text-sm">{rating.date || '—'}</td>
+                      <td className="text-center font-medium">#{rating.orderId || '—'}</td>
+                      
+                      {/* КЛІКАБЕЛЬНИЙ ВОДІЙ */}
+                      <td>
+                        {driverId ? (
+                          <span 
+                            className="clickable-entity" 
+                            onClick={() => handleOpenDriver(driverId)}
+                            title="Перейти до картки водія"
+                          >
+                            {driverName}
+                          </span>
+                        ) : (
+                          <span>{driverName}</span>
+                        )}
+                      </td>
+
+                      {/* КЛІКАБЕЛЬНИЙ КЛІЄНТ */}
+                      <td>
+                        {clientId ? (
+                          <span 
+                            className="clickable-entity" 
+                            onClick={() => handleOpenClient(clientId)}
+                            title="Перейти до картки клієнта"
+                          >
+                            {clientName}
+                          </span>
+                        ) : (
+                          <span>{clientName}</span>
+                        )}
+                      </td>
+
+                      <td className="text-center stars-cell">
+                        <span className={`stars-display ${rating.score <= 3 ? 'stars-bad' : 'stars-good'}`}>
+                          {renderStars(rating.score)}
+                        </span>
+                      </td>
+                      <td className="comment-cell">{rating.comment || '—'}</td>
+                      <td className="text-center">
+                        <button 
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => handleToggleIgnore(rating.id)}
+                        >
+                          {isIgnored ? 'Розархівувати' : 'Архівувати'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="8" className="text-center text-subtle py-8">
+                    Відгуків не знайдено
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

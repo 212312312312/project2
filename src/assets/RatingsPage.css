@@ -1,0 +1,225 @@
+/* ==========================================
+   СТИЛІ СТРАНИЦІ ВІДГУКІВ ТА РЕЙТИНГУ (UNIT)
+   ========================================== */
+:root {
+  --font-main: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  --bg-app: #f8fafc;
+  --bg-card: #ffffff;
+  --border-color: #cbd5e1;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --primary-color: #0284c7;
+  --primary-hover: #0369a1;
+  --danger-color: #dc2626;
+  --success-color: #16a34a;
+  --warning-color: #d97706;
+}
+
+.page-wrapper {
+  font-family: var(--font-main);
+  color: var(--text-main);
+  padding: 2rem;
+  background-color: var(--bg-app);
+  min-height: 100vh;
+  box-sizing: border-box;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* === ШАПКА === */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-title-group h1 {
+  font-size: 1.85rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.count-badge {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 0.35rem 0.8rem;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* === ПЕРЕМИКАЧІ === */
+.toggle-group {
+  display: flex;
+  background-color: #e2e8f0;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.toggle-btn {
+  border: none;
+  background: transparent;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-main);
+}
+
+.toggle-btn.active {
+  background-color: #ffffff;
+  color: var(--text-main);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* === КНОПКИ === */
+.btn {
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-secondary {
+  background-color: #f1f5f9;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+.btn-secondary:hover { background-color: #e2e8f0; }
+
+.btn-sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.825rem;
+}
+
+.btn-outline-secondary {
+  border: 1px solid var(--border-color);
+  background: #ffffff;
+  color: var(--text-muted);
+  border-radius: 6px;
+}
+.btn-outline-secondary:hover {
+  background: #f1f5f9;
+  color: var(--text-main);
+}
+
+/* === ТАБЛИЦЯ === */
+.table-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: hidden !important;
+}
+
+.main-table.ratings-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  table-layout: fixed !important;
+}
+
+.main-table.ratings-table th {
+  background: #f1f5f9;
+  padding: 0.9rem 0.75rem;
+  text-align: left;
+  font-weight: 700;
+  color: var(--text-main);
+  border-bottom: 2px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.main-table.ratings-table td {
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.main-table.ratings-table th.text-center,
+.main-table.ratings-table td.text-center {
+  text-align: center !important;
+}
+
+/* Розподіл колонок для 100% ширини без скролу */
+.ratings-table th:nth-child(1), .ratings-table td:nth-child(1) { width: 65px; }   /* ID */
+.ratings-table th:nth-child(2), .ratings-table td:nth-child(2) { width: 125px; }  /* Дата */
+.ratings-table th:nth-child(3), .ratings-table td:nth-child(3) { width: 110px; }  /* Замовлення */
+.ratings-table th:nth-child(4), .ratings-table td:nth-child(4) { width: 18%; }   /* Водій */
+.ratings-table th:nth-child(5), .ratings-table td:nth-child(5) { width: 18%; }   /* Клієнт */
+.ratings-table th:nth-child(6), .ratings-table td:nth-child(6) { width: 110px; }  /* Оцінка */
+.ratings-table th:nth-child(7), .ratings-table td:nth-child(7) { width: auto; }   /* Коментар */
+.ratings-table th:nth-child(8), .ratings-table td:nth-child(8) { width: 120px; }  /* Дія */
+
+/* КЛІКАБЕЛЬНІ ІМЕНА (ВОДІЙ / КЛІЄНТ) */
+.clickable-entity {
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+
+.clickable-entity:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+/* Зірочки оцінки */
+.stars-display {
+  font-size: 1.15rem;
+  letter-spacing: 2px;
+  font-weight: bold;
+}
+.stars-good { color: #f59e0b; }
+.stars-bad { color: #ef4444; }
+
+.comment-cell {
+  white-space: normal !important;
+  word-break: break-word;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.row-archived {
+  opacity: 0.55;
+  background-color: #f8fafc;
+}
+
+/* Утиліти */
+.text-subtle { color: var(--text-muted); }
+.text-sm { font-size: 0.8rem; }
+.font-medium { font-weight: 600; }
+.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
