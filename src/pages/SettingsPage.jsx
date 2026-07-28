@@ -88,7 +88,10 @@ const SettingsPage = () => {
                         </button>
                     </div>
                 </div>
-
+                <EvosSettingsCard 
+    settingsData={settings} 
+    onReload={loadSettings} 
+/>
                 <SettingCard 
                     title="📍 Мітка водія (Диспетчерська)"
                     description="Іконка водія на карті диспетчерської панелі."
@@ -115,6 +118,129 @@ const SettingsPage = () => {
                     onClose={() => setReasonModalTarget(null)} 
                 />
             )}
+        </div>
+    );
+};
+
+const EvosSettingsCard = ({ settingsData, onReload }) => {
+    const [enabled, setEnabled] = useState(settingsData.evos_enabled === 'true');
+    const [delaySeconds, setDelaySeconds] = useState(settingsData.evos_delay_seconds || '60');
+    const [url, setUrl] = useState(settingsData.evos_url || 'http://127.0.0.1:8080/api');
+    const [login, setLogin] = useState(settingsData.evos_login || '');
+    const [password, setPassword] = useState(settingsData.evos_password || '');
+    const [appId, setAppId] = useState(settingsData.evos_app_id || 'UNIT_TAXI');
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        setEnabled(settingsData.evos_enabled === 'true');
+        setDelaySeconds(settingsData.evos_delay_seconds || '60');
+        setUrl(settingsData.evos_url || 'http://127.0.0.1:8080/api');
+        setLogin(settingsData.evos_login || '');
+        setPassword(settingsData.evos_password || '');
+        setAppId(settingsData.evos_app_id || 'UNIT_TAXI');
+    }, [settingsData]);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await saveTextSettings({
+                evos_enabled: enabled.toString(),
+                evos_delay_seconds: delaySeconds.toString(),
+                evos_url: url,
+                evos_login: login,
+                evos_password: password,
+                evos_app_id: appId
+            });
+            alert('Налаштування EvoS збережено успішно!');
+            if (onReload) onReload();
+        } catch (error) {
+            alert('Помилка збереження: ' + error.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="form-section" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.25rem' }}>
+            <h3 className="form-section-title" style={{ margin: '0 0 0.5rem 0' }}>🌐 Інтеграція з EvoS (TaxiNavigator)</h3>
+            <p className="form-hint" style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1rem', lineHeight: '1.4' }}>
+                Автоматична перекидка нерозподілених замовлень у загальну мережу EvoS.
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input 
+                    type="checkbox" 
+                    id="evos_enabled_checkbox"
+                    checked={enabled} 
+                    onChange={(e) => setEnabled(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <label htmlFor="evos_enabled_checkbox" className="form-label" style={{ margin: 0, cursor: 'pointer', fontWeight: 'bold' }}>
+                    Увімкнути перекидку в EvoS
+                </label>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Затримка перед перекидкою (секунд)</label>
+                <input 
+                    type="number" 
+                    value={delaySeconds} 
+                    onChange={(e) => setDelaySeconds(e.target.value)} 
+                    className="input-field"
+                    placeholder="Наприклад: 60"
+                />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">URL сервера WebAPI EvoS</label>
+                <input 
+                    type="text" 
+                    value={url} 
+                    onChange={(e) => setUrl(e.target.value)} 
+                    className="input-field"
+                    placeholder="http://127.0.0.1:8080/api"
+                />
+            </div>
+
+            <div className="form-grid-2col" style={{ marginBottom: '1rem' }}>
+                <div className="form-group">
+                    <label className="form-label">Логін</label>
+                    <input 
+                        type="text" 
+                        value={login} 
+                        onChange={(e) => setLogin(e.target.value)} 
+                        className="input-field"
+                    />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Пароль</label>
+                    <input 
+                        type="password" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        className="input-field"
+                    />
+                </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label">X-WO-API-APP-ID (App ID)</label>
+                <input 
+                    type="text" 
+                    value={appId} 
+                    onChange={(e) => setAppId(e.target.value)} 
+                    className="input-field"
+                />
+            </div>
+
+            <button 
+                className="btn btn-primary" 
+                style={{ width: '100%' }} 
+                onClick={handleSave} 
+                disabled={saving}
+            >
+                {saving ? "Збереження..." : "Зберегти налаштування EvoS"}
+            </button>
         </div>
     );
 };

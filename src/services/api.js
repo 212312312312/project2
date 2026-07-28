@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // 0. Базовый адрес вашего продакшн-сервера в Google Cloud Run
-const SERVER_URL = 'https://taxi-server-594834712305.europe-central2.run.app';
+const SERVER_URL = 'http://localhost:8080';
 
 // 1. Создаем "экземпляр" (instance) axios
 const api = axios.create({

@@ -430,15 +430,23 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
         </span>
     </div>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-        <span className={`status status-${order.status}`} style={{ padding: '6px 14px', fontSize: '0.9rem', fontWeight: '700', borderRadius: '6px' }}>
-            {getStatusLabel(order.status)}
+    <span className={`status status-${order.status}`} style={{ padding: '6px 14px', fontSize: '0.9rem', fontWeight: '700', borderRadius: '6px' }}>
+        {getStatusLabel(order.status)}
+    </span>
+
+    {/* --- БЕЙДЖ СТАТУСА EVOS --- */}
+    {order.isSentToEvos && (
+        <span style={{ backgroundColor: '#e7f5ff', color: '#1c7ed6', padding: '3px 8px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 'bold', border: '1px solid #a5d8ff' }}>
+            🌐 Перекинуто в EvoS
         </span>
-        {order.distanceMeters > 0 && (
-            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#495057', background: '#e9ecef', padding: '4px 10px', borderRadius: '6px', border: '1px solid #dee2e6' }}>
-                📏 {distanceKm} км ({pricePerKm} ₴/км)
-            </span>
-        )}
-    </div>
+    )}
+
+    {order.distanceMeters > 0 && (
+        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#495057', background: '#e9ecef', padding: '4px 10px', borderRadius: '6px', border: '1px solid #dee2e6' }}>
+            📏 {distanceKm} км ({pricePerKm} ₴/км)
+        </span>
+    )}
+</div>
   </div>
 
   {/* МАСШТАБНОЕ БОДИ КАРТОЧКИ */}
@@ -456,22 +464,29 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
             </div>
         </div>
         <div style={{ borderTop: '1px dashed #dee2e6', paddingTop: '10px' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Водій та Авто</div>
-            {order.driver ? (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', color: '#343a40', fontSize: '1.05rem' }}>
-                    <a href={`/drivers?openId=${order.driver.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#2e7d32', textDecoration: 'underline' }}>
-                        {order.driver.fullName}
-                    </a>
-                    <span style={{ backgroundColor: '#f1f3f5', color: '#212529', padding: '3px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '800', border: '1px solid #ced4da', letterSpacing: '0.5px' }}>
-                        {order.carNumber || order.driver?.carLicensePlate || '—'}
-                    </span>
-                </div>
-            ) : (
-                <div style={{ color: '#9bc2c1', fontStyle: 'italic', fontSize: '0.95rem', fontWeight: '500', padding: '2px 0' }}>
-                    {order.status === 'SCHEDULED' ? '🤖 Буде призначено автоматично' : '🔍 Пошук вільної машини...'}
-                </div>
-            )}
+    <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Водій та Авто</div>
+    
+    {order.driver ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', color: '#343a40', fontSize: '1.05rem' }}>
+            <a href={`/drivers?openId=${order.driver.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#2e7d32', textDecoration: 'underline' }}>
+                {order.driver.fullName}
+            </a>
+            <span style={{ backgroundColor: '#f1f3f5', color: '#212529', padding: '3px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '800', border: '1px solid #ced4da', letterSpacing: '0.5px' }}>
+                {order.carNumber || order.driver?.carLicensePlate || '—'}
+            </span>
         </div>
+    ) : order.isEvosDriverAssigned ? (
+        /* --- ОТОБРАЖЕНИЕ ПАРТНЕРСКОГО ВОДИТЕЛЯ EVOS --- */
+        <div style={{ backgroundColor: '#f3d9fa', color: '#862e9c', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 'bold', border: '1px solid #eebefa' }}>
+            <div>🚖 Водій з EvoS: {order.evosDriverCarInfo || 'Прийнято сторонньою службою'}</div>
+            {order.evosDriverPhone && <div style={{ fontSize: '0.85rem', marginTop: '2px', color: '#5f3dc4' }}>📞 Тел: {order.evosDriverPhone}</div>}
+        </div>
+    ) : (
+        <div style={{ color: '#9bc2c1', fontStyle: 'italic', fontSize: '0.95rem', fontWeight: '500', padding: '2px 0' }}>
+            {order.status === 'SCHEDULED' ? '🤖 Буде призначено автоматично' : '🔍 Пошук вільної машини...'}
+        </div>
+    )}
+</div>
     </div>
 
     {/* Блок 2: Маршрут (Заметные маркеры) */}
