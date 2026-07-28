@@ -1,133 +1,155 @@
 /* ============================================================
-   1. ЗАГАЛЬНІ СТИЛІ ТА СТАРІ ФОРМИ (TariffForm, entity-form)
+   1. ГЛОБАЛЬНЫЙ СБРОС И БАЗОВЫЕ НАСТРОЙКИ (BOX-SIZING FIX)
    ============================================================ */
+.modal-form,
+.app-form,
+.entity-form,
+.modal-form *,
+.app-form *,
+.entity-form * {
+  box-sizing: border-box !important;
+}
 
+/* ============================================================
+   2. КОНТЕЙНЕРЫ ФОРМ (ModalForm, AppForm, EntityForm)
+   ============================================================ */
+.modal-form,
+.app-form,
 .entity-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.25rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0.25rem 0.5rem !important;
 }
 
+/* ============================================================
+   3. СЕКЦИИ ФОРМ И ЗАГОЛОВКИ
+   ============================================================ */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.form-section-title,
+.form-section h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color, #cbd5e1);
+  width: 100%;
+}
+
+/* Специальная адаптация под DriverForm (когда слева колонка с фото) */
+.form-section:has(.photo-column),
+.form-section.photo-layout {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1.75rem;
+}
+
+/* ============================================================
+   4. СЕТКИ И ГРИДЫ (GRIDS & COLUMNS)
+   ============================================================ */
+.form-grid-2col,
+.fields-column,
 .entity-form .form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); 
-  gap: 1rem 1.5rem;
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 1rem !important;
+  width: 100% !important;
+  align-content: start;
 }
 
-/* Рамка fieldset */
-.entity-form fieldset {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 1.5rem;
-  margin: 0;
+.form-group.span-2,
+.full-width {
+  grid-column: 1 / -1 !important;
 }
 
-.entity-form fieldset.full-width {
-  grid-column: 1 / -1; 
-}
-
-.entity-form legend {
-  font-weight: 600;
-  padding: 0 0.5rem;
-  margin-left: 0.5rem;
-  color: #333;
-}
-
-/* Універсальна група (label + input) для entity-form */
+/* ============================================================
+   5. ЭЛЕМЕНТЫ ВВОДА (GROUPS, LABELS, INPUTS)
+   ============================================================ */
+.form-group,
+.app-form .form-group,
 .entity-form .form-group {
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.4rem !important;
+  width: 100% !important;
 }
 
+.form-label,
+.form-group label,
+.app-form .form-group label,
 .entity-form .form-group label {
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
 }
 
+.input-field,
+.app-form .form-group input,
+.app-form .form-group select,
 .entity-form .form-group input[type="text"],
 .entity-form .form-group input[type="tel"],
 .entity-form .form-group input[type="password"],
 .entity-form .form-group input[type="number"] {
-  width: 100%;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
+  width: 100% !important;
+  padding: 0.65rem 0.85rem !important;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  background-color: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.input-field:focus,
+.app-form .form-group input:focus,
+.app-form .form-group select:focus {
+  border-color: var(--primary-color, #0284c7);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.input-field:disabled,
+.app-form .form-group input:disabled,
 .entity-form .form-group input:disabled {
-  background-color: #f4f4f4;
+  background-color: #f1f5f9;
+  color: #94a3b8;
   cursor: not-allowed;
 }
 
-/* Кнопки внизу форми (загальні) */
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #eee;
-  margin-top: 1rem;
+.form-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748b);
 }
 
 /* ============================================================
-   2. НОВІ СТИЛІ ДЛЯ DRIVER FORM (Широка, з фото)
+   6. БЛОКИ ФОТО И ДОКУМЕНТОВ (DRIVER FORM PHOTO & DOCS)
    ============================================================ */
-
-/* Головний контейнер нової форми */
-.app-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  /* min-width прибрали, щоб не ламало мобілку, але 
-     grid внизу забезпечить ширину */
-  padding: 10px;
-  box-sizing: border-box;
-}
-
-/* Секція (блок з сірим фоном) */
-.form-section {
-  background: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 20px;
-  display: flex;
-  gap: 30px; /* Відступ між фото та полями */
-}
-
-.form-section h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  width: 100%;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 10px;
-  color: #333;
-  font-size: 18px;
-}
-
-/* --- КОЛОНКА З ФОТО (ЗЛІВА) --- */
 .photo-column {
-  width: 220px;
+  width: 200px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
-.photo-column label {
-  font-weight: 600;
-  color: #555;
-  font-size: 14px;
-}
-
-/* Квадрат превью фото */
 .image-preview-box {
-  width: 200px;
-  height: 200px;
-  border: 2px dashed #ccc;
+  width: 180px;
+  height: 180px;
+  border: 2px dashed #cbd5e1;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -144,83 +166,35 @@
 }
 
 .image-preview-box span {
-  color: #aaa;
-  font-size: 13px;
+  color: #94a3b8;
+  font-size: 0.8rem;
   text-align: center;
-  padding: 10px;
+  padding: 0.5rem;
 }
 
-/* Стилізована кнопка "Завантажити" */
 .custom-file-upload {
-  border: 1px solid #ccc;
+  border: 1px solid #cbd5e1;
   display: inline-block;
-  padding: 8px 16px;
+  padding: 0.5rem 1rem;
   cursor: pointer;
   background: #fff;
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
   text-align: center;
   width: 100%;
-  box-sizing: border-box;
   transition: all 0.2s;
 }
 
 .custom-file-upload:hover {
-  background: #f0f0f0;
-  border-color: #bbb;
+  background: #f1f5f9;
+  border-color: #0284c7;
 }
 
-/* --- КОЛОНКА З ПОЛЯМИ (СПРАВА) --- */
-.fields-column {
-  flex-grow: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* Дві колонки для інпутів */
-  gap: 20px;
-  align-content: start;
-}
-
-/* Поле на всю ширину */
-.full-width {
-  grid-column: 1 / -1;
-}
-
-/* Стилі інпутів для .app-form */
-.app-form .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.app-form .form-group label {
-  font-weight: 500;
-  font-size: 13px;
-  color: #555;
-}
-
-.app-form .form-group input,
-.app-form .form-group select {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.app-form .form-group input:focus,
-.app-form .form-group select:focus {
-  border-color: #1976d2;
-  outline: none;
-}
-
-.app-form .form-group input:disabled {
-  background: #eee;
-  color: #777;
-}
-
-/* --- ГРІД ДЛЯ ДОКУМЕНТІВ (Нижня секція) --- */
 .docs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
   width: 100%;
 }
 
@@ -228,84 +202,116 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   background: #fff;
-  padding: 10px;
+  padding: 0.75rem;
   border-radius: 6px;
-  border: 1px solid #eee;
+  border: 1px solid #e2e8f0;
 }
 
 .doc-item label {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #666;
+  color: #475569;
   text-align: center;
 }
 
-/* Зменшена версія превью бокса для документів */
 .doc-item .image-preview-box {
   width: 100%;
-  height: 120px;
+  height: 110px;
   border-width: 1px;
 }
 
-/* --- ЧЕКБОКСИ (Тарифи) --- */
-.checkbox-group {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Адаптивні колонки */
-  gap: 10px;
-  padding: 15px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  width: 100%;
-  box-sizing: border-box;
+/* ============================================================
+   7. ЧЕКБОКСЫ И ПЕРЕКЛЮЧАТЕЛИ
+   ============================================================ */
+.form-checkboxes-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+  background: #ffffff;
+  padding: 1rem !important;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  width: 100% !important;
 }
 
+.checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.checkbox-item,
 .checkbox-label {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
   cursor: pointer;
-  padding: 5px;
+  font-size: 0.9rem;
+  user-select: none;
+  padding: 0.25rem;
   border-radius: 4px;
   transition: background 0.2s;
 }
 
+.checkbox-item:hover,
 .checkbox-label:hover {
-  background: #f5f5f5;
+  background: #f1f5f9;
 }
 
+.checkbox-item input[type="checkbox"],
 .checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   cursor: pointer;
-  accent-color: #1976d2;
+  accent-color: var(--primary-color, #0284c7);
 }
 
 /* ============================================================
-   3. ВАЖЛИВЕ ВИПРАВЛЕННЯ ДЛЯ МОДАЛКИ (MODAL FIX)
-   Це змусить контейнер модалки розширитись під нашу форму
+   8. КНОПКИ ДЕЙСТВИЙ (FORM ACTIONS)
    ============================================================ */
-
-/* Спроба пересилити стилі стандартної модалки */
-.modal-content, 
-.modal-body,
-[class*="modal-content"], /* Ловить класи типу style_modal-content */
-[class*="modal_content"] {
-  width: auto !important;
-  max-width: 1200px !important; /* Робимо широким */
-  min-width: 950px !important;  /* Гарантуємо, що форма влізе */
+.form-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  width: 100% !important;
 }
 
-/* Якщо модалка використовує .modal-dialog (як у Bootstrap) */
-.modal-dialog {
-  max-width: 1200px !important;
-  width: 95% !important;
+.form-actions.justify-end {
+  justify-content: flex-end !important;
 }
 
-/* Запобігаємо горизонтальному скролу всередині тіла */
-.modal-body {
-  overflow-x: hidden !important;
+/* ============================================================
+   9. АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ ЭКРАНОВ
+   ============================================================ */
+@media (max-width: 768px) {
+  .form-section:has(.photo-column),
+  .form-section.photo-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .photo-column {
+    width: 100%;
+  }
+
+  .form-grid-2col,
+  .fields-column,
+  .entity-form .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-group.span-2,
+  .full-width {
+    grid-column: span 1 !important;
+  }
 }

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getAllRatings, toggleIgnoreRating } from '../services/ratingService';
 import '../assets/RatingsPage.css';
 
 const RatingsPage = () => {
+  const navigate = useNavigate();
+
   const [ratings, setRatings] = useState([]);
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
@@ -38,16 +41,16 @@ const RatingsPage = () => {
     }
   };
 
-  // Перехід до картки водія
+  // Перехід до картки водія (без перезавантаження сторінки)
   const handleOpenDriver = (driverId) => {
     if (!driverId) return;
-    window.location.href = `/drivers?openId=${driverId}`;
+    navigate(`/drivers?openId=${driverId}`);
   };
 
-  // Перехід до картки клієнта
+  // Перехід до картки клієнта (без перезавантаження сторінки)
   const handleOpenClient = (clientId) => {
     if (!clientId) return;
-    window.location.href = `/clients?openId=${clientId}`;
+    navigate(`/clients?openId=${clientId}`);
   };
 
   const filteredRatings = useMemo(() => {

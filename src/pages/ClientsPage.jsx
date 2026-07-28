@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   getAllClients, 
   blockClient, 
@@ -88,6 +89,8 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onToggleBlock }) => {
 
 // --- ОСНОВНИЙ КОМПОНЕНТ СТРАНИЦІ ---
 const ClientsPage = () => {
+  const location = useLocation();
+
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -115,14 +118,14 @@ const ClientsPage = () => {
   /* АВТО-ОТКРЫТИЕ КАРТОЧКИ ПРИ ПЕРЕХОДЕ ПО openId ИЗ РЕЙТИНГОВ/ИНЫХ РАЗДЕЛОВ */
   useEffect(() => {
     if (clients.length > 0) {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(location.search);
       const openId = params.get('openId');
       if (openId) {
         const targetClient = clients.find(c => c.id.toString() === openId.toString());
         if (targetClient) setDetailsClient(targetClient);
       }
     }
-  }, [clients]);
+  }, [clients, location.search]);
 
   const filteredClients = useMemo(() => {
     if (!searchTerm) return clients;

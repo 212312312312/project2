@@ -355,10 +355,14 @@
   border-bottom: 1px solid var(--border-color);
 }
 
+/* ==========================================
+   5. МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ ВОДИТЕЛЯ (HERO)
+   ========================================== */
 .profile-hero-card {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important; /* Гарантируем горизонтальное расположение */
+  align-items: flex-start; /* Выравнивание по верхнему краю */
   gap: 2.5rem;
-  align-items: center;
   padding: 2rem;
   background: #ffffff;
   border: 1px solid var(--border-color);
@@ -371,7 +375,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.85rem;
-  min-width: 160px;
+  width: 160px;
+  flex-shrink: 0; /* Не даём аватару сжиматься или уходить на новую строку */
   text-align: center;
 }
 
@@ -392,15 +397,17 @@
   letter-spacing: 0.05em;
   border-radius: 20px;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .profile-details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); /* Красивая сетка плашек справа */
   gap: 1rem;
   flex-grow: 1;
   border-left: 1px solid var(--border-color);
-  padding-left: 2rem;
+  padding-left: 2.5rem;
 }
 
 .detail-item {

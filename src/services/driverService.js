@@ -40,7 +40,16 @@ export const getPendingDeletionDrivers = async () => {
 export const createDriver = async (driverData, file, carFilesMap) => {
   try {
     const formData = new FormData();
-    formData.append('request', JSON.stringify(driverData));
+
+    // 🛠️ ФИКС: Гарантируем наличие полей, которые Kotlin ожидает в RegisterDriverRequest
+    const requestPayload = {
+      smsCode: "",
+      city: "Київ", // Значение по умолчанию для города
+      vin: "",
+      ...driverData
+    };
+
+    formData.append('request', JSON.stringify(requestPayload));
     if (file) formData.append('file', file);
 
     if (carFilesMap) {
@@ -188,12 +197,14 @@ export const getPendingDrivers = async () => {
   }
 };
 
-export const approveDriverRegistration = async (driverId, tariffIds) => {
+// ЗМІНА: Додаємо default значення tariffIds = []
+export const approveDriverRegistration = async (driverId, tariffIds = []) => {
   try {
+    // Обов'язково передаємо tariffIds другим аргументом (якщо порожньо — відправиться [])
     const response = await api.post(`/admin/drivers/${driverId}/approve-registration`, tariffIds);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Помилка при схваленні водія');
+    throw new Error(error.response?.data?.message || 'Помилка при схваленні реєстрації');
   }
 };
 

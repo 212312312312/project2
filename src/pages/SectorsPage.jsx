@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Polygon, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import '@geoman-io/leaflet-geoman-free';
@@ -7,6 +7,7 @@ import sectorService from '../services/sectorService';
 
 import 'leaflet/dist/leaflet.css';
 import '../assets/SectorsPage.css';
+import '../assets/Form.css';
 
 const GeomanControl = ({ isDrawing, onPolygonComplete }) => {
     const map = useMap();
@@ -48,6 +49,7 @@ const GeomanControl = ({ isDrawing, onPolygonComplete }) => {
 
 const SectorsPage = () => {
     const [sectors, setSectors] = useState([]);
+    const [searchQuery, setSearchQuery] = useState(''); // Стейт для поиска
     const [isDrawing, setIsDrawing] = useState(false);
     const [newPoints, setNewPoints] = useState(null);
     
@@ -66,22 +68,30 @@ const SectorsPage = () => {
         } catch (e) { console.error(e); }
     };
 
+    // Фильтрация секторов по названию
+    const filteredSectors = useMemo(() => {
+        if (!searchQuery.trim()) return sectors;
+        return sectors.filter(s => 
+            s.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+        );
+    }, [sectors, searchQuery]);
+
     const handlePolygonComplete = useCallback((coords) => {
         setNewPoints(coords);
         setIsDrawing(false);
     }, []);
 
     const handleSave = async () => {
-        if (!name) return alert("Введіть назву сектора");
+        if (!name.trim()) return alert("Введіть назву сектора");
         try {
-            await sectorService.createSector({ name, isCity, points: newPoints });
+            await sectorService.createSector({ name: name.trim(), isCity, points: newPoints });
             
             setName('');
             setIsCity(true); 
             setNewPoints(null);
             
             loadSectors();
-        } catch (e) { alert("Помилка збереження"); }
+        } catch (e) { alert("Помилка збереження сектора"); }
     };
 
     const handleDiscard = () => {
@@ -112,9 +122,25 @@ const SectorsPage = () => {
     return (
         <div className="sectors-page">
             <div className="sectors-sidebar">
-                <h2>Сектори</h2>
+                <div className="sidebar-header">
+                    <h1 className="sidebar-title">Сектори</h1>
+                    <span className="count-badge">{filteredSectors.length}</span>
+                </div>
+
+                {/* Поле поиска секторов */}
+                <div className="search-box">
+                    <input 
+                        type="text"
+                        className="search-input"
+                        placeholder="🔍 Пошук сектора..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+
                 <button 
-                    className={`add-sector-btn ${isDrawing ? 'cancel' : ''}`}
+                    className={`btn ${isDrawing ? 'btn-secondary' : 'btn-primary'}`}
+                    style={{ width: '100%' }}
                     onClick={() => {
                         setIsDrawing(!isDrawing);
                         setNewPoints(null);
@@ -125,51 +151,85 @@ const SectorsPage = () => {
 
                 {newPoints && (
                     <div className="save-sector-box">
-                        <label>Новий сектор намальовано!</label>
-                        <input 
-                            type="text" 
-                            placeholder="Введіть назву..." 
-                            value={name}
-                            autoFocus
-                            onChange={(e) => setName(e.target.value)}
-                        />
+                        <h3 className="form-section-title">Новий сектор намальовано</h3>
                         
-                        <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
+                        <div className="form-group">
+                            <label className="form-label">Назва сектора</label>
                             <input 
-                                type="checkbox" 
-                                id="chkIsCity" 
-                                checked={isCity} 
-                                onChange={(e) => setIsCity(e.target.checked)} 
-                                style={{ width: 'auto', marginRight: '8px' }}
+                                type="text" 
+                                className="input-field"
+                                placeholder="Введіть назву..." 
+                                value={name}
+                                autoFocus
+                                onChange={(e) => setName(e.target.value)}
                             />
-                            <label htmlFor="chkIsCity" style={{ marginBottom: 0, cursor: 'pointer' }}>
-                                Це зона міста? (Тариф "Стандарт")
-                            </label>
                         </div>
-                        {!isCity && <small style={{color: '#ff9800'}}>Буде діяти тариф "За містом"</small>}
+                        
+                        <div className="form-group">
+                            <label className="checkbox-item">
+                                <input 
+                                    type="checkbox" 
+                                    id="chkIsCity" 
+                                    checked={isCity} 
+                                    onChange={(e) => setIsCity(e.target.checked)} 
+                                />
+                                <span className="font-medium">Зона міста (Тариф "Стандарт")</span>
+                            </label>
+                            {!isCity && (
+                                <span className="form-hint" style={{ color: '#d97706', fontWeight: 600 }}>
+                                    Буде діяти тариф "За містом"
+                                </span>
+                            )}
+                        </div>
 
-                        <div className="box-actions">
-                            <button onClick={handleSave} className="save-btn">Зберегти</button>
-                            <button onClick={handleDiscard} className="discard-btn">Скинути</button>
+                        <div className="form-actions justify-end" style={{ marginTop: '0.25rem', paddingTop: '0.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}>
+                            <button onClick={handleDiscard} className="btn btn-sm btn-secondary">Скинути</button>
+                            <button onClick={handleSave} className="btn btn-sm btn-primary">Зберегти</button>
                         </div>
                     </div>
                 )}
 
                 <div className="sectors-list">
-                    {sectors.map(s => (
-                        <div key={s.id} className="sector-card" style={{ borderLeft: s.isCity ? '4px solid #00ffaa' : '4px solid #ff9800' }}>
-                            <div style={{display: 'flex', flexDirection: 'column'}}>
-                                <span className="sector-name">{s.name}</span>
-                                <span style={{fontSize: '0.8em', color: '#888'}}>
-                                    {s.isCity ? "🏙️ Місто" : "🌲 За містом"}
-                                </span>
+                    {filteredSectors.length > 0 ? (
+                        filteredSectors.map(s => (
+                            <div 
+                                key={s.id} 
+                                className="sector-card" 
+                                style={{ borderLeft: s.isCity ? '4px solid #10b981' : '4px solid #f59e0b' }}
+                            >
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    <span className="sector-name">{s.name}</span>
+                                    <div>
+                                        <span className={`badge ${s.isCity ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem' }}>
+                                            {s.isCity ? "🏙️ Місто" : "🌲 За містом"}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="btn-group" style={{ display: 'flex', gap: '0.25rem' }}>
+                                    <button 
+                                        className="btn btn-sm btn-ghost" 
+                                        onClick={() => handleRename(s.id, s.name)} 
+                                        title="Перейменувати"
+                                        style={{ padding: '0.25rem 0.5rem' }}
+                                    >
+                                        ✏️
+                                    </button>
+                                    <button 
+                                        className="btn btn-sm btn-ghost-danger" 
+                                        onClick={() => handleDelete(s.id)}
+                                        title="Видалити"
+                                        style={{ padding: '0.25rem 0.5rem' }}
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <button className="edit-btn" onClick={() => handleRename(s.id, s.name)} style={{ background: 'none', border: 'none', cursor: 'pointer' }} title="Перейменувати">✏️</button>
-                                <button className="del-btn" onClick={() => handleDelete(s.id)}>🗑️</button>
-                            </div>
+                        ))
+                    ) : (
+                        <div className="empty-text">
+                            {searchQuery ? "Сектори за вашим запитом не знайдені" : "Сектори ще не створені"}
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
 
@@ -177,14 +237,14 @@ const SectorsPage = () => {
                 <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     
-                    {sectors.map(s => (
+                    {filteredSectors.map(s => (
                         <Polygon 
                             key={s.id}
                             positions={s.points.map(p => [p.lat, p.lng])}
                             pathOptions={{ 
-                                fillColor: s.isCity ? '#00ffaa' : '#ff9800', 
-                                fillOpacity: 0.2, 
-                                color: s.isCity ? '#00ffaa' : '#ff9800', 
+                                fillColor: s.isCity ? '#10b981' : '#f59e0b', 
+                                fillOpacity: 0.25, 
+                                color: s.isCity ? '#10b981' : '#f59e0b', 
                                 weight: 2 
                             }}
                         >
@@ -197,7 +257,13 @@ const SectorsPage = () => {
                     {newPoints && (
                         <Polygon 
                             positions={newPoints.map(p => [p.lat, p.lng])}
-                            pathOptions={{ fillColor: '#ffcc00', fillOpacity: 0.4, color: '#ffcc00', weight: 3, dashArray: '5, 5' }}
+                            pathOptions={{ 
+                                fillColor: '#3b82f6', 
+                                fillOpacity: 0.35, 
+                                color: '#3b82f6', 
+                                weight: 3, 
+                                dashArray: '5, 5' 
+                            }}
                         >
                             <Tooltip permanent direction="center" className="sector-label-preview">
                                 {name || "Без назви"}

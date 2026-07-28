@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getPendingDrivers, approveDriverRegistration, rejectDriverRegistration } from '../services/driverService';
-import { getTariffs } from '../services/publicService';
 import Modal from '../components/Modal';
 import '../assets/DriverRequestsPage.css';
 
@@ -27,29 +26,20 @@ const PhotoBlock = ({ label, url }) => {
 
 const DriverRequestsPage = () => {
   const [requests, setRequests] = useState([]);
-  const [tariffs, setTariffs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Модалка схвалення (вибір тарифів)
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [selectedDriverId, setSelectedDriverId] = useState(null);
-  const [selectedTariffs, setSelectedTariffs] = useState([]);
-
   // Модалка відмови
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
-      const [driversData, tariffsData] = await Promise.all([
-        getPendingDrivers(),
-        getTariffs()
-      ]);
+      const driversData = await getPendingDrivers();
       setRequests(driversData);
-      setTariffs(tariffsData);
     } catch (err) {
       setError(err.message || 'Помилка завантаження даних');
     } finally {
@@ -61,34 +51,18 @@ const DriverRequestsPage = () => {
     loadData();
   }, []);
 
-  // Логіка схвалення
-  const openApproveModal = (id) => {
-    setSelectedDriverId(id);
-    setSelectedTariffs([]);
-    setApproveModalOpen(true);
-  };
-
-  const toggleTariff = (tariffId) => {
-    setSelectedTariffs(prev => 
-      prev.includes(tariffId) 
-        ? prev.filter(id => id !== tariffId) 
-        : [...prev, tariffId]
-    );
-  };
-
-  const handleApproveSubmit = async () => {
-    if (selectedTariffs.length === 0) {
-      alert("Оберіть хоча б один тариф!");
+  // Пряме схвалення (автоматичний розрахунок тарифів бекендом за класифікатором)
+  const handleApproveDirectly = async (driverId, driverName) => {
+    if (!window.confirm(`Підтвердити реєстрацію водія ${driverName}? Тарифи будуть призначені автоматично за класифікатором.`)) {
       return;
     }
 
     try {
-      await approveDriverRegistration(selectedDriverId, selectedTariffs);
+      await approveDriverRegistration(driverId);
       alert("Водія успішно активовано!");
-      setRequests(prev => prev.filter(r => r.id !== selectedDriverId));
-      setApproveModalOpen(false);
+      setRequests(prev => prev.filter(r => r.id !== driverId));
     } catch (err) {
-      alert(err.message);
+      alert(err.message || "Помилка при активації водія");
     }
   };
 
@@ -144,6 +118,8 @@ const DriverRequestsPage = () => {
                 <div className="driver-main-info">
                   <h3 className="driver-name">{driver.fullName}</h3>
                   <div className="driver-meta">
+                    <span style={{ fontWeight: '700', color: '#14B8A6' }}>📍 {driver.city || 'Київ'}</span>
+                    <span className="meta-divider">•</span>
                     <span>Тел: {driver.phoneNumber}</span>
                     <span className="meta-divider">•</span>
                     <span>ID: #{driver.id}</span>
@@ -157,10 +133,10 @@ const DriverRequestsPage = () => {
                     Відхилити
                   </button>
                   <button 
-                    className="btn btn-sm btn-outline-success" 
-                    onClick={() => openApproveModal(driver.id)}
+                    className="btn btn-sm btn-success" 
+                    onClick={() => handleApproveDirectly(driver.id, driver.fullName)}
                   >
-                    Прийняти
+                    ✅ Схвалити заявку
                   </button>
                 </div>
               </div>
@@ -177,6 +153,10 @@ const DriverRequestsPage = () => {
                     <PhotoBlock label="Права (Тил)" url={driver.driverLicenseBack} />
                   </div>
                   <div className="details-inline-grid">
+                    <div className="detail-compact-item">
+                      <span className="detail-compact-label">Місто роботи</span>
+                      <span className="detail-compact-value">{driver.city || 'Київ'}</span>
+                    </div>
                     <div className="detail-compact-item">
                       <span className="detail-compact-label">РНОКПП</span>
                       <span className="detail-compact-value">{driver.rnokpp || '—'}</span>
@@ -202,6 +182,9 @@ const DriverRequestsPage = () => {
                       <div className="car-meta-pills">
                         <span className="plate-badge">{driver.car.plateNumber}</span>
                         <span className="text-subtle text-sm">Колір: {driver.car.color}</span>
+                        {driver.car.carType && (
+                          <span className="text-subtle text-sm">• Кузов: {driver.car.carType}</span>
+                        )}
                       </div>
                     </div>
 
@@ -233,47 +216,6 @@ const DriverRequestsPage = () => {
           ))}
         </div>
       )}
-
-      {/* МОДАЛКА СХВАЛЕННЯ (ТАРИФИ) */}
-      <Modal 
-        isOpen={approveModalOpen} 
-        onClose={() => setApproveModalOpen(false)} 
-        title="Активація водія"
-      >
-        <div className="modal-inner-form">
-          <p className="text-subtle text-sm mb-3">Оберіть тарифи, доступні для цього водія:</p>
-          
-          <div className="tariffs-selection-box">
-            {tariffs.map(tariff => (
-              <label key={tariff.id} className="tariff-checkbox-item">
-                <input 
-                  type="checkbox" 
-                  checked={selectedTariffs.includes(tariff.id)}
-                  onChange={() => toggleTariff(tariff.id)}
-                  className="checkbox-input"
-                />
-                <div className="tariff-info">
-                  <span className="tariff-name">{tariff.name}</span>
-                  <span className="tariff-price">Базовий: {tariff.basePrice} грн</span>
-                </div>
-              </label>
-            ))}
-          </div>
-
-          <div className="form-actions-row">
-            <button className="btn btn-secondary" onClick={() => setApproveModalOpen(false)}>
-              Скасувати
-            </button>
-            <button 
-              className="btn btn-primary" 
-              onClick={handleApproveSubmit}
-              disabled={selectedTariffs.length === 0}
-            >
-              Підтвердити
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* МОДАЛКА ВІДМОВИ */}
       <Modal 

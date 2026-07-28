@@ -1,192 +1,163 @@
-/* Основной контейнер страницы */
+/* ==========================================
+   СЕКТОРЫ И КАРТА (UNIT DESIGN SYSTEM)
+   ========================================== */
+
+/* Гарантируем правильный расчет размеров */
+.sectors-page,
+.sectors-page * {
+  box-sizing: border-box !important;
+}
+
 .sectors-page {
-    display: flex;
-    height: 100%;
-    background: #121212;
-    overflow: hidden;
+  display: flex !important;
+  width: 100% !important;
+  height: calc(100vh - 80px) !important;
+  overflow: hidden !important;
+  background-color: #f8fafc !important;
 }
 
-/* Боковая панель */
+/* Боковая панель управления (Светлая тема) */
 .sectors-sidebar {
-    width: 340px;
-    background: #1e1e1e;
-    padding: 20px;
-    border-right: 1px solid #333;
-    display: flex;
-    flex-direction: column;
-    z-index: 10;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.3);
+  width: 380px !important;
+  min-width: 340px !important;
+  max-width: 400px !important;
+  height: 100% !important;
+  background: #ffffff !important;
+  border-right: 1px solid #e2e8f0 !important;
+  padding: 1.25rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.85rem !important;
+  z-index: 1000 !important;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.05) !important;
+  overflow-y: auto !important;
 }
 
-.sectors-sidebar h2 {
-    color: #fff;
-    margin-bottom: 20px;
-    font-size: 20px;
+/* Шапка сайдбара */
+.sidebar-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  margin-bottom: 0.25rem !important;
 }
 
-/* Кнопка создания сектора */
-.add-sector-btn {
-    background: #00ffaa;
-    color: #000;
-    border: none;
-    padding: 14px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-bottom: 20px;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.sidebar-title {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  margin: 0 !important;
 }
 
-.add-sector-btn:hover {
-    background: #00cc88;
-    transform: translateY(-1px);
+/* Поле поиска секторов */
+.search-box {
+  width: 100% !important;
 }
 
-.add-sector-btn.cancel {
-    background: #ff4444;
-    color: white;
+.search-input {
+  width: 100% !important;
+  padding: 0.65rem 0.85rem !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  font-size: 0.9rem !important;
+  outline: none !important;
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s !important;
+}
+
+.search-input:focus {
+  background-color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
 }
 
 /* Блок сохранения нового сектора */
 .save-sector-box {
-    background: #252525;
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #00ffaa;
-    margin-bottom: 20px;
+  background: #f8fafc !important;
+  border: 1px solid #0284c7 !important;
+  border-radius: 8px !important;
+  padding: 1rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
 }
 
-.save-sector-box label {
-    display: block;
-    color: #00ffaa;
-    font-size: 12px;
-    margin-bottom: 8px;
-    font-weight: bold;
+.save-sector-box .form-section-title {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  margin: 0 0 0.25rem 0 !important;
+  padding-bottom: 0.4rem !important;
+  border-bottom: 1px solid #cbd5e1 !important;
 }
 
-.save-sector-box input {
-    width: 100%;
-    background: #333;
-    border: 1px solid #444;
-    color: white;
-    padding: 10px;
-    margin-bottom: 12px;
-    border-radius: 4px;
-    outline: none;
-}
-
-.save-sector-box input:focus {
-    border-color: #00ffaa;
-}
-
-.box-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.save-btn {
-    background: #00ffaa;
-    border: none;
-    padding: 10px;
-    flex: 1;
-    cursor: pointer;
-    border-radius: 4px;
-    font-weight: bold;
-    color: #000;
-}
-
-.discard-btn {
-    background: #444;
-    color: white;
-    border: none;
-    padding: 10px;
-    flex: 1;
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-/* === ОБНОВЛЕННЫЙ СПИСОК СЕКТОРОВ (БЕЛЫЙ ФОН) === */
+/* Список секторов */
 .sectors-list {
-    flex: 1;
-    overflow-y: auto;
-    background: #ffffff; /* Белый фон для списка */
-    border-radius: 8px;
-    padding: 10px;
-    margin-top: 10px;
-    border: 1px solid #ddd;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.6rem !important;
+  width: 100% !important;
+  flex: 1 !important;
+  overflow-y: auto !important;
 }
 
+/* Карточки секторов */
 .sector-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: #f9f9f9; /* Светло-серые карточки */
-    margin-bottom: 8px;
-    border-radius: 6px;
-    border: 1px solid #eee;
-    transition: background 0.2s;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0.85rem 1rem !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.2s ease !important;
 }
 
 .sector-card:hover {
-    background: #f0f0f0;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
 }
 
 .sector-name {
-    color: #333; /* Темный текст для белого фона */
-    font-size: 14px;
-    font-weight: 600;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
 }
 
-.del-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 18px;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-    color: #333;
-}
-
-.del-btn:hover {
-    opacity: 1;
-    color: #ff4444;
-}
-
+/* Пустое состояние */
 .empty-text {
-    color: #999; /* Серый текст для пустых состояний */
-    text-align: center;
-    font-size: 13px;
-    margin-top: 20px;
+  text-align: center !important;
+  color: #64748b !important;
+  font-size: 0.88rem !important;
+  padding: 2rem 1rem !important;
+  background: #ffffff !important;
+  border: 1px dashed #cbd5e1 !important;
+  border-radius: 8px !important;
 }
 
-/* Контейнер карты */
+/* Карта Leaflet */
 .map-view {
-    flex: 1;
-    position: relative;
-    z-index: 1;
+  flex: 1 !important;
+  height: 100% !important;
+  position: relative !important;
+  z-index: 1 !important;
 }
 
-/* Стили для названий секторов на самой карте */
-.leaflet-tooltip.sector-label {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    color: #00ffaa;
-    font-weight: bold;
-    font-size: 14px;
-    text-shadow: 2px 2px 4px #000;
-    pointer-events: none;
+/* Тултипы названий секторов на карте */
+.leaflet-tooltip.sector-label,
+.leaflet-tooltip.sector-label-preview {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  font-size: 0.82rem !important;
+  padding: 4px 8px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
 }
 
 .leaflet-tooltip.sector-label-preview {
-    background: rgba(255, 204, 0, 0.9);
-    border: 1px solid #000;
-    color: #000;
-    font-weight: bold;
-    padding: 4px 8px;
-    border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  border-color: #3b82f6 !important;
+  color: #1d4ed8 !important;
 }

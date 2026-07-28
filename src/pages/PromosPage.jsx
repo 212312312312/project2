@@ -5,6 +5,7 @@ import {
 } from '../services/promoService';
 import Modal from '../components/Modal';
 import PromoForm from '../components/PromoForm';
+import '../assets/Form.css';
 
 const PromosPage = () => {
   const [promos, setPromos] = useState([]);
@@ -16,7 +17,7 @@ const PromosPage = () => {
   const [plans, setPlans] = useState([]);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [newPlan, setNewPlan] = useState({ 
-    title: '', description: '', startDate: '', endDate: '', maxUses: '' // <- ДОБАВЛЕНО maxUses
+    title: '', description: '', startDate: '', endDate: '', maxUses: '' 
   });
 
   const fetchPromos = async () => {
@@ -73,17 +74,16 @@ const PromosPage = () => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      // Форматирование дат под Kotlin LocalDateTime (ISO-8601 формат)
       const planData = {
         ...newPlan,
         startDate: newPlan.startDate ? `${newPlan.startDate}:00` : new Date().toISOString(),
         endDate: newPlan.endDate ? `${newPlan.endDate}:00` : new Date().toISOString(),
-        maxUses: newPlan.maxUses ? parseInt(newPlan.maxUses) : null, // <- ДОБАВЛЕНО
+        maxUses: newPlan.maxUses ? parseInt(newPlan.maxUses) : null,
         isActive: true
       };
       await createPromoPlan(planData);
       setIsPlanModalOpen(false);
-      setNewPlan({ title: '', description: '', startDate: '', endDate: '', maxUses: '' }); // <- ИСПРАВЛЕНО
+      setNewPlan({ title: '', description: '', startDate: '', endDate: '', maxUses: '' });
       fetchPlans();
     } catch (e) {
       alert(e.message);
@@ -112,161 +112,196 @@ const PromosPage = () => {
     }
   };
 
+  if (loading) return <div className="loading-spinner">Завантаження акцій...</div>;
+
   return (
-    <div className="table-page-container">
-      <div className="table-header">
-        <h2>Акційні завдання</h2>
-        <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-          + Створити акцію
-        </button>
-      </div>
+    <div className="page-wrapper">
+      {/* --- СЕКЦИЯ 1: АКЦИОННЫЕ ЗАДАНИЯ --- */}
+      <header className="page-header">
+        <div className="header-title-group">
+          <h1>Акційні завдання</h1>
+          <span className="count-badge">{promos.length}</span>
+        </div>
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Назва</th>
-              <th>Опис</th>
-              <th>Умова</th>
-              <th>Тариф</th>
-              <th>Знижка</th>
-              <th>Термін дії</th>
-              <th>Макс. сума</th>
-              <th>Ліміт місць</th>
-              <th>Дії</th>
-            </tr>
-          </thead>
-          <tbody>
-            {promos.length > 0 ? promos.map(p => (
-              <tr key={p.id}>
-                <td>{p.id}</td>
-                <td><strong>{p.title}</strong></td>
-                <td>{p.description}</td>
-                <td>
-                  {p.requiredDistanceMeters > 0 ? (
-                    <span style={{color: '#2196F3', fontWeight: 'bold'}}>
-                      {(p.requiredDistanceMeters / 1000).toFixed(1)} км
-                    </span>
-                  ) : (
-                    <span>{p.requiredRides} поїздок</span>
-                  )}
-                </td>
-                <td>
-                  {p.requiredTariff ? (
-                    <span className="status-online">{p.requiredTariff.name}</span>
-                  ) : (
-                    "— Будь-який —"
-                  )}
-                </td>
-                <td>{p.discountPercent}%</td>
-                <td style={{textAlign: 'center'}}>
-                  {p.activeDaysDuration && p.activeDaysDuration > 0 ? (
-                    <span className="badge badge-warning" style={{
-                        background: '#fff3cd', 
-                        color: '#856404',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.9em'
-                    }}>
-                      {p.activeDaysDuration} дн.
-                    </span>
-                  ) : (
-                    <span style={{color: '#aaa'}}>∞</span>
-                  )}
-                </td>
-                <td>
-                  {p.maxDiscountAmount ? (
-                    <span>до {p.maxDiscountAmount} грн</span>
-                  ) : (
-                    <span style={{color: '#aaa'}}>∞</span>
-                  )}
-                </td>
-                <td>
-                  {p.maxAllocations ? (
-                    <span style={{fontWeight: 'bold', color: '#e91e63'}}>{p.maxAllocations} чол.</span>
-                  ) : (
-                    <span style={{color: '#aaa'}}>∞</span>
-                  )}
-                </td>
-                <td>
-                  <button className="btn-danger" onClick={() => handleDelete(p.id)}>
-                    Видалити
-                  </button>
-                </td>
+        <div className="header-actions">
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            + Створити акцію
+          </button>
+        </div>
+      </header>
+
+      <div className="table-card" style={{ marginBottom: '2.5rem' }}>
+        <div className="table-responsive">
+          <table className="main-table">
+            <thead>
+              <tr>
+                <th className="text-center" style={{ width: '50px' }}>ID</th>
+                <th>Назва</th>
+                <th>Опис</th>
+                <th className="text-center">Умова</th>
+                <th className="text-center">Тариф</th>
+                <th className="text-center">Знижка</th>
+                <th className="text-center">Термін дії</th>
+                <th className="text-center">Макс. сума</th>
+                <th className="text-center">Ліміт місць</th>
+                <th className="text-center" style={{ width: '120px' }}>Дії</th>
               </tr>
-            )) : (
-              <tr><td colSpan="10">Акцій немає. Створіть першу!</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {promos.length > 0 ? (
+                promos.map(p => (
+                  <tr key={p.id}>
+                    <td className="text-center text-subtle">#{p.id}</td>
+                    <td>
+                      <strong className="font-medium">{p.title}</strong>
+                    </td>
+                    <td className="text-subtle" style={{ fontSize: '0.88rem' }}>{p.description || '—'}</td>
+                    <td className="text-center">
+                      {p.requiredDistanceMeters > 0 ? (
+                        <span className="font-medium text-primary">
+                          {(p.requiredDistanceMeters / 1000).toFixed(1)} км
+                        </span>
+                      ) : (
+                        <span className="font-medium">{p.requiredRides} поїздок</span>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      {p.requiredTariff ? (
+                        <span className="badge badge-success">{p.requiredTariff.name}</span>
+                      ) : (
+                        <span className="text-subtle">— Будь-який —</span>
+                      )}
+                    </td>
+                    <td className="text-center font-medium text-success">{p.discountPercent}%</td>
+                    <td className="text-center">
+                      {p.activeDaysDuration && p.activeDaysDuration > 0 ? (
+                        <span className="badge badge-warning">
+                          {p.activeDaysDuration} дн.
+                        </span>
+                      ) : (
+                        <span className="text-subtle">∞</span>
+                      )}
+                    </td>
+                    <td className="text-center font-medium">
+                      {p.maxDiscountAmount ? (
+                        <span>до {p.maxDiscountAmount} ₴</span>
+                      ) : (
+                        <span className="text-subtle">∞</span>
+                      )}
+                    </td>
+                    <td className="text-center font-medium">
+                      {p.maxAllocations ? (
+                        <span className="text-danger">{p.maxAllocations} чол.</span>
+                      ) : (
+                        <span className="text-subtle">∞</span>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <button className="btn btn-sm btn-ghost-danger" onClick={() => handleDelete(p.id)}>
+                        Видалити
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="10" className="text-center text-subtle py-8">
+                    Акцій немає. Створіть першу акцію!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* --- СЕКЦИЯ ГЛОБАЛЬНЫХ ПЛАНОВ БЕСПЛАТНОЙ МИНИМАЛКИ --- */}
-      <hr style={{ margin: '40px 0', border: '0', borderTop: '1px solid #eee' }} />
+      {/* Разделитель секций */}
+      <hr style={{ margin: '2.5rem 0', border: '0', borderTop: '1px solid #e2e8f0' }} />
 
-      <div className="table-header">
-        <h2>Глобальні плани: Безкоштовна мінімалка</h2>
-        <button className="btn-primary" style={{ background: '#4CAF50' }} onClick={() => setIsPlanModalOpen(true)}>
-          + Додати план скидок
-        </button>
-      </div>
+      {/* --- СЕКЦИЯ 2: ГЛОБАЛЬНЫЕ ПЛАНИ БЕСПЛАТНОЙ МИНИМАЛКИ --- */}
+      <header className="page-header">
+        <div className="header-title-group">
+          <h1>Глобальні плани: Безкоштовна мінімалка</h1>
+          <span className="count-badge">{plans.length}</span>
+        </div>
 
-      <div className="table-container" style={{ marginBottom: '40px' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Назва плану</th>
-              <th>Опис</th>
-              <th>Дата початку</th>
-              <th>Дата завершення</th>
-              <th>Ліміт активацій</th>
-              <th>Статус</th>
-              <th>Дії</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plans.length > 0 ? plans.map(plan => (
-              <tr key={plan.id}>
-                <td>{plan.id}</td>
-                <td><strong>{plan.title}</strong></td>
-                <td>{plan.description || 'Без опису'}</td>
-                <td>{new Date(plan.startDate).toLocaleString()}</td>
-                <td>{new Date(plan.endDate).toLocaleString()}</td>
-                <td>
-                  {plan.maxUses ? (
-                    <span style={{fontWeight: 'bold', color: '#4CAF50'}}>{plan.maxUses} актт.</span>
-                  ) : (
-                    <span style={{color: '#aaa'}}>∞</span>
-                  )}
-                </td>
-                <td>
-                  <span className={plan.isActive ? "status-online" : "status-offline"} style={{ marginRight: '10px' }}>
-                    {plan.isActive ? 'Активний' : 'Вимкнено'}
-                  </span>
-                  <button 
-                    className="btn-secondary" 
-                    style={{ padding: '2px 6px', fontSize: '0.85em' }}
-                    onClick={() => handleTogglePlan(plan.id, plan.isActive)}
-                  >
-                    {plan.isActive ? 'Вимкнути' : 'Увімкнути'}
-                  </button>
-                </td>
-                <td>
-                  <button className="btn-danger" onClick={() => handleDeletePlan(plan.id)}>
-                    Видалити
-                  </button>
-                </td>
+        <div className="header-actions">
+          <button className="btn btn-primary" onClick={() => setIsPlanModalOpen(true)}>
+            + Додати план знижок
+          </button>
+        </div>
+      </header>
+
+      <div className="table-card">
+        <div className="table-responsive">
+          <table className="main-table">
+            <thead>
+              <tr>
+                <th className="text-center" style={{ width: '50px' }}>ID</th>
+                <th>Назва плану</th>
+                <th>Опис</th>
+                <th className="text-center">Дата початку</th>
+                <th className="text-center">Дата завершення</th>
+                <th className="text-center">Ліміт активацій</th>
+                <th className="text-center">Статус</th>
+                <th className="text-center" style={{ width: '210px' }}>Дії</th>
               </tr>
-            )) : (
-              <tr><td colSpan="8">Календарних планів немає. Створіть перший!</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {plans.length > 0 ? (
+                plans.map(plan => (
+                  <tr key={plan.id}>
+                    <td className="text-center text-subtle">#{plan.id}</td>
+                    <td>
+                      <strong className="font-medium">{plan.title}</strong>
+                    </td>
+                    <td className="text-subtle" style={{ fontSize: '0.88rem' }}>{plan.description || 'Без опису'}</td>
+                    <td className="text-center text-subtle" style={{ fontSize: '0.85rem' }}>
+                      {new Date(plan.startDate).toLocaleString()}
+                    </td>
+                    <td className="text-center text-subtle" style={{ fontSize: '0.85rem' }}>
+                      {new Date(plan.endDate).toLocaleString()}
+                    </td>
+                    <td className="text-center font-medium">
+                      {plan.maxUses ? (
+                        <span className="text-success">{plan.maxUses} акт.</span>
+                      ) : (
+                        <span className="text-subtle">∞</span>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <span className={`badge ${plan.isActive ? 'badge-success' : 'badge-muted'}`}>
+                        {plan.isActive ? 'АКТИВНИЙ' : 'ВИМКНЕНО'}
+                      </span>
+                    </td>
+                    <td className="text-center">
+                      <div className="btn-group justify-center">
+                        <button 
+                          className={`btn btn-sm ${plan.isActive ? 'btn-outline' : 'btn-ghost'}`}
+                          onClick={() => handleTogglePlan(plan.id, plan.isActive)}
+                        >
+                          {plan.isActive ? 'Вимкнути' : 'Увімкнути'}
+                        </button>
+                        <button className="btn btn-sm btn-ghost-danger" onClick={() => handleDeletePlan(plan.id)}>
+                          Видалити
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="8" className="text-center text-subtle py-8">
+                    Календарних планів немає. Створіть перший план!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Модалка оригинальных акций-заданий */}
+      {/* Модалка акций-заданий */}
       <Modal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -285,62 +320,76 @@ const PromosPage = () => {
         onClose={() => setIsPlanModalOpen(false)} 
         title="Новий Календарний План"
       >
-        <form onSubmit={handleCreatePlan} className="form-container">
-          <div className="form-group">
-            <label>Назва акції</label>
-            <input 
-              type="text" 
-              required 
-              value={newPlan.title} 
-              onChange={e => setNewPlan({...newPlan, title: e.target.value})} 
-              placeholder="Наприклад: Акція на першу поїздку UNIT"
-            />
-          </div>
-          <div className="form-group">
-            <label>Опис для клиенту в додатку</label>
-            <textarea 
-              value={newPlan.description} 
-              onChange={e => setNewPlan({...newPlan, description: e.target.value})} 
-              placeholder="Мінімальна вартість поїздки 0 грн! Доплачуємо только за км."
-            />
-          </div>
-          <div className="form-group">
-            <label>Дата початку акції</label>
-            <input 
-              type="datetime-local" 
-              required 
-              value={newPlan.startDate} 
-              onChange={e => setNewPlan({...newPlan, startDate: e.target.value})} 
-            />
-          </div>
-          <div className="form-group">
-            <label>Дата закінчення акції</label>
-            <input 
-              type="datetime-local" 
-              required 
-              value={newPlan.endDate} 
-              onChange={e => setNewPlan({...newPlan, endDate: e.target.value})} 
-            />
-          </div>
-          
-          <div className="form-group">
-            <label>Глобальний ліміт активацій (Кількість планів)</label>
-            <input 
-              type="number" min="1"
-              value={newPlan.maxUses} 
-              onChange={e => setNewPlan({...newPlan, maxUses: e.target.value})} 
-              placeholder="Пусто = без обмежень"
-            />
-            <small style={{color: '#666', display: 'block', marginTop: '4px'}}>
-              Скільки всього клієнтів в системі встигнуть скористатися планом
-            </small>
+        <form onSubmit={handleCreatePlan} className="modal-form">
+          <div className="form-section">
+            <h3 className="form-section-title">Параметри календарного плану</h3>
+            
+            <div className="form-grid-2col">
+              <div className="form-group span-2">
+                <label className="form-label">Назва акції</label>
+                <input 
+                  type="text" 
+                  className="input-field"
+                  required 
+                  value={newPlan.title} 
+                  onChange={e => setNewPlan({...newPlan, title: e.target.value})} 
+                  placeholder="Наприклад: Акція на першу поїздку UNIT"
+                />
+              </div>
+
+              <div className="form-group span-2">
+                <label className="form-label">Опис для клієнта в додатку</label>
+                <textarea 
+                  className="input-field"
+                  style={{ minHeight: '80px', resize: 'vertical' }}
+                  value={newPlan.description} 
+                  onChange={e => setNewPlan({...newPlan, description: e.target.value})} 
+                  placeholder="Мінімальна вартість поїздки 0 грн! Доплачуємо тільки за км."
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Дата початку акції</label>
+                <input 
+                  type="datetime-local" 
+                  className="input-field"
+                  required 
+                  value={newPlan.startDate} 
+                  onChange={e => setNewPlan({...newPlan, startDate: e.target.value})} 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Дата закінчення акції</label>
+                <input 
+                  type="datetime-local" 
+                  className="input-field"
+                  required 
+                  value={newPlan.endDate} 
+                  onChange={e => setNewPlan({...newPlan, endDate: e.target.value})} 
+                />
+              </div>
+
+              <div className="form-group span-2">
+                <label className="form-label">Глобальний ліміт активацій (Кількість планів)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  className="input-field"
+                  value={newPlan.maxUses} 
+                  onChange={e => setNewPlan({...newPlan, maxUses: e.target.value})} 
+                  placeholder="Залиште порожнім, якщо без обмежень"
+                />
+                <span className="form-hint">Скільки всього клієнтів в системі встигнуть скористатися планом</span>
+              </div>
+            </div>
           </div>
 
-          <div className="form-actions">
-            <button type="button" className="btn-secondary" onClick={() => setIsPlanModalOpen(false)}>
+          <div className="form-actions justify-end">
+            <button type="button" className="btn btn-secondary" onClick={() => setIsPlanModalOpen(false)}>
               Скасувати
             </button>
-            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
               {isSubmitting ? 'Збереження...' : 'Зберегти план'}
             </button>
           </div>

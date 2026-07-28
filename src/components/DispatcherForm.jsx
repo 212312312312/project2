@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import '../assets/Form.css'; // Используем тот же стиль
+import '../assets/Form.css';
 
-// initialData: null = Создание, объект = Редактирование
 const DispatcherForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
     userLogin: '',
@@ -14,9 +13,9 @@ const DispatcherForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
   useEffect(() => {
     if (isEditMode) {
       setFormData({
-        userLogin: initialData.userLogin,
-        fullName: initialData.fullName,
-        password: '', // Пароль по умолчанию пуст при редактировании
+        userLogin: initialData.userLogin || '',
+        fullName: initialData.fullName || '',
+        password: '',
       });
     } else {
       setFormData({ userLogin: '', fullName: '', password: '' });
@@ -33,13 +32,11 @@ const DispatcherForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     
     const dataToSend = { ...formData };
     
-    // При создании пароль обязателен
     if (!isEditMode && !dataToSend.password) {
-      alert("Пароль обязателен для нового диспетчера");
+      alert("Пароль є обов'язковим для нового диспетчера");
       return;
     }
     
-    // При редактировании, если пароль пуст, отправляем null
     if (isEditMode && dataToSend.password === '') {
       dataToSend.password = null;
     }
@@ -48,38 +45,67 @@ const DispatcherForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="entity-form">
-      <fieldset className="full-width">
-        <legend>Данные Диспетчера</legend>
-        <div className="form-grid">
-          <div className="form-group">
-            <label>Логин</label>
-            <input type="text" name="userLogin" value={formData.userLogin} onChange={handleChange} required />
+    <form onSubmit={handleSubmit} className="modal-form">
+      <div className="form-section">
+        <h3 className="form-section-title">Дані диспетчера</h3>
+        
+        <div className="form-grid-2col">
+          <div className="form-group span-2">
+            <label className="form-label">Логін</label>
+            <input 
+              type="text" 
+              name="userLogin" 
+              className="input-field" 
+              value={formData.userLogin} 
+              onChange={handleChange} 
+              placeholder="Введіть логін для входу" 
+              required 
+            />
           </div>
-          <div className="form-group">
-            <label>Полное имя (ПИБ)</label>
-            <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required />
+
+          <div className="form-group span-2">
+            <label className="form-label">Повне ім'я (ПІБ)</label>
+            <input 
+              type="text" 
+              name="fullName" 
+              className="input-field" 
+              value={formData.fullName} 
+              onChange={handleChange} 
+              placeholder="Прізвище, Ім'я, По батькові" 
+              required 
+            />
           </div>
-          <div className="form-group">
-            <label>Пароль</label>
+
+          <div className="form-group span-2">
+            <label className="form-label">Пароль</label>
             <input 
               type="password" 
               name="password" 
+              className="input-field" 
               value={formData.password} 
               onChange={handleChange} 
-              placeholder={isEditMode ? "(Оставьте пустым, чтобы не менять)" : "Минимум 6 символов"}
+              placeholder={isEditMode ? "(Залиште порожнім, щоб не змінювати)" : "Мінімум 6 символів"}
               minLength={isEditMode ? 0 : 6}
             />
           </div>
         </div>
-      </fieldset>
+      </div>
 
-      <div className="form-actions">
-        <button type="button" className="btn-secondary" onClick={onCancel} disabled={isLoading}>
-          Отмена
+      <div className="form-actions justify-end">
+        <button 
+          type="button" 
+          className="btn btn-secondary" 
+          onClick={onCancel} 
+          disabled={isLoading}
+        >
+          Скасувати
         </button>
-        <button type="submit" className="btn-primary" disabled={isLoading}>
-          {isLoading ? 'Сохранение...' : 'Сохранить'}
+        <button 
+          type="submit" 
+          className="btn btn-primary" 
+          disabled={isLoading}
+        >
+          {isLoading ? 'Збереження...' : 'Зберегти'}
         </button>
       </div>
     </form>

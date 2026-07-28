@@ -44,34 +44,36 @@ const DashboardLayout = () => {
   const [sosList, setSosList] = useState([]);
 
   // --- WEBSOCKET CONNECTION ---
-  useEffect(() => {
-    const socket = new SockJS('http://localhost:8080/ws-taxi');
-    const stompClient = new Client({
-      webSocketFactory: () => socket,
-      onConnect: () => {
-        console.log('WS Connected (Global)');
+useEffect(() => {
+  // 🛠️ ИСПРАВЛЕНО: Заменили localhost:8080 на боевой Cloud Run сервер
+  const socket = new SockJS('https://taxi-server-594834712305.europe-central2.run.app/ws-taxi');
+  
+  const stompClient = new Client({
+    webSocketFactory: () => socket,
+    onConnect: () => {
+      console.log('WS Connected (Global)');
+      
+      stompClient.subscribe('/topic/admin/sos', (message) => {
+        const newSos = JSON.parse(message.body);
+        console.log("SOS RECEIVED:", newSos);
         
-        stompClient.subscribe('/topic/admin/sos', (message) => {
-          const newSos = JSON.parse(message.body);
-          console.log("SOS RECEIVED:", newSos);
-          
-          setSosList(prev => [newSos, ...prev]);
+        setSosList(prev => [newSos, ...prev]);
 
-          // Если мы НЕ на странице новостей/оповещений - включаем тревогу
-          if (location.pathname !== '/news') {
-            setSosAlert(true);
-          }
-        });
-      },
-      onStompError: (frame) => {
-        console.error('Broker reported error: ' + frame.headers['message']);
-        console.error('Additional details: ' + frame.body);
-      },
-    });
-    stompClient.activate();
+        // Если мы НЕ на странице новостей/оповещений - включаем тревогу
+        if (location.pathname !== '/news') {
+          setSosAlert(true);
+        }
+      });
+    },
+    onStompError: (frame) => {
+      console.error('Broker reported error: ' + frame.headers['message']);
+      console.error('Additional details: ' + frame.body);
+    },
+  });
+  stompClient.activate();
 
-    return () => stompClient.deactivate();
-  }, [location.pathname]);
+  return () => stompClient.deactivate();
+}, [location.pathname]);
 
   // Сброс алерта при переходе на страницу новостей
   useEffect(() => {

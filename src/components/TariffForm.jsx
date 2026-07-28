@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../assets/Form.css'; 
+import '../assets/Form.css';
 
 const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
@@ -11,8 +11,8 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     freeWaitingMinutes: 3,
     pricePerWaitingMinute: 0.0,
     isActive: true,
-    isBeta: false,        // <-- НОВОЕ ПОЛЕ
-    isUnavailable: false, // <-- НОВОЕ ПОЛЕ
+    isBeta: false,
+    isUnavailable: false,
   });
   
   const [selectedFile, setSelectedFile] = useState(null);
@@ -23,24 +23,23 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
   useEffect(() => {
     if (isEditMode) {
       setFormData({
-        name: initialData.name,
-        basePrice: initialData.basePrice,
-        pricePerKm: initialData.pricePerKm,
-        pricePerKmOutCity: initialData.pricePerKmOutCity || 0.0,
-        extraWaypointPrice: initialData.extraWaypointPrice || 0.0,
-        freeWaitingMinutes: initialData.freeWaitingMinutes,
-        pricePerWaitingMinute: initialData.pricePerWaitingMinute,
-        isActive: initialData.isActive,
-        isBeta: initialData.isBeta || false,               // <-- Загружаем
-        isUnavailable: initialData.isUnavailable || false, // <-- Загружаем
+        name: initialData.name || '',
+        basePrice: initialData.basePrice || 0,
+        pricePerKm: initialData.pricePerKm || 0,
+        pricePerKmOutCity: initialData.pricePerKmOutCity || 0,
+        extraWaypointPrice: initialData.extraWaypointPrice || 0,
+        freeWaitingMinutes: initialData.freeWaitingMinutes || 3,
+        pricePerWaitingMinute: initialData.pricePerWaitingMinute || 0,
+        isActive: initialData.isActive ?? true,
+        isBeta: initialData.isBeta || false,
+        isUnavailable: initialData.isUnavailable || false,
       });
       setExistingImageUrl(initialData.imageUrl); 
     } else {
       setFormData({
         name: '', basePrice: 0.0, pricePerKm: 0.0, pricePerKmOutCity: 0.0,
-        extraWaypointPrice: 0.0,
-        freeWaitingMinutes: 3, pricePerWaitingMinute: 0.0, 
-        isActive: true, isBeta: false, isUnavailable: false, // <-- Сбрасываем
+        extraWaypointPrice: 0.0, freeWaitingMinutes: 3, pricePerWaitingMinute: 0.0, 
+        isActive: true, isBeta: false, isUnavailable: false,
       });
       setExistingImageUrl(null);
     }
@@ -65,94 +64,185 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     e.preventDefault();
     const dataToSend = {
       ...formData,
-      basePrice: parseFloat(formData.basePrice),
-      pricePerKm: parseFloat(formData.pricePerKm),
-      pricePerKmOutCity: parseFloat(formData.pricePerKmOutCity),
-      extraWaypointPrice: parseFloat(formData.extraWaypointPrice),
-      freeWaitingMinutes: parseInt(formData.freeWaitingMinutes),
-      pricePerWaitingMinute: parseFloat(formData.pricePerWaitingMinute),
-      // isBeta и isUnavailable - булевы, уйдут как есть
+      basePrice: parseFloat(formData.basePrice) || 0,
+      pricePerKm: parseFloat(formData.pricePerKm) || 0,
+      pricePerKmOutCity: parseFloat(formData.pricePerKmOutCity) || 0,
+      extraWaypointPrice: parseFloat(formData.extraWaypointPrice) || 0,
+      freeWaitingMinutes: parseInt(formData.freeWaitingMinutes) || 0,
+      pricePerWaitingMinute: parseFloat(formData.pricePerWaitingMinute) || 0,
     };
     
     onSubmit(dataToSend, selectedFile);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="entity-form">
-      <fieldset className="full-width">
-        <legend>Tariff Details</legend>
+    <form onSubmit={handleSubmit} className="modal-form">
+      <div className="form-section">
+        <h3 className="form-section-title">Параметри тарифу</h3>
         
-        <div className="form-grid">
-          <div className="form-group">
-            <label>Tariff Name</label>
-            <input type="text" name="name" value={formData.name} onChange={handleChange} required />
-          </div>
-          <div className="form-group">
-            <label>Base Price</label>
-            <input type="number" step="0.01" name="basePrice" value={formData.basePrice} onChange={handleChange} required />
-          </div>
-          <div className="form-group">
-            <label>Extra Waypoint Price</label>
-            <input type="number" step="0.01" name="extraWaypointPrice" value={formData.extraWaypointPrice} onChange={handleChange} required style={{ borderColor: '#4caf50' }}/>
-          </div>
-          <div className="form-group">
-            <label>Price per 1 km (City)</label>
-            <input type="number" step="0.01" name="pricePerKm" value={formData.pricePerKm} onChange={handleChange} required />
-          </div>
-          
-          <div className="form-group">
-            <label>Price per 1 km (Out of City)</label>
-            <input type="number" step="0.01" name="pricePerKmOutCity" value={formData.pricePerKmOutCity} onChange={handleChange} required style={{ borderColor: '#ff9800' }}/>
+        <div className="form-grid-2col">
+          <div className="form-group span-2">
+            <label className="form-label">Назва тарифу</label>
+            <input 
+              type="text" 
+              name="name" 
+              className="input-field" 
+              value={formData.name} 
+              onChange={handleChange} 
+              placeholder="Наприклад: Стандарт" 
+              required 
+            />
           </div>
 
           <div className="form-group">
-            <label>Free waiting (min)</label>
-            <input type="number" name="freeWaitingMinutes" value={formData.freeWaitingMinutes} onChange={handleChange} required />
+            <label className="form-label">Базова ціна (грн)</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              name="basePrice" 
+              className="input-field" 
+              value={formData.basePrice} 
+              onChange={handleChange} 
+              required 
+            />
           </div>
+
           <div className="form-group">
-            <label>Price per waiting min</label>
-            <input type="number" step="0.01" name="pricePerWaitingMinute" value={formData.pricePerWaitingMinute} onChange={handleChange} required />
+            <label className="form-label">Додаткова точка (грн)</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              name="extraWaypointPrice" 
+              className="input-field" 
+              value={formData.extraWaypointPrice} 
+              onChange={handleChange} 
+              required 
+            />
           </div>
 
-          {/* --- ЧЕКБОКСЫ СТАТУСОВ --- */}
-          <div className="form-group checkbox-label" style={{alignItems: 'center'}}>
-            <input type="checkbox" name="isActive" checked={formData.isActive} onChange={handleChange} />
-            <label>Active (Visible)</label>
-          </div>
-          
-          <div className="form-group checkbox-label" style={{alignItems: 'center'}}>
-            <input type="checkbox" name="isBeta" checked={formData.isBeta} onChange={handleChange} />
-            <label style={{color: '#d32f2f', fontWeight: 'bold'}}>BETA Mode</label>
+          <div className="form-group">
+            <label className="form-label">Ціна за 1 км (Місто)</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              name="pricePerKm" 
+              className="input-field" 
+              value={formData.pricePerKm} 
+              onChange={handleChange} 
+              required 
+            />
           </div>
 
-          <div className="form-group checkbox-label" style={{alignItems: 'center'}}>
-            <input type="checkbox" name="isUnavailable" checked={formData.isUnavailable} onChange={handleChange} />
-            <label style={{color: '#757575'}}>Make Unavailable (Grey out)</label>
+          <div className="form-group">
+            <label className="form-label">Ціна за 1 км (За містом)</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              name="pricePerKmOutCity" 
+              className="input-field" 
+              value={formData.pricePerKmOutCity} 
+              onChange={handleChange} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Безкоштовне очікування (хв)</label>
+            <input 
+              type="number" 
+              name="freeWaitingMinutes" 
+              className="input-field" 
+              value={formData.freeWaitingMinutes} 
+              onChange={handleChange} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ціна очікування / хв</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              name="pricePerWaitingMinute" 
+              className="input-field" 
+              value={formData.pricePerWaitingMinute} 
+              onChange={handleChange} 
+              required 
+            />
           </div>
         </div>
-      </fieldset>
-      
-      <fieldset className="full-width">
-        <legend>Tariff Icon (PNG)</legend>
+
+        <div className="form-checkboxes-group">
+          <label className="checkbox-item">
+            <input 
+              type="checkbox" 
+              name="isActive" 
+              checked={formData.isActive} 
+              onChange={handleChange} 
+            />
+            <span>Активний (видимий для замовлень)</span>
+          </label>
+
+          <label className="checkbox-item">
+            <input 
+              type="checkbox" 
+              name="isBeta" 
+              checked={formData.isBeta} 
+              onChange={handleChange} 
+            />
+            <span className="text-danger font-medium">Режим BETA</span>
+          </label>
+
+          <label className="checkbox-item">
+            <input 
+              type="checkbox" 
+              name="isUnavailable" 
+              checked={formData.isUnavailable} 
+              onChange={handleChange} 
+            />
+            <span className="text-subtle">Тимчасово недоступний (сірий статус)</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="form-section">
+        <h3 className="form-section-title">Іконка тарифу (PNG)</h3>
         <div className="form-group">
-          <label>Upload new icon (optional)</label>
-          <input type="file" name="file" onChange={handleFileChange} accept="image/png, image/jpeg" />
+          <input 
+            type="file" 
+            className="input-field" 
+            onChange={handleFileChange} 
+            accept="image/png, image/jpeg" 
+          />
           
           {isEditMode && existingImageUrl && !selectedFile && (
-            <div style={{marginTop: '10px'}}>
-              <p>Current Icon:</p>
-              <img src={existingImageUrl} alt={formData.name} style={{width: '50px', height: '50px', objectFit: 'cover'}} />
+            <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span className="form-hint">Поточна іконка:</span>
+              <img 
+                src={existingImageUrl} 
+                alt={formData.name} 
+                style={{ width: 36, height: 36, objectFit: 'contain' }}
+              />
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <div className="form-actions">
-        <button type="button" className="btn-secondary" onClick={onCancel} disabled={isLoading}>
-          Cancel
+      <div className="form-actions justify-end" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+        <button 
+          type="button" 
+          className="btn btn-secondary" 
+          onClick={onCancel} 
+          disabled={isLoading}
+        >
+          Скасувати
         </button>
-        <button type="submit" className="btn-primary" disabled={isLoading}>
-          {isLoading ? 'Saving...' : 'Save'}
+        <button 
+          type="submit" 
+          className="btn btn-primary" 
+          disabled={isLoading}
+        >
+          {isLoading ? 'Збереження...' : 'Зберегти'}
         </button>
       </div>
     </form>

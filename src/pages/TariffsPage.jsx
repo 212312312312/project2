@@ -5,8 +5,8 @@ import {
   updateTariff,
   deleteTariff,
   reorderTariff,
-  getMinDistance,    // 👈 ДОБАВЛЕНО
-  updateMinDistance  // 👈 ДОБАВЛЕНО
+  getMinDistance,
+  updateMinDistance
 } from '../services/tariffService';
 
 import Modal from '../components/Modal';
@@ -21,8 +21,8 @@ const TariffsPage = () => {
   const [editingTariff, setEditingTariff] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [minDistance, setMinDistance] = useState(3.0); // 👈 ДОБАВЛЕНО: Стейт значения километража
-  const [isSavingDistance, setIsSavingDistance] = useState(false); // 👈 ДОБАВЛЕНО: Стейт загрузки сохранения
+  const [minDistance, setMinDistance] = useState(3.0);
+  const [isSavingDistance, setIsSavingDistance] = useState(false);
 
   const fetchTariffs = async () => {
     try {
@@ -31,9 +31,10 @@ const TariffsPage = () => {
       const data = await getAllTariffs();
       setTariffs(data);
       
-      // 🔥 ДОБАВЛЕНО: Автоматически загружаем километраж минималки с бэкенда Unit при старте страницы
       const distData = await getMinDistance();
-      setMinDistance(distData.minDistance);
+      if (distData && distData.minDistance !== undefined) {
+        setMinDistance(distData.minDistance);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -55,8 +56,8 @@ const TariffsPage = () => {
       const updatedTariffs = await reorderTariff(id, direction);
       setTariffs(updatedTariffs); 
     } catch (error) {
-      console.error("Помилка изменения порядка тарифов:", error);
-      alert("Не удалось изменить порядок тарифа");
+      console.error("Помилка зміни порядку тарифів:", error);
+      alert("Не вдалося змінити порядок тарифу");
     }
   };
 
@@ -89,7 +90,7 @@ const TariffsPage = () => {
   };
 
   const handleDeleteClick = async (tariffId) => {
-    if (window.confirm('Are you sure? This will delete the tariff and its image.')) {
+    if (window.confirm('Ви впевнені, що хочете видалити цей тариф?')) {
       try {
         await deleteTariff(tariffId);
         fetchTariffs(); 
@@ -99,7 +100,6 @@ const TariffsPage = () => {
     }
   };
 
-  // 🔥 ДОБАВЛЕНО: Обработчик сохранения глобального километража
   const handleSaveMinDistance = async () => {
     setIsSavingDistance(true);
     try {
@@ -113,154 +113,158 @@ const TariffsPage = () => {
     }
   };
 
-  if (loading) return <div>Loading tariffs...</div>;
+  if (loading) return <div className="loading-spinner">Завантаження тарифів...</div>;
 
   return (
-    <div className="table-page-container">
-      <div className="table-header">
-        <h2>Tariff Settings ({tariffs.length})</h2>
-        <div className="controls" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          
-          {/* 🔥 ДОБАВЛЕНО: Минималистичный и аккуратный блок настройки километража минималки Unit */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#232329', padding: '6px 12px', borderRadius: '8px', border: '1px solid #3f3f46' }}>
-            <span style={{ fontSize: '13px', color: '#a1a1aa' }}>Минималка (КМ):</span>
+    <div className="page-wrapper">
+      <header className="page-header">
+        <div className="header-title-group">
+          <h1>Тарифи</h1>
+          <span className="count-badge">{tariffs.length}</span>
+        </div>
+
+        <div className="header-actions">
+          {/* Блок налаштування мінімалки */}
+          <div className="toggle-group" style={{ padding: '4px 8px', gap: '8px', alignItems: 'center' }}>
+            <span className="text-subtle font-medium" style={{ fontSize: '0.85rem' }}>Мінімалка (км):</span>
             <input 
               type="number" 
               step="0.1" 
               min="0"
+              className="input-field"
               value={minDistance} 
               onChange={(e) => setMinDistance(parseFloat(e.target.value) || 0)}
-              style={{ width: '65px', padding: '6px', borderRadius: '6px', border: '1px solid #52525b', background: '#18181b', color: '#fff', textAlign: 'center', fontWeight: 'bold' }}
+              style={{ width: '70px', padding: '0.3rem 0.5rem', textAlign: 'center', fontWeight: 'bold' }}
             />
             <button 
-              className="btn-primary" 
+              className="btn btn-sm btn-secondary" 
               onClick={handleSaveMinDistance} 
               disabled={isSavingDistance}
-              style={{ padding: '6px 12px', fontSize: '13px', background: '#008080', border: 'none', cursor: 'pointer' }}
             >
-              {isSavingDistance ? '...' : 'Сохранить'}
+              {isSavingDistance ? '...' : 'Зберегти'}
             </button>
           </div>
 
-          <button className="btn-primary" onClick={handleAddClick}>
-            + Create Tariff
+          <button className="btn btn-primary" onClick={handleAddClick}>
+            + Створити тариф
           </button>
         </div>
-      </div>
+      </header>
 
-      {error && <div className="error-message" style={{ marginBottom: '1rem' }}>{error}</div>}
+      {error && <div className="alert alert-danger mb-3">{error}</div>}
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Icon</th>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Base Price</th>
-              <th>Price/km</th>
-              <th>Out City $/km</th>
-              <th>Waypoint $</th>
-              <th>Free Wait (min)</th>
-              <th>Wait Price/min</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tariffs.length > 0 ? (
-              tariffs.map((tariff) => (
-                <tr 
-                  key={tariff.id} 
-                  style={{ opacity: tariff.isUnavailable ? 0.4 : 1, background: tariff.isUnavailable ? '#f5f5f5' : 'transparent' }}
-                >
-                  <td>
-                    {tariff.imageUrl ? (
-                      <img 
-                        src={tariff.imageUrl} 
-                        alt={tariff.name} 
-                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
-                      />
-                    ) : (
-                      'N/A'
-                    )}
-                  </td>
-                  <td>{tariff.id}</td>
-                  <td>
-                    <strong>{tariff.name}</strong>
-                    {tariff.isBeta && (
-                      <span style={{ 
-                        marginLeft: '8px', fontSize: '10px', background: '#d32f2f', 
-                        color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' 
-                      }}>
-                        BETA
+      <div className="table-card">
+        <div className="table-responsive">
+          <table className="main-table">
+            <thead>
+              <tr>
+                <th className="text-center" style={{ width: '60px' }}>Іконка</th>
+                <th className="text-center" style={{ width: '50px' }}>ID</th>
+                <th>Назва</th>
+                <th className="text-center">Статус</th>
+                <th className="text-center">База (₴)</th>
+                <th className="text-center">1 км (Місто)</th>
+                <th className="text-center">1 км (За місто)</th>
+                <th className="text-center">Точка (₴)</th>
+                <th className="text-center">Очікування</th>
+                <th className="text-center">Очік. (₴/хв)</th>
+                <th className="text-center" style={{ width: '210px' }}>Дії</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tariffs.length > 0 ? (
+                tariffs.map((tariff) => (
+                  <tr 
+                    key={tariff.id} 
+                    style={{ opacity: tariff.isUnavailable ? 0.5 : 1 }}
+                  >
+                    <td className="text-center">
+                      {tariff.imageUrl ? (
+                        <img 
+                          src={tariff.imageUrl} 
+                          alt={tariff.name} 
+                          style={{ width: '36px', height: '36px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                        />
+                      ) : (
+                        <span className="text-subtle">—</span>
+                      )}
+                    </td>
+                    <td className="text-center text-subtle">#{tariff.id}</td>
+                    <td>
+                      <strong className="font-medium">{tariff.name}</strong>
+                      {tariff.isBeta && (
+                        <span className="badge badge-danger ml-2" style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem', marginLeft: '6px' }}>
+                          BETA
+                        </span>
+                      )}
+                      {tariff.isUnavailable && (
+                        <div className="text-subtle text-xs" style={{ fontSize: '0.75rem' }}>
+                          Недоступний
+                        </div>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <span className={`badge ${tariff.isActive ? 'badge-success' : 'badge-muted'}`}>
+                        {tariff.isActive ? 'АКТИВНИЙ' : 'ВИМКНЕНО'}
                       </span>
-                    )}
-                    {tariff.isUnavailable && (
-                      <div style={{ fontSize: '10px', color: '#757575', marginTop: '2px' }}>
-                        UNAVAILABLE
-                      </div>
-                    )}
-                  </td>
-                  <td>
-                    <span className={tariff.isActive ? 'status-online' : 'status-offline'}>
-                      {tariff.isActive ? 'ACTIVE' : 'OFF'}
-                    </span>
-                  </td>
-                  <td>{tariff.basePrice.toFixed(2)}</td>
-                  <td>{tariff.pricePerKm.toFixed(2)}</td>
-                  <td style={{ color: '#e65100', fontWeight: 'bold' }}>
-                      {tariff.pricePerKmOutCity ? tariff.pricePerKmOutCity.toFixed(2) : '-'}
-                  </td>
-                  <td style={{ color: '#4caf50', fontWeight: 'bold' }}>
-                      {tariff.extraWaypointPrice ? tariff.extraWaypointPrice.toFixed(2) : '0.00'}
-                  </td>
-                  <td>{tariff.freeWaitingMinutes} min</td>
-                  <td>{tariff.pricePerWaitingMinute.toFixed(2)}</td>
-                  <td>
-                    {/* КНОПКИ СОРТИРОВКИ ПОРЯДКА */}
-                    <div className="reorder-actions" style={{ display: 'inline-flex', gap: '4px', marginRight: '8px' }}>
-                      <button 
-                        onClick={() => handleReorder(tariff.id, 'UP')}
-                        className="btn-reorder-up"
-                        title="Перемістити вгору"
-                        style={{ padding: '4px 8px', cursor: 'pointer', fontWeight: 'bold' }}
-                      >
-                        ↑
-                      </button>
-                      <button 
-                        onClick={() => handleReorder(tariff.id, 'DOWN')}
-                        className="btn-reorder-down"
-                        title="Перемістити вниз"
-                        style={{ padding: '4px 8px', cursor: 'pointer', fontWeight: 'bold' }}
-                      >
-                        ↓
-                      </button>
-                    </div>
+                    </td>
+                    <td className="text-center font-medium">{tariff.basePrice.toFixed(2)} ₴</td>
+                    <td className="text-center font-medium">{tariff.pricePerKm.toFixed(2)} ₴</td>
+                    <td className="text-center font-medium text-warning">
+                      {tariff.pricePerKmOutCity ? `${tariff.pricePerKmOutCity.toFixed(2)} ₴` : '—'}
+                    </td>
+                    <td className="text-center font-medium text-success">
+                      {tariff.extraWaypointPrice ? `${tariff.extraWaypointPrice.toFixed(2)} ₴` : '0.00 ₴'}
+                    </td>
+                    <td className="text-center text-subtle">{tariff.freeWaitingMinutes} хв</td>
+                    <td className="text-center font-medium">{tariff.pricePerWaitingMinute.toFixed(2)} ₴</td>
+                    <td className="text-center">
+                      <div className="btn-group justify-center">
+                        <div className="btn-group" style={{ gap: '2px' }}>
+                          <button 
+                            onClick={() => handleReorder(tariff.id, 'UP')}
+                            className="btn btn-sm btn-outline"
+                            title="Перемістити вгору"
+                            style={{ padding: '0.2rem 0.4rem' }}
+                          >
+                            ↑
+                          </button>
+                          <button 
+                            onClick={() => handleReorder(tariff.id, 'DOWN')}
+                            className="btn btn-sm btn-outline"
+                            title="Перемістити вниз"
+                            style={{ padding: '0.2rem 0.4rem' }}
+                          >
+                            ↓
+                          </button>
+                        </div>
 
-                    {/* КНОПКИ УПРАВЛЕНИЯ ТАРИФОМ */}
-                    <button className="btn-secondary" onClick={() => handleEditClick(tariff)} style={{ marginRight: '4px' }}>
-                      Edit
-                    </button>
-                    <button className="btn-danger" onClick={() => handleDeleteClick(tariff.id)}>
-                      Delete
-                    </button>
+                        <button className="btn btn-sm btn-ghost" onClick={() => handleEditClick(tariff)}>
+                          Ред.
+                        </button>
+                        <button className="btn btn-sm btn-ghost-danger" onClick={() => handleDeleteClick(tariff.id)}>
+                          Вид.
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="11" className="text-center text-subtle py-8">
+                    Тарифи не знайдені. Створіть перший тариф.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="11">No tariffs found. Create the first one.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleModalClose}
-        title={editingTariff ? 'Edit Tariff' : 'Create New Tariff'}
+        title={editingTariff ? 'Редагувати тариф' : 'Створити новий тариф'}
       >
         <TariffForm
           initialData={editingTariff}

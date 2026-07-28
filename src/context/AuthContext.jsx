@@ -10,18 +10,29 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Для проверки при загрузке
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // 3. Проверяем сессию через HttpOnly куку при первой загрузке
+  // 3. Проверяем сессию при первой загрузке
   useEffect(() => {
     const checkAuth = async () => {
+      const savedRefreshToken = localStorage.getItem('refreshToken');
+
+      // 🛠️ ФИКС: Если нет сохраненного refresh-токена, НЕ делаем лишний запрос на сервер!
+      if (!savedRefreshToken) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        // Делаем тихий POST запрос на рефреш. 
-        // Если кука жива — бэкенд вернет свежие данные юзера.
-        const response = await api.post('/auth/refresh');
+        // 🛠️ ФИКС: Передаем refreshToken в JSON-теле (работает надежно без кук между localhost и Cloud Run)
+        const response = await api.post('/auth/refresh', { refreshToken: savedRefreshToken });
         const data = response.data;
-        
+
+        // Обновляем токены в localStorage
+        if (data.token) localStorage.setItem('token', data.token);
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+
         setUser({
           id: data.userId,
           fullName: data.fullName,
@@ -29,7 +40,7 @@ export const AuthProvider = ({ children }) => {
         });
         setIsAuthenticated(true);
       } catch (error) {
-        // Если кук нет или они протухли — тихо сбрасываем сессию
+        // Если токен невалиден — очищаем сессию
         setUser(null);
         setIsAuthenticated(false);
         localStorage.clear();
@@ -45,7 +56,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (loginInput, password) => {
     try {
       const data = await loginUser(loginInput, password); 
-      
+
       setUser({
         id: data.userId,
         fullName: data.fullName,
@@ -53,13 +64,16 @@ export const AuthProvider = ({ children }) => {
       });
       setIsAuthenticated(true);
 
-      // Сохраняем в localStorage ТОЛЬКО данные профиля для UI (без токенов!)
+      // 🛠️ ФИКС: Сохраняем токены и профиль
+      if (data.token) localStorage.setItem('token', data.token);
+      if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+
       localStorage.setItem('user', JSON.stringify({
         id: data.userId,
         fullName: data.fullName,
         role: data.role
       }));
-      
+
       navigate('/');
     } catch (error) {
       console.error('Login error:', error);
@@ -70,17 +84,13 @@ export const AuthProvider = ({ children }) => {
   // 5. Функция Выхода
   const logout = () => {
     setUser(null);
-    setToken(null);
     setIsAuthenticated(false);
-    
-  localStorage.clear(); // Safe & Clean: гарантированно выжигает и token, и refreshToken, и user стейты
-    
+    localStorage.clear(); // 🛠️ ФИКС: Убрали вызов несуществующего setToken(null)
     navigate('/login');
   };
 
   const value = {
     user,
-    // строку token, удаляем отсюда
     isAuthenticated,
     isLoading,
     login,
@@ -94,7 +104,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// 7. Кастомный Хук для удобства
+// 7. Кастомный Хук
 export const useAuth = () => {
   return useContext(AuthContext);
 };

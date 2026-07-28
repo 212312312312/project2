@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllSettings, uploadSettingImage, saveTextSettings } from '../services/settingsService';
 import CancellationReasonsModal from '../components/CancellationReasonsModal';
-import '../assets/Form.css'; 
+import '../assets/Form.css';
 
 const SettingsPage = () => {
     const [settings, setSettings] = useState({});
@@ -17,32 +17,32 @@ const SettingsPage = () => {
     const loadSettings = async () => {
         try {
             const data = await getAllSettings();
-            setSettings(data);
+            setSettings(data || {});
         } catch (error) {
-            console.error("Ошибка загрузки:", error);
+            console.error("Помилка завантаження налаштувань:", error);
         }
     };
 
-    // Общая функция сохранения (Картинка + Размеры)
+    // Загальна функція збереження (Зображення + Розміри)
     const handleSaveCard = async (keyPrefix, file, width, height) => {
         setLoading(true);
         try {
             const updates = {};
 
-            // 1. Если есть файл - грузим его
+            // 1. Якщо є файл - вантажимо його
             if (file) {
                 const newUrl = await uploadSettingImage(keyPrefix, file);
                 updates[keyPrefix] = newUrl;
             }
 
-            // 2. Сохраняем размеры (как текст)
+            // 2. Зберігаємо розміри (як текст)
             updates[`${keyPrefix}_width`] = width.toString();
             updates[`${keyPrefix}_height`] = height.toString();
 
-            // 3. Отправляем текстовые настройки на сервер
+            // 3. Відправляємо текстові налаштування на сервер
             await saveTextSettings(updates);
 
-            // 4. Обновляем стейт локально
+            // 4. Оновлюємо стейт локально
             setSettings(prev => ({ ...prev, ...updates }));
             
             alert("Збережено успішно!");
@@ -54,33 +54,35 @@ const SettingsPage = () => {
     };
 
     return (
-        <div className="page-container">
-            <div className="page-header">
-                <h2>⚙️ Налаштування системи</h2>
-            </div>
+        <div className="page-wrapper">
+            <header className="page-header">
+                <div className="header-title-group">
+                    <h1>Налаштування системи</h1>
+                </div>
+            </header>
 
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
                 
                 {/* --- КАРТКА ДЛЯ ПРИЧИН СКАСУВАННЯ --- */}
-                <div className="card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div className="form-section" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
-                        <h3 style={{ fontSize: '1.1rem', marginBottom: '5px' }}>⛔ Причини скасування</h3>
-                        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>
-                            Налаштування списку причин, які можуть обирать водії та клієнти при скасуванні замовлення.
+                        <h3 className="form-section-title" style={{ margin: '0 0 0.5rem 0' }}>⛔ Причини скасування</h3>
+                        <p className="form-hint" style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+                            Налаштування списку причин, які можуть обирати водії та клієнти при скасуванні замовлення.
                         </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
                         <button 
-                            className="btn-primary" 
+                            className="btn btn-primary" 
                             onClick={() => setReasonModalTarget('DRIVER')}
-                            style={{ flex: 1, padding: '10px 5px', fontSize: '0.9rem' }}
+                            style={{ flex: 1, padding: '0.65rem 0.5rem' }}
                         >
                             Для водіїв
                         </button>
                         <button 
-                            className="btn-secondary" 
+                            className="btn btn-secondary" 
                             onClick={() => setReasonModalTarget('CLIENT')}
-                            style={{ flex: 1, padding: '10px 5px', fontSize: '0.9rem' }}
+                            style={{ flex: 1, padding: '0.65rem 0.5rem' }}
                         >
                             Для клієнтів
                         </button>
@@ -89,7 +91,7 @@ const SettingsPage = () => {
 
                 <SettingCard 
                     title="📍 Мітка водія (Диспетчерська)"
-                    description="Іконка на карті диспетчера."
+                    description="Іконка водія на карті диспетчерської панелі."
                     settingKey="driver_map_icon"
                     settingsData={settings}
                     onSave={handleSaveCard}
@@ -98,7 +100,7 @@ const SettingsPage = () => {
 
                 <SettingCard 
                     title="🚗 Іконка авто (Клієнт)"
-                    description="Іконка в додатку клієнта."
+                    description="Іконка автомобіля у мобільному додатку клієнта."
                     settingKey="client_car_icon"
                     settingsData={settings}
                     onSave={handleSaveCard}
@@ -124,12 +126,12 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
     const [width, setWidth] = useState(settingsData[`${settingKey}_width`] || 40);
     const [height, setHeight] = useState(settingsData[`${settingKey}_height`] || 40);
 
-    // ИСПРАВЛЕНО: Динамически вычисляем хост бэкенда (работает и локально, и на проде)
+    // Динамічно визначаємо хост бэкенда для відносних шляхів
     const backendHost = window.location.hostname === 'localhost' ? 'http://localhost:8080' : `${window.location.protocol}//${window.location.host}`;
     
-    // ИСПРАВЛЕНО: Если путь относительный, принудительно подставляем хост бэкенда. Объявлено строго один раз!
-    const currentUrl = settingsData[settingKey] 
-        ? (settingsData[settingKey].startsWith('http') ? settingsData[settingKey] : `${backendHost}${settingsData[settingKey]}`) 
+    const rawUrl = settingsData[settingKey];
+    const currentUrl = rawUrl 
+        ? (rawUrl.startsWith('http') ? rawUrl : `${backendHost}${rawUrl}`) 
         : null;
 
     useEffect(() => {
@@ -146,62 +148,72 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
     };
 
     return (
-        <div className="card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '5px' }}>{title}</h3>
-            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>{description}</p>
+        <div className="form-section" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.25rem' }}>
+            <h3 className="form-section-title" style={{ margin: '0 0 0.5rem 0' }}>{title}</h3>
+            <p className="form-hint" style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1rem', lineHeight: '1.4' }}>{description}</p>
             
-            <input type="file" accept="image/*" onChange={handleFileChange} style={{ marginBottom: '15px' }} />
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Зображення (PNG/SVG)</label>
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleFileChange} 
+                    className="input-field"
+                />
+            </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Ширина (px):</label>
+            <div className="form-grid-2col" style={{ marginBottom: '1rem' }}>
+                <div className="form-group">
+                    <label className="form-label">Ширина (px)</label>
                     <input 
                         type="number" 
                         value={width} 
                         onChange={(e) => setWidth(e.target.value)} 
-                        style={{ width: '100%', padding: '5px', marginTop: '5px' }}
+                        className="input-field"
                     />
                 </div>
-                <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Висота (px):</label>
+                <div className="form-group">
+                    <label className="form-label">Висота (px)</label>
                     <input 
                         type="number" 
                         value={height} 
                         onChange={(e) => setHeight(e.target.value)} 
-                        style={{ width: '100%', padding: '5px', marginTop: '5px' }}
+                        className="input-field"
                     />
                 </div>
             </div>
 
-            <div style={{ 
-                height: '150px', 
-                border: '2px dashed #ccc', 
-                borderRadius: '8px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                background: '#f9f9f9',
-                overflow: 'hidden'
-            }}>
-                {(preview || currentUrl) ? (
-                    <img 
-                        src={preview || currentUrl} 
-                        alt="Preview" 
-                        style={{ 
-                            width: `${width}px`, 
-                            height: `${height}px`, 
-                            objectFit: 'contain',
-                            border: '1px solid red' 
-                        }} 
-                    />
-                ) : (
-                    <span style={{ color: '#999', fontSize: '0.8rem' }}>Немає зображення</span>
-                )}
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label">Предперегляд</label>
+                <div style={{ 
+                    height: '140px', 
+                    border: '2px dashed #cbd5e1', 
+                    borderRadius: '8px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    background: '#f8fafc',
+                    overflow: 'hidden'
+                }}>
+                    {(preview || currentUrl) ? (
+                        <img 
+                            src={preview || currentUrl} 
+                            alt="Preview" 
+                            style={{ 
+                                width: `${width}px`, 
+                                height: `${height}px`, 
+                                objectFit: 'contain'
+                            }} 
+                        />
+                    ) : (
+                        <span className="text-subtle" style={{ fontSize: '0.85rem' }}>Немає зображення</span>
+                    )}
+                </div>
             </div>
 
             <button 
-                className="btn-primary" 
-                style={{ marginTop: '15px', width: '100%' }} 
+                className="btn btn-primary" 
+                style={{ width: '100%' }} 
                 onClick={() => onSave(settingKey, file, width, height)} 
                 disabled={loading}
             >

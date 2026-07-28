@@ -5,7 +5,6 @@ import {
   updateDispatcher,
   deleteDispatcher
 } from '../services/dispatcherService';
-// Импортируем сервис блокировки/разблокировки клиентов (он работает и для User)
 import { blockClient, unblockClient } from '../services/clientService';
 
 import Modal from '../components/Modal';
@@ -17,10 +16,9 @@ const DispatchersPage = () => {
   const [error, setError] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingDispatcher, setEditingDispatcher] = useState(null); // null = Создание
+  const [editingDispatcher, setEditingDispatcher] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Загрузка данных
   const fetchDispatchers = async () => {
     try {
       setLoading(true);
@@ -38,7 +36,6 @@ const DispatchersPage = () => {
     fetchDispatchers();
   }, []);
 
-  // 2. Функции-обработчики CRUD
   const handleAddClick = () => {
     setEditingDispatcher(null);
     setIsModalOpen(true);
@@ -64,7 +61,7 @@ const DispatchersPage = () => {
         await createDispatcher(formData);
       }
       handleModalClose();
-      fetchDispatchers(); // Обновляем список
+      fetchDispatchers();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -73,17 +70,16 @@ const DispatchersPage = () => {
   };
 
   const handleDeleteClick = async (id) => {
-    if (window.confirm('Вы уверены, что хотите удалить этого диспетчера?')) {
+    if (window.confirm('Ви впевнені, що хочете видалити цього диспетчера?')) {
       try {
         await deleteDispatcher(id);
-        fetchDispatchers(); // Обновляем список
+        fetchDispatchers();
       } catch (err) {
         setError(err.message);
       }
     }
   };
   
-  // 3. Функции Блокировки (используем clientService, т.к. диспетчер - это User)
   const updateDispatcherState = (updatedUser) => {
     setDispatchers(prev => 
       prev.map(d => d.id === updatedUser.id ? { ...d, isBlocked: updatedUser.isBlocked } : d)
@@ -92,9 +88,9 @@ const DispatchersPage = () => {
   
   const handleToggleBlock = async (dispatcher) => {
     const action = dispatcher.isBlocked ? unblockClient : blockClient;
-    const actionName = dispatcher.isBlocked ? 'Разблокировать' : 'Заблокировать';
+    const actionName = dispatcher.isBlocked ? 'розблокувати' : 'заблокувати';
     
-    if (window.confirm(`Вы уверены, что хотите ${actionName} диспетчера ${dispatcher.fullName}?`)) {
+    if (window.confirm(`Ви впевнені, що хочете ${actionName} диспетчера ${dispatcher.fullName}?`)) {
       try {
         setError('');
         const updatedUser = await action(dispatcher.id);
@@ -105,75 +101,85 @@ const DispatchersPage = () => {
     }
   };
 
-  if (loading) return <div>Загрузка диспетчеров...</div>;
+  if (loading) return <div className="loading-spinner">Завантаження диспетчерів...</div>;
 
   return (
-    <div className="table-page-container">
-      <div className="table-header">
-        <h2>Управление Диспетчерами ({dispatchers.length})</h2>
-        <div className="controls">
-          <button className="btn-primary" onClick={handleAddClick}>
-            + Добавить Диспетчера
+    <div className="page-wrapper">
+      <header className="page-header">
+        <div className="header-title-group">
+          <h1>Диспетчери</h1>
+          <span className="count-badge">{dispatchers.length}</span>
+        </div>
+
+        <div className="header-actions">
+          <button className="btn btn-primary" onClick={handleAddClick}>
+            + Додати диспетчера
           </button>
         </div>
-      </div>
+      </header>
 
-      {error && <div className="error-message" style={{ marginBottom: '1rem' }}>{error}</div>}
+      {error && <div className="alert alert-danger mb-3">{error}</div>}
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Логин</th>
-              <th>Полное имя (ПИБ)</th>
-              <th>Статус</th>
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dispatchers.length > 0 ? (
-              dispatchers.map((d) => (
-                <tr key={d.id}>
-                  <td>{d.id}</td>
-                  <td>{d.userLogin}</td>
-                  <td>{d.fullName}</td>
-                  <td>
-                    {d.isBlocked ? (
-                      <strong style={{ color: 'red' }}>ЗАБЛОКИРОВАН</strong>
-                    ) : (
-                      <span style={{ color: 'green' }}>Активен</span>
-                    )}
-                  </td>
-                  <td>
-                    <button className="btn-secondary" onClick={() => handleEditClick(d)}>
-                      Редаг.
-                    </button>
-                    <button 
-                      className={d.isBlocked ? 'btn-primary' : 'btn-danger'}
-                      onClick={() => handleToggleBlock(d)}
-                    >
-                      {d.isBlocked ? 'Разблок.' : 'Заблок.'}
-                    </button>
-                    <button className="btn-danger" onClick={() => handleDeleteClick(d.id)}>
-                      Удалить
-                    </button>
+      <div className="table-card">
+        <div className="table-responsive">
+          <table className="main-table">
+            <thead>
+              <tr>
+                <th className="text-center" style={{ width: '60px' }}>ID</th>
+                <th>Логін</th>
+                <th>ПІБ (Повне ім'я)</th>
+                <th className="text-center">Статус</th>
+                <th className="text-center" style={{ width: '230px' }}>Дії</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dispatchers.length > 0 ? (
+                dispatchers.map((d) => (
+                  <tr key={d.id}>
+                    <td className="text-center text-subtle">#{d.id}</td>
+                    <td>
+                      <strong className="font-medium">{d.userLogin}</strong>
+                    </td>
+                    <td>{d.fullName}</td>
+                    <td className="text-center">
+                      <span className={`badge ${d.isBlocked ? 'badge-danger' : 'badge-success'}`}>
+                        {d.isBlocked ? 'ЗАБЛОКОВАНИЙ' : 'АКТИВНИЙ'}
+                      </span>
+                    </td>
+                    <td className="text-center">
+                      <div className="btn-group justify-center">
+                        <button className="btn btn-sm btn-ghost" onClick={() => handleEditClick(d)}>
+                          Ред.
+                        </button>
+                        <button 
+                          className={`btn btn-sm ${d.isBlocked ? 'btn-outline' : 'btn-ghost-danger'}`}
+                          onClick={() => handleToggleBlock(d)}
+                        >
+                          {d.isBlocked ? 'Розблок.' : 'Заблок.'}
+                        </button>
+                        <button className="btn btn-sm btn-ghost-danger" onClick={() => handleDeleteClick(d.id)}>
+                          Вид.
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="text-center text-subtle py-8">
+                    Диспетчери не знайдені. Створіть першого диспетчера.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5">Диспетчеры не найдены.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleModalClose}
-        title={editingDispatcher ? 'Редактировать диспетчера' : 'Новый диспетчер'}
+        title={editingDispatcher ? 'Редагувати диспетчера' : 'Новий диспетчер'}
       >
         <DispatcherForm
           initialData={editingDispatcher}

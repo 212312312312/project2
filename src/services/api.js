@@ -1,9 +1,12 @@
 import axios from 'axios';
 
+// 0. Базовый адрес вашего продакшн-сервера в Google Cloud Run
+const SERVER_URL = 'https://taxi-server-594834712305.europe-central2.run.app';
+
 // 1. Создаем "экземпляр" (instance) axios
 const api = axios.create({
-  baseURL: '/api/v1',
-  withCredentials: true // 👈 ДОБАВЛЕНО: автоматически пересылать HttpOnly куки бэкенду
+  baseURL: `${SERVER_URL}/api/v1`,
+  withCredentials: true // автоматически пересылать HttpOnly куки бэкенду
 });
 
 // 2. Создаем "Перехватчик Запросов"
@@ -60,9 +63,9 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Вызываем обновление сессии. Тело запроса пустое {}, 
-        // бэкенд прочитает куку refreshToken сам!
-        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+        // Вызываем обновление сессии по полному URL бэкенда.
+        // Тело запроса пустое {}, бэкенд прочитает куку refreshToken сам!
+        await axios.post(`${SERVER_URL}/api/v1/auth/refresh`, {}, { withCredentials: true });
 
         // Уведомляем очередь, что рефреш прошел успешно
         processQueue(null);
