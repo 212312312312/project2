@@ -6,6 +6,7 @@ import DashboardLayout from './pages/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DriverRegistrationPage from './pages/DriverRegistrationPage'; 
 import DriverPhotoUploadWebView from './pages/DriverPhotoUploadWebView';
+import AddCarPage from './pages/AddCarPage';
 
 function App() {
   return (
@@ -13,8 +14,11 @@ function App() {
       <Routes>
         {/* === Публичные роуты (WebView) === */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/driver-register" element={<DriverRegistrationPage />} />
-        <Route path="/driver/photo-upload" element={<DriverPhotoUploadWebView />} />
+        <Route path="/driver-register/*" element={<DriverRegistrationPage />} />
+        <Route path="/driver/photo-upload/*" element={<DriverPhotoUploadWebView />} />
+        <Route path="/photo-control/*" element={<DriverPhotoUploadWebView />} />
+        <Route path="/add-car/*" element={<DriverRegistrationPage />} />
+        <Route path="/add-car/*" element={<AddCarPage />} />
 
         {/* === Защищенные роуты (Диспетчерская) === */}
         <Route

@@ -62,6 +62,7 @@ api.interceptors.response.use(
     const isPublicOrWebView = 
       currentPath.includes('/driver-register') ||
       currentPath.includes('/driver/photo-upload') ||
+      currentPath.includes('/photo-control') ||
       currentPath.includes('/add-car');
 
     // Если это НЕ WebView водителя, сервер вернул 401 и запрос еще не пытался повториться
@@ -90,8 +91,10 @@ api.interceptors.response.use(
         isRefreshing = false;
         localStorage.clear();
         
-        // 🛠️ Редирект на /login выполняется ТОЛЬКО для панели диспетчера, но НЕ для WebView водителя!
-        window.location.href = '/login';
+        // 🛠️ Редирект на /login выполняется ТОЛЬКО если это НЕ WebView водителя!
+        if (!isPublicOrWebView) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }
