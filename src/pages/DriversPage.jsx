@@ -14,7 +14,7 @@ import {
 } from '../services/driverService';
 import { getAllTariffs } from '../services/tariffService';
 import '../assets/DriversPage.css';
-
+import { photoControlService } from '../services/photoControlService';
 import Modal from '../components/Modal';
 import DriverForm from '../components/DriverForm';
 
@@ -161,7 +161,16 @@ const WalletEditor = ({ driverId, currentBalance, onUpdate }) => {
     </div>
   );
 };
-
+const handleRequestPhotoControl = async (driverId) => {
+  if (window.confirm('Запросити фотоконтроль у цього водія? (Буде надано 1 годину)')) {
+    try {
+      await photoControlService.requestPhotoControl(driverId);
+      alert('Запит на фотоконтроль успішно надіслано водію!');
+    } catch (err) {
+      alert('Помилка при надсиланні запиту на фотоконтроль');
+    }
+  }
+};
 // --- КОМПОНЕНТ КОРРЕКТИРОВКИ БАЛЛОВ ---
 const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
   const [points, setPoints] = useState('');
@@ -729,6 +738,20 @@ const DriversPage = () => {
                       <div className="btn-group justify-center">
                         <button className="btn btn-sm btn-ghost" onClick={(e) => handleEditClick(driver, e)}>Ред.</button>
                         <button className="btn btn-sm btn-ghost-danger" onClick={(e) => handleDeleteClick(driver.id, e)}>Вид.</button>
+                        <button 
+    onClick={() => handleRequestPhotoControl(driver.id)}
+    style={{ 
+      backgroundColor: '#f39c12', 
+      color: '#fff', 
+      border: 'none', 
+      padding: '5px 10px', 
+      borderRadius: '4px', 
+      cursor: 'pointer',
+      marginLeft: '5px' 
+    }}
+  >
+    Фотоконтроль
+  </button>
                       </div>
                     </td>
                     <td className="text-center">

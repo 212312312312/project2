@@ -22,6 +22,8 @@ import CarRequestsPage from './CarRequestsPage';
 import DriverRequestsPage from './DriverRequestsPage'; 
 import ClientInfoPage from './ClientInfoPage';
 import FinancePage from './FinancePage';
+import PhotoControl from './PhotoControl';
+import DriverPhotoUploadWebView from './DriverPhotoUploadWebView';
 
 const sosStyle = {
   backgroundColor: '#ff4d4d',
@@ -44,36 +46,34 @@ const DashboardLayout = () => {
   const [sosList, setSosList] = useState([]);
 
   // --- WEBSOCKET CONNECTION ---
-useEffect(() => {
-  // 🛠️ ИСПРАВЛЕНО: Заменили localhost:8080 на боевой Cloud Run сервер
-  const socket = new SockJS('https://taxi-server-594834712305.europe-central2.run.app/ws-taxi');
-  
-  const stompClient = new Client({
-    webSocketFactory: () => socket,
-    onConnect: () => {
-      console.log('WS Connected (Global)');
-      
-      stompClient.subscribe('/topic/admin/sos', (message) => {
-        const newSos = JSON.parse(message.body);
-        console.log("SOS RECEIVED:", newSos);
+  useEffect(() => {
+    const socket = new SockJS('https://taxi-server-594834712305.europe-central2.run.app/ws-taxi');
+    
+    const stompClient = new Client({
+      webSocketFactory: () => socket,
+      onConnect: () => {
+        console.log('WS Connected (Global)');
         
-        setSosList(prev => [newSos, ...prev]);
+        stompClient.subscribe('/topic/admin/sos', (message) => {
+          const newSos = JSON.parse(message.body);
+          console.log("SOS RECEIVED:", newSos);
+          
+          setSosList(prev => [newSos, ...prev]);
 
-        // Если мы НЕ на странице новостей/оповещений - включаем тревогу
-        if (location.pathname !== '/news') {
-          setSosAlert(true);
-        }
-      });
-    },
-    onStompError: (frame) => {
-      console.error('Broker reported error: ' + frame.headers['message']);
-      console.error('Additional details: ' + frame.body);
-    },
-  });
-  stompClient.activate();
+          if (location.pathname !== '/news') {
+            setSosAlert(true);
+          }
+        });
+      },
+      onStompError: (frame) => {
+        console.error('Broker reported error: ' + frame.headers['message']);
+        console.error('Additional details: ' + frame.body);
+      },
+    });
+    stompClient.activate();
 
-  return () => stompClient.deactivate();
-}, [location.pathname]);
+    return () => stompClient.deactivate();
+  }, [location.pathname]);
 
   // Сброс алерта при переходе на страницу новостей
   useEffect(() => {
@@ -97,6 +97,7 @@ useEffect(() => {
         <NavLink to="/" end>Заказы</NavLink>
         <NavLink to="/drivers">Водители</NavLink>
         <NavLink to="/clients">Клиенты</NavLink>
+        <NavLink to="/photo-control" style={{ color: '#e67e22', fontWeight: '500' }}>Фотоконтроль</NavLink>
         <NavLink to="/analytics" style={{ color: '#0288d1', fontWeight: '500' }}>Аналітика</NavLink>
         
         {/* Вкладки ТОЛЬКО ДЛЯ АДМИНА */}
@@ -104,7 +105,6 @@ useEffect(() => {
           <>
             <NavLink to="/car-requests" className="nav-item">Заявки авто</NavLink>
 
-            {/* ПЕРЕДАЕМ СТИЛЬ ПРИ ТРЕВОГЕ */}
             <NavLink 
                 to="/news"
                 style={({ isActive }) => (sosAlert && !isActive ? sosStyle : {})}
@@ -134,6 +134,10 @@ useEffect(() => {
           <Route path="/drivers" element={<DriversPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/client-info" element={<ClientInfoPage />} />
+          <Route path="/photo-control" element={<PhotoControl />} />
+          
+          {/* Публичный WebView роут для водителя */}
+          <Route path="/driver/photo-upload" element={<DriverPhotoUploadWebView />} />
           
           {/* Роуты ТОЛЬКО ДЛЯ АДМИНА */}
           {isAdmin ? (
