@@ -12,10 +12,21 @@ const api = axios.create({
 // 2. Создаем "Перехватчик Запросов"
 api.interceptors.request.use(
   (config) => {
-    // 3. Получаем токен из localStorage
-    const token = localStorage.getItem('token');
+    // 3. Пытаемся достать токен из localStorage
+    let token = localStorage.getItem('token');
     
-    // 4. Если токен есть, прикрепляем его
+    // 🛠️ ФИКС ДЛЯ WEBVIEW: Если в localStorage токена нет, читаем его из URL (?token=...)
+    if (!token) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('token');
+      if (urlToken) {
+        token = urlToken;
+        // Сохраняем токен в localStorage WebView для последующих запросов
+        localStorage.setItem('token', urlToken);
+      }
+    }
+    
+    // 4. Если токен найден — прикрепляем заголовок Authorization
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -45,12 +56,17 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const isRegistrationPage = window.location.pathname.includes('/driver-register');
 
-    // Если это не страница регистрации, сервер вернул 401 и этот запрос еще не пытался повториться
-    if (!isRegistrationPage && error.response && error.response.status === 401 && !originalRequest._retry) {
+    // 🛠️ ФИКС ДЛЯ WEBVIEW: Проверяем, является ли текущая страница публичным WebView водителя
+    const currentPath = window.location.pathname;
+    const isPublicOrWebView = 
+      currentPath.includes('/driver-register') ||
+      currentPath.includes('/driver/photo-upload') ||
+      currentPath.includes('/add-car');
+
+    // Если это НЕ WebView водителя, сервер вернул 401 и запрос еще не пытался повториться
+    if (!isPublicOrWebView && error.response && error.response.status === 401 && !originalRequest._retry) {
       
-      // Если мы уже в процессе обновления — ждем завершения и повторяем исходный запрос
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -63,27 +79,23 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Вызываем обновление сессии по полному URL бэкенда.
-        // Тело запроса пустое {}, бэкенд прочитает куку refreshToken сам!
         await axios.post(`${SERVER_URL}/api/v1/auth/refresh`, {}, { withCredentials: true });
 
-        // Уведомляем очередь, что рефреш прошел успешно
         processQueue(null);
         isRefreshing = false;
 
-        // Повторяем упавший запрос (он автоматически отправится с новой accessToken кукой)
         return api(originalRequest);
       } catch (refreshError) {
-        // Если кука рефреша протухла — сжигаем данные профиля и перенаправляем на логин
         processQueue(refreshError);
         isRefreshing = false;
-        localStorage.clear(); // Чистим оставшийся кэш (user, role) во избежание багов UI
+        localStorage.clear();
+        
+        // 🛠️ Редирект на /login выполняется ТОЛЬКО для панели диспетчера, но НЕ для WebView водителя!
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
 
-    // Если ошибка 403 (Доступ запрещен по ролям) — жестко прерываем выполнение
     if (error.response && error.response.status === 403) {
       console.error("Критическая ошибка прав доступа (Forbidden).");
     }

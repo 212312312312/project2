@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { photoControlService } from '../services/photoControlService';
 
 const PhotoControl = () => {
@@ -6,12 +6,15 @@ const PhotoControl = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  
+  // Вкладки: 'ACTIVE' (На перевірці / Очікує фото) и 'ARCHIVE' (Схвалено / Відхилено / Прострочено / Скасовано)
+  const [activeTab, setActiveTab] = useState('ACTIVE');
 
   const loadData = async () => {
     try {
       setLoading(true);
       const data = await photoControlService.getAllPhotoControls();
-      setItems(data);
+      setItems(data || []);
     } catch (err) {
       alert('Помилка завантаження даних фотоконтролю');
     } finally {
@@ -22,6 +25,17 @@ const PhotoControl = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Фильтрация элементов по вкладкам
+  const activeItems = useMemo(() => {
+    return items.filter(item => ['PENDING', 'SUBMITTED'].includes(item.status));
+  }, [items]);
+
+  const archiveItems = useMemo(() => {
+    return items.filter(item => ['APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED'].includes(item.status));
+  }, [items]);
+
+  const displayedItems = activeTab === 'ACTIVE' ? activeItems : archiveItems;
 
   const toggleRow = (id) => {
     if (expandedId === id) {
@@ -68,6 +82,7 @@ const PhotoControl = () => {
       fontSize: '0.85rem',
       fontWeight: '700',
       display: 'inline-block',
+      whiteSpace: 'nowrap'
     };
 
     switch (status) {
@@ -97,13 +112,13 @@ const PhotoControl = () => {
         );
       case 'EXPIRED':
         return (
-          <span style={{ ...badgeStyles, backgroundColor: '#f1f5f9', color: '#64748b' }}>
+          <span style={{ ...badgeStyles, backgroundColor: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' }}>
             Прострочено
           </span>
         );
       case 'CANCELLED':
         return (
-          <span style={{ ...badgeStyles, backgroundColor: '#f1f5f9', color: '#475569' }}>
+          <span style={{ ...badgeStyles, backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' }}>
             Скасовано
           </span>
         );
@@ -131,11 +146,32 @@ const PhotoControl = () => {
       <header className="page-header">
         <div className="header-title-group">
           <h1>Модерація Фотоконтролю</h1>
-          <span className="count-badge">{items.length}</span>
+          <span className="count-badge">{displayedItems.length}</span>
         </div>
-        <button className="btn btn-secondary" onClick={loadData}>
-          Оновити
-        </button>
+
+        <div className="header-actions">
+          {/* ВКЛАДКИ АКТИВНЫЕ / АРХИВ */}
+          <div className="toggle-group">
+            <button
+              type="button"
+              className={`toggle-btn ${activeTab === 'ACTIVE' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('ACTIVE'); setExpandedId(null); }}
+            >
+              Активні ({activeItems.length})
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn ${activeTab === 'ARCHIVE' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('ARCHIVE'); setExpandedId(null); }}
+            >
+              Архів ({archiveItems.length})
+            </button>
+          </div>
+
+          <button className="btn btn-secondary" onClick={loadData}>
+            Оновити
+          </button>
+        </div>
       </header>
 
       {/* ОСНОВНОЙ КОНТЕНТ */}
@@ -143,25 +179,29 @@ const PhotoControl = () => {
         <div className="empty-state-card">
           <p className="text-subtle">Завантаження даних...</p>
         </div>
-      ) : items.length === 0 ? (
+      ) : displayedItems.length === 0 ? (
         <div className="empty-state-card">
-          <p className="text-subtle">Заявок на фотоконтроль не знайдено</p>
+          <p className="text-subtle">
+            {activeTab === 'ACTIVE' 
+              ? 'Активних заявок на фотоконтроль немає' 
+              : 'Архівні записи відсутні'}
+          </p>
         </div>
       ) : (
         <div className="table-card">
           <div className="table-responsive">
-            <table className="main-table">
+            <table className="main-table" style={{ tableLayout: 'fixed', width: '100%', minWidth: '900px' }}>
               <thead>
                 <tr>
-                  <th className="text-center">ID</th>
-                  <th>Водій</th>
-                  <th>Статус</th>
-                  <th>Дедлайн</th>
-                  <th className="text-center">Дії</th>
+                  <th className="text-center" style={{ width: '70px' }}>ID</th>
+                  <th style={{ width: '250px' }}>Водій</th>
+                  <th style={{ width: '160px' }}>Статус</th>
+                  <th style={{ width: '200px' }}>Дедлайн</th>
+                  <th className="text-center" style={{ width: '160px' }}>Дії</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => {
+                {displayedItems.map((item) => {
                   const isExpanded = expandedId === item.id;
                   return (
                     <React.Fragment key={item.id}>
@@ -172,7 +212,9 @@ const PhotoControl = () => {
                       >
                         <td className="text-center font-medium">#{item.id}</td>
                         <td>
-                          <div className="font-medium">{item.driverName || 'Водій'}</div>
+                          <div className="font-medium" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {item.driverName || 'Водій'}
+                          </div>
                           <div className="text-subtle text-sm">ID водія: {item.driverId}</div>
                         </td>
                         <td>{renderStatusBadge(item.status)}</td>

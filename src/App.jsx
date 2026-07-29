@@ -5,22 +5,18 @@ import LoginPage from './pages/LoginPage';
 import DashboardLayout from './pages/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DriverRegistrationPage from './pages/DriverRegistrationPage'; 
-import DriverPhotoUploadWebView from './pages/DriverPhotoUploadWebView'; // 👈 ДОБАВЛЕНО
+import DriverPhotoUploadWebView from './pages/DriverPhotoUploadWebView';
 
 function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* === Публичные роуты === */}
+        {/* === Публичные роуты (WebView) === */}
         <Route path="/login" element={<LoginPage />} />
-        
-        {/* Роут для WebView регистрации (доступен без логина) */}
         <Route path="/driver-register" element={<DriverRegistrationPage />} />
+        <Route path="/driver/photo-upload" element={<DriverPhotoUploadWebView />} />
 
-        {/* Роут для WebView фотоконтроля водителя (доступен без логина диспетчера) */}
-        <Route path="/driver/photo-upload" element={<DriverPhotoUploadWebView />} /> {/* 👈 ДОБАВЛЕНО */}
-
-        {/* === Защищенные роуты (Админка) === */}
+        {/* === Защищенные роуты (Диспетчерская) === */}
         <Route
           path="/*"
           element={

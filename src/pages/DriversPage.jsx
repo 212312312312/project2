@@ -38,7 +38,7 @@ const WalletEditor = ({ driverId, currentBalance, onUpdate }) => {
   const loadHistory = async () => {
     try {
       const data = await getDriverTransactions(driverId);
-      setHistory(data);
+      setHistory(data || []);
     } catch (e) {
       console.error("Не вдалося завантажити історію", e);
     }
@@ -161,6 +161,7 @@ const WalletEditor = ({ driverId, currentBalance, onUpdate }) => {
     </div>
   );
 };
+
 const handleRequestPhotoControl = async (driverId) => {
   if (window.confirm('Запросити фотоконтроль у цього водія? (Буде надано 1 годину)')) {
     try {
@@ -171,6 +172,7 @@ const handleRequestPhotoControl = async (driverId) => {
     }
   }
 };
+
 // --- КОМПОНЕНТ КОРРЕКТИРОВКИ БАЛЛОВ ---
 const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
   const [points, setPoints] = useState('');
@@ -222,7 +224,7 @@ const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
   );
 };
 
-// --- БЛОК ФОТОГРАФИИ (МОМЕНТАЛЬНОЕ ОТКРЫТИЕ В НОВОЙ ВКЛАДКЕ) ---
+// --- БЛОК ФОТОГРАФИИ ---
 const PhotoBlock = ({ label, url }) => (
   <div className="photo-card">
     <div className="photo-card-label">{label}</div>
@@ -237,7 +239,17 @@ const PhotoBlock = ({ label, url }) => (
 );
 
 // --- МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ ВОДИТЕЛЯ ---
-const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
+const DriverDetailsModal = ({ 
+  driver, 
+  isOpen, 
+  onClose, 
+  onDriverUpdated,
+  onEditClick,
+  onDeleteClick,
+  onBlockTemp,
+  onBlockPerm,
+  onUnblock
+}) => {
   const [isCarsExpanded, setIsCarsExpanded] = useState(false);
   const [isWalletExpanded, setIsWalletExpanded] = useState(false);
 
@@ -293,6 +305,12 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
               <span className="detail-value">{driver.driverLicense || '—'}</span>
             </div>
             <div className="detail-item">
+              <span className="detail-label">Автомобіль</span>
+              <span className="detail-value">
+                {driver.car ? `${driver.car.make} ${driver.car.model} (${driver.car.plateNumber || 'без №'})` : '—'}
+              </span>
+            </div>
+            <div className="detail-item">
               <span className="detail-label">Статус блокування</span>
               <span className="detail-value">
                 {driver.isBlocked ? (
@@ -305,6 +323,34 @@ const DriverDetailsModal = ({ driver, isOpen, onClose, onDriverUpdated }) => {
                   <span className="text-success font-medium">Активний</span>
                 )}
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ПАНЕЛЬ УПРАВЛЕНИЯ И ДЕЙСТВИЙ (ДОБАВЛЕНО В КАРТОЧКУ ВОДИТЕЛЯ) */}
+        <div className="card driver-actions-card">
+          <h3 className="card-title" style={{ marginBottom: '1rem' }}>Управління та Дії</h3>
+          <div className="driver-modal-actions-bar">
+            <button className="btn btn-primary" onClick={(e) => { onClose(); onEditClick(driver, e); }}>
+              ✏️ Редагувати
+            </button>
+            <button className="btn btn-warning" onClick={() => handleRequestPhotoControl(driver.id)}>
+              📷 Фотоконтроль
+            </button>
+            <button className="btn btn-danger" onClick={(e) => { onDeleteClick(driver.id, e); onClose(); }}>
+              🗑️ Видалити
+            </button>
+            
+            <div className="modal-block-group">
+              <button className="btn btn-outline" onClick={(e) => onBlockTemp(driver.id, e)}>
+                Тимчасове блокування (Т)
+              </button>
+              <button className="btn btn-outline-danger" onClick={(e) => onBlockPerm(driver.id, e)}>
+                Заблокувати назавжди (П)
+              </button>
+              <button className="btn btn-outline-success" onClick={(e) => onUnblock(driver.id, e)}>
+                Розблокувати (Р)
+              </button>
             </div>
           </div>
         </div>
@@ -490,7 +536,7 @@ const DriversPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [availableTariffs, setAvailableTariffs] = useState([]);
-  const [viewMode, setViewMode] = useState('ALL');
+  const [viewMode, setViewMode] = useState('ALL'); // 'ALL', 'BLOCKED', 'PENDING_DELETE'
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState(null); 
@@ -503,11 +549,14 @@ const DriversPage = () => {
       setLoading(true);
       setError('');
       
-      let driversData = viewMode === 'ALL' ? await getAllDrivers() : await getPendingDeletionDrivers();
+      let driversData = viewMode === 'PENDING_DELETE' 
+        ? await getPendingDeletionDrivers() 
+        : await getAllDrivers();
+
       const tariffsData = await getAllTariffs();
       
-      setDrivers(driversData);
-      setAvailableTariffs(tariffsData); 
+      setDrivers(driversData || []);
+      setAvailableTariffs(tariffsData || []); 
     } catch (err) {
       setError(err.message);
     } finally {
@@ -531,22 +580,29 @@ const DriversPage = () => {
   }, [drivers]);
 
   const filteredDrivers = useMemo(() => {
-    if (!searchTerm) return drivers;
-    return drivers.filter((driver) =>
-      driver.phoneNumber.includes(searchTerm) || 
-      driver.fullName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [drivers, searchTerm]);
+    return drivers.filter((driver) => {
+      const matchesSearch = !searchTerm || 
+        driver.phoneNumber?.includes(searchTerm) || 
+        driver.fullName?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      if (viewMode === 'BLOCKED') {
+        return matchesSearch && (driver.isBlocked || !!driver.tempBlockExpiresAt);
+      }
+      return matchesSearch;
+    });
+  }, [drivers, searchTerm, viewMode]);
 
   const handleAddClick = () => {
     setEditingDriver(null);
     setIsModalOpen(true);
   };
+
   const handleEditClick = (driver, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     setEditingDriver(driver);
     setIsModalOpen(true);
   };
+
   const handleModalClose = () => {
     setIsModalOpen(false);
     setEditingDriver(null);
@@ -579,7 +635,7 @@ const DriversPage = () => {
   };
 
   const handleDeleteClick = async (driverId, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (window.confirm('Видалити водія?')) {
       try {
         await deleteDriver(driverId);
@@ -595,7 +651,7 @@ const DriversPage = () => {
   };
 
   const handleBlockTemp = async (id, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     const hours = prompt('Годин заблокувати:', '24');
     if (hours && !isNaN(hours)) {
       try {
@@ -606,7 +662,7 @@ const DriversPage = () => {
   };
 
   const handleBlockPerm = async (id, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (window.confirm('Заблокувати водія назавжди?')) {
       try {
         const updatedDriver = await blockDriverPermanently(id);
@@ -616,7 +672,7 @@ const DriversPage = () => {
   };
 
   const handleUnblock = async (id, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (window.confirm('Розблокувати водія?')) {
       try {
         const updatedDriver = await unblockDriver(id);
@@ -642,6 +698,12 @@ const DriversPage = () => {
               className={`toggle-btn ${viewMode === 'ALL' ? 'active' : ''}`}
             >
               Всі водії
+            </button>
+            <button 
+              onClick={() => setViewMode('BLOCKED')}
+              className={`toggle-btn ${viewMode === 'BLOCKED' ? 'active' : ''}`}
+            >
+              Заблоковані
             </button>
             <button 
               onClick={() => setViewMode('PENDING_DELETE')}
@@ -680,8 +742,6 @@ const DriversPage = () => {
                 <th className="text-center">Баланс</th>
                 <th className="text-center">Онлайн</th>
                 <th className="text-center">Статус</th>
-                <th className="text-center">Авто</th>
-                <th>Модель</th>
                 <th className="text-center">Номер</th>
                 <th className="text-center">Дії</th>
                 <th className="text-center">Блокування</th>
@@ -722,14 +782,6 @@ const DriversPage = () => {
                       )}
                     </td>
                     <td className="text-center">
-                      {driver.car?.photoUrl ? (
-                        <img src={driver.car.photoUrl} alt="Car" className="table-car-thumb" />
-                      ) : (
-                        <span className="text-subtle">—</span>
-                      )}
-                    </td>
-                    <td>{driver.car ? `${driver.car.make} ${driver.car.model}` : '—'}</td>
-                    <td className="text-center">
                       {driver.car?.plateNumber ? (
                         <span className="plate-badge">{driver.car.plateNumber}</span>
                       ) : '—'}
@@ -739,19 +791,11 @@ const DriversPage = () => {
                         <button className="btn btn-sm btn-ghost" onClick={(e) => handleEditClick(driver, e)}>Ред.</button>
                         <button className="btn btn-sm btn-ghost-danger" onClick={(e) => handleDeleteClick(driver.id, e)}>Вид.</button>
                         <button 
-    onClick={() => handleRequestPhotoControl(driver.id)}
-    style={{ 
-      backgroundColor: '#f39c12', 
-      color: '#fff', 
-      border: 'none', 
-      padding: '5px 10px', 
-      borderRadius: '4px', 
-      cursor: 'pointer',
-      marginLeft: '5px' 
-    }}
-  >
-    Фотоконтроль
-  </button>
+                          className="btn-photocontrol-sm"
+                          onClick={(e) => { e.stopPropagation(); handleRequestPhotoControl(driver.id); }}
+                        >
+                          Фотоконтроль
+                        </button>
                       </div>
                     </td>
                     <td className="text-center">
@@ -765,7 +809,7 @@ const DriversPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="13" className="text-center text-subtle py-8">Водії не знайдені</td>
+                  <td colSpan="11" className="text-center text-subtle py-8">Водії не знайдені</td>
                 </tr>
               )}
             </tbody>
@@ -791,7 +835,12 @@ const DriversPage = () => {
         driver={detailsDriver} 
         isOpen={!!detailsDriver} 
         onClose={closeDetails} 
-        onDriverUpdated={handleDriverUpdateInModal} 
+        onDriverUpdated={handleDriverUpdateInModal}
+        onEditClick={handleEditClick}
+        onDeleteClick={handleDeleteClick}
+        onBlockTemp={handleBlockTemp}
+        onBlockPerm={handleBlockPerm}
+        onUnblock={handleUnblock}
       />
     </div>
   );

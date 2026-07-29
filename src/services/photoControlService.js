@@ -23,14 +23,19 @@ export const photoControlService = {
   },
 
   // Скасувати заявку фотоконтролю
-cancelPhotoControl: async (id) => {
-  const response = await api.post(`/photo-control/admin/${id}/cancel`);
-  return response.data;
-},
+  cancelPhotoControl: async (id) => {
+    const response = await api.post(`/photo-control/admin/${id}/cancel`);
+    return response.data;
+  },
 
-  // Загрузка фото водителем (из WebView)
+  // Загрузка фото водителем (из WebView - поддерживает файлы через FormData)
   submitPhotos: async (id, driverId, photoData) => {
-    const response = await api.post(`/photo-control/driver/${id}/submit?driverId=${driverId}`, photoData);
+    const isFormData = photoData instanceof FormData;
+    const response = await api.post(
+      `/photo-control/driver/${id}/submit?driverId=${driverId}`, 
+      photoData,
+      isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {}
+    );
     return response.data;
   }
 };

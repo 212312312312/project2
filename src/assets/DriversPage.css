@@ -140,6 +140,18 @@
 }
 .btn-secondary:hover { background-color: #e2e8f0; }
 
+.btn-warning {
+  background-color: var(--warning-color);
+  color: #fff;
+}
+.btn-warning:hover { background-color: #b45309; }
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: #fff;
+}
+.btn-danger:hover { background-color: #b91c1c; }
+
 .btn-close {
   background: #e2e8f0;
   color: var(--text-main);
@@ -147,7 +159,7 @@
 }
 
 .btn-sm { 
-  padding: 0.4rem 0.75rem; 
+  padding: 0.35rem 0.6rem; 
   font-size: 0.85rem; 
 }
 
@@ -157,26 +169,45 @@
 .btn-ghost-danger { background: transparent; color: var(--danger-color); font-weight: 600; }
 .btn-ghost-danger:hover { background: #fee2e2; }
 
+.btn-photocontrol-sm {
+  background-color: var(--warning-color);
+  color: #fff;
+  border: none;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+.btn-photocontrol-sm:hover {
+  background-color: #b45309;
+}
+
 .btn-outline {
   border: 1px solid var(--border-color);
   background: #fff;
   color: var(--text-main);
   border-radius: 6px;
+  font-weight: 600;
 }
 .btn-outline-danger {
   border: 1px solid #fca5a5;
   background: #fff;
   color: var(--danger-color);
   border-radius: 6px;
+  font-weight: 600;
 }
 .btn-outline-success {
   border: 1px solid #86efac;
   background: #fff;
   color: var(--success-color);
   border-radius: 6px;
+  font-weight: 600;
 }
 
-.btn-group { display: flex; gap: 6px; }
+.btn-group { display: flex; gap: 5px; align-items: center; }
 
 /* ==========================================
    4. ОСНОВНАЯ ТАБЛИЦА СТРАНИЦЫ
@@ -190,20 +221,20 @@
 }
 
 .table-responsive { 
-  overflow-x: auto; /* Включает горизонтальную прокрутку, если экран узкий */
+  overflow-x: auto; 
 }
 
 .main-table {
   width: 100%;
-  min-width: 1350px; /* НЕ дает браузеру сплющивать 13 колонок в кашу */
+  min-width: 1100px; /* Уменьшили минимальную ширину благодаря удалению 2 колонок */
   border-collapse: collapse;
   font-size: 0.95rem;
-  table-layout: fixed; /* Фиксирует пропорции колонок */
+  table-layout: fixed;
 }
 
 .main-table th {
   background: #f1f5f9;
-  padding: 0.9rem 0.75rem;
+  padding: 0.9rem 0.6rem;
   text-align: left;
   font-weight: 700;
   color: var(--text-main);
@@ -212,7 +243,7 @@
 }
 
 .main-table td {
-  padding: 0.8rem 0.75rem;
+  padding: 0.75rem 0.6rem;
   border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
   vertical-align: middle;
@@ -223,8 +254,8 @@
   text-align: center !important;
 }
 
-/* СТРОГОЕ РАСПРЕДЕЛЕНИЕ ШИРИНЫ ДЛЯ ВСЕХ 13 КОЛОНОК */
-.main-table th:nth-child(1), .main-table td:nth-child(1) { width: 50px; }   /* ID */
+/* СТРОГОЕ РАСПРЕДЕЛЕНИЕ ШИРИНЫ ДЛЯ 11 КОЛОНОК */
+.main-table th:nth-child(1), .main-table td:nth-child(1) { width: 45px; }   /* ID */
 .main-table th:nth-child(2), .main-table td:nth-child(2) { width: 65px; }   /* Фото */
 .main-table th:nth-child(3), .main-table td:nth-child(3) { width: 220px; }  /* ПІБ */
 .main-table th:nth-child(4), .main-table td:nth-child(4) { width: 130px; }  /* Телефон */
@@ -232,11 +263,9 @@
 .main-table th:nth-child(6), .main-table td:nth-child(6) { width: 100px; }  /* Баланс */
 .main-table th:nth-child(7), .main-table td:nth-child(7) { width: 70px; }   /* Онлайн */
 .main-table th:nth-child(8), .main-table td:nth-child(8) { width: 110px; }  /* Статус */
-.main-table th:nth-child(9), .main-table td:nth-child(9) { width: 75px; }   /* Авто */
-.main-table th:nth-child(10), .main-table td:nth-child(10) { width: 140px; }/* Модель */
-.main-table th:nth-child(11), .main-table td:nth-child(11) { width: 110px; }/* Номер */
-.main-table th:nth-child(12), .main-table td:nth-child(12) { width: 100px; }/* Дії */
-.main-table th:nth-child(13), .main-table td:nth-child(13) { width: 120px; }/* Блокування */
+.main-table th:nth-child(9), .main-table td:nth-child(9) { width: 110px; }  /* Номер */
+.main-table th:nth-child(10), .main-table td:nth-child(10) { width: 190px; }/* Дії */
+.main-table th:nth-child(11), .main-table td:nth-child(11) { width: 120px; }/* Блокування */
 
 .clickable-row { cursor: pointer; transition: background-color 0.15s; }
 .clickable-row:hover { background-color: #f1f5f9; }
@@ -259,15 +288,6 @@
   font-weight: bold;
 }
 
-.table-car-thumb {
-  width: 56px;
-  height: 38px;
-  border-radius: 6px;
-  object-fit: cover;
-  display: block;
-  margin: 0 auto;
-}
-
 .plate-badge {
   background: #0f172a;
   color: #fff;
@@ -280,7 +300,6 @@
   display: inline-block;
 }
 
-/* Точка статуса онлайн по центру */
 .status-dot {
   width: 10px;
   height: 10px;
@@ -307,7 +326,7 @@
 .badge-muted { background: #e2e8f0; color: var(--text-muted); }
 
 /* ==========================================
-   5. МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ ВОДИТЕЛЯ (HERO)
+   5. МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ ВОДИТЕЛЯ
    ========================================== */
 .details-overlay {
   position: fixed;
@@ -355,13 +374,28 @@
   border-bottom: 1px solid var(--border-color);
 }
 
-/* ==========================================
-   5. МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ ВОДИТЕЛЯ (HERO)
-   ========================================== */
+.driver-actions-card {
+  padding: 1.5rem 2rem;
+}
+
+.driver-modal-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.modal-block-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .profile-hero-card {
   display: flex !important;
-  flex-direction: row !important; /* Гарантируем горизонтальное расположение */
-  align-items: flex-start; /* Выравнивание по верхнему краю */
+  flex-direction: row !important;
+  align-items: flex-start;
   gap: 2.5rem;
   padding: 2rem;
   background: #ffffff;
@@ -376,7 +410,7 @@
   justify-content: center;
   gap: 0.85rem;
   width: 160px;
-  flex-shrink: 0; /* Не даём аватару сжиматься или уходить на новую строку */
+  flex-shrink: 0;
   text-align: center;
 }
 
@@ -403,7 +437,7 @@
 
 .profile-details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); /* Красивая сетка плашек справа */
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 1rem;
   flex-grow: 1;
   border-left: 1px solid var(--border-color);
@@ -442,13 +476,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.grid-3col {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
@@ -538,7 +565,7 @@
 .input-wide { flex-grow: 1; }
 
 /* ==========================================
-   7. СПИСКИ С БУЛЛЕТ-ТОЧКАМИ (ТАРИФЫ/ОСОБЕННОСТИ)
+   7. СПИСКИ С БУЛЛЕТ-ТОЧКАМИ
    ========================================== */
 .grid-2col-equal {
   display: grid;
@@ -732,7 +759,7 @@
 }
 
 /* ==========================================
-   9. АВТОПАРК (СТРУКТУРНЫЕ КАРТОЧКИ И SPEC TILES)
+   9. АВТОПАРК
    ========================================== */
 .car-card {
   background: #ffffff;
@@ -915,5 +942,9 @@
   }
   .grid-2col-equal, .wallet-grid {
     grid-template-columns: 1fr;
+  }
+  .modal-block-group {
+    margin-left: 0;
+    width: 100%;
   }
 }

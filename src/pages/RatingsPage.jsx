@@ -7,7 +7,7 @@ const RatingsPage = () => {
   const navigate = useNavigate();
 
   const [ratings, setRatings] = useState([]);
-  const [filter, setFilter] = useState('ALL');
+  const [filter, setFilter] = useState('ALL'); // ALL, BAD, BAD_WITH_COMMENT, WITH_COMMENT, GOOD
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -55,7 +55,13 @@ const RatingsPage = () => {
 
   const filteredRatings = useMemo(() => {
     return ratings.filter(r => {
+      // Перевірка навності реального тексту коментаря
+      const cleanComment = (r.comment || '').replace('[IGNORED]', '').trim();
+      const hasComment = cleanComment !== '' && cleanComment !== '—';
+
       if (filter === 'BAD') return r.score <= 3;
+      if (filter === 'BAD_WITH_COMMENT') return r.score <= 3 && hasComment;
+      if (filter === 'WITH_COMMENT') return hasComment;
       if (filter === 'GOOD') return r.score > 3;
       return true;
     });
@@ -89,6 +95,18 @@ const RatingsPage = () => {
               onClick={() => setFilter('BAD')}
             >
               Скарги (1-3)
+            </button>
+            <button 
+              className={`toggle-btn ${filter === 'BAD_WITH_COMMENT' ? 'active' : ''}`} 
+              onClick={() => setFilter('BAD_WITH_COMMENT')}
+            >
+              Скарги з текстом
+            </button>
+            <button 
+              className={`toggle-btn ${filter === 'WITH_COMMENT' ? 'active' : ''}`} 
+              onClick={() => setFilter('WITH_COMMENT')}
+            >
+              З коментарем
             </button>
             <button 
               className={`toggle-btn ${filter === 'GOOD' ? 'active' : ''}`} 
