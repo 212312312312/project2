@@ -16,6 +16,7 @@ const AddCarPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
     brand: '',
@@ -40,42 +41,50 @@ const AddCarPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!token) {
+      setError('Помилка авторизації: токен відсутній. Будь ласка, перевідкрийте форму з додатка.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
       const bodyData = new FormData();
-      bodyData.append('token', token);
-      bodyData.append('data', JSON.stringify(formData)); // Змінив на formData для простоти
+      bodyData.append('data', JSON.stringify(formData));
 
       Object.keys(files).forEach(key => {
         if (files[key]) bodyData.append(key, files[key]);
-      });
-
-      // ДОДАЙТЕ ЦЕЙ ЛОГ
-      console.log('Відправляємо запит...', {
-        url: '/api/v1/driver/cars/add',
-        data: Object.fromEntries(bodyData.entries())
       });
 
       const response = await fetch('/api/v1/driver/cars/add', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // НЕ додавайте 'Content-Type': 'multipart/form-data' тут!
         },
         body: bodyData
       });
 
       if (response.ok) {
-        window.location.href = '/car-success';
+        setIsSuccess(true);
       } else {
-        const errorText = await response.text(); // Читаємо помилку сервера
-        throw new Error(`Помилка сервера: ${errorText}`);
+        const errorText = await response.text();
+        let parsedMessage = errorText;
+        try {
+          const jsonErr = JSON.parse(errorText);
+          parsedMessage = jsonErr.message || errorText;
+        } catch (_) {}
+        throw new Error(parsedMessage || 'Помилка сервера при збереженні авто');
       }
     } catch (err) {
       console.error('Помилка відправки:', err);
-      setError(err.message || 'Помилка відправки. Спробуйте ще раз.');
+      if (err.name === 'TypeError' || err.message.includes('Failed to fetch')) {
+        setError('Помилка з\'єднання з сервером. Перевірте розмір фото або інтернет-з\'єднання.');
+      } else {
+        setError(err.message || 'Помилка відправки. Спробуйте ще раз.');
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -120,7 +129,7 @@ const AddCarPage = () => {
     </div>
   );
 };
-
+    
 const FileInput = ({ label, name, onChange }) => (
   <div style={{ marginBottom: '12px' }}>
     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '600', color: colors.textSec }}>{label} *</label>

@@ -7,8 +7,8 @@ const PhotoControl = () => {
   const [expandedId, setExpandedId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   
-  // Вкладки: 'ACTIVE' (На перевірці / Очікує фото) и 'ARCHIVE' (Схвалено / Відхилено / Прострочено / Скасовано)
-  const [activeTab, setActiveTab] = useState('ACTIVE');
+  // Вкладки: 'SUBMITTED' (На перевірці), 'PENDING' (Очікує фото), 'ARCHIVE' (Архів)
+  const [activeTab, setActiveTab] = useState('SUBMITTED');
 
   const loadData = async () => {
     try {
@@ -27,17 +27,30 @@ const PhotoControl = () => {
   }, []);
 
   // Фильтрация элементов по вкладкам
-  const activeItems = useMemo(() => {
-    return items.filter(item => ['PENDING', 'SUBMITTED'].includes(item.status));
+  const submittedItems = useMemo(() => {
+    return items.filter(item => item.status === 'SUBMITTED');
+  }, [items]);
+
+  const pendingItems = useMemo(() => {
+    return items.filter(item => item.status === 'PENDING');
   }, [items]);
 
   const archiveItems = useMemo(() => {
     return items.filter(item => ['APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED'].includes(item.status));
   }, [items]);
 
-  const displayedItems = activeTab === 'ACTIVE' ? activeItems : archiveItems;
+  const displayedItems = useMemo(() => {
+    if (activeTab === 'SUBMITTED') return submittedItems;
+    if (activeTab === 'PENDING') return pendingItems;
+    return archiveItems;
+  }, [activeTab, submittedItems, pendingItems, archiveItems]);
+
+  const isArchiveTab = activeTab === 'ARCHIVE';
 
   const toggleRow = (id) => {
+    // В архиве запрещаем раскрывать детали
+    if (isArchiveTab) return;
+
     if (expandedId === id) {
       setExpandedId(null);
       setRejectReason('');
@@ -150,14 +163,21 @@ const PhotoControl = () => {
         </div>
 
         <div className="header-actions">
-          {/* ВКЛАДКИ АКТИВНЫЕ / АРХИВ */}
+          {/* ВКЛАДКИ */}
           <div className="toggle-group">
             <button
               type="button"
-              className={`toggle-btn ${activeTab === 'ACTIVE' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('ACTIVE'); setExpandedId(null); }}
+              className={`toggle-btn ${activeTab === 'SUBMITTED' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('SUBMITTED'); setExpandedId(null); }}
             >
-              Активні ({activeItems.length})
+              На перевірці ({submittedItems.length})
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('PENDING'); setExpandedId(null); }}
+            >
+              Очікує фото ({pendingItems.length})
             </button>
             <button
               type="button"
@@ -182,9 +202,9 @@ const PhotoControl = () => {
       ) : displayedItems.length === 0 ? (
         <div className="empty-state-card">
           <p className="text-subtle">
-            {activeTab === 'ACTIVE' 
-              ? 'Активних заявок на фотоконтроль немає' 
-              : 'Архівні записи відсутні'}
+            {activeTab === 'SUBMITTED' && 'Заявок на перевірці немає'}
+            {activeTab === 'PENDING' && 'Запитів, що очікують на завантаження фото, немає'}
+            {activeTab === 'ARCHIVE' && 'Архівні записи відсутні'}
           </p>
         </div>
       ) : (
@@ -202,12 +222,12 @@ const PhotoControl = () => {
               </thead>
               <tbody>
                 {displayedItems.map((item) => {
-                  const isExpanded = expandedId === item.id;
+                  const isExpanded = expandedId === item.id && !isArchiveTab;
                   return (
                     <React.Fragment key={item.id}>
                       {/* ОСНОВНАЯ СТРОКА */}
                       <tr
-                        className={`clickable-row ${isExpanded ? 'row-expanded' : ''}`}
+                        className={`${!isArchiveTab ? 'clickable-row' : ''} ${isExpanded ? 'row-expanded' : ''}`}
                         onClick={() => toggleRow(item.id)}
                       >
                         <td className="text-center font-medium">#{item.id}</td>
@@ -224,26 +244,30 @@ const PhotoControl = () => {
                             : '—'}
                         </td>
                         <td className="text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="btn-group justify-center">
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => toggleRow(item.id)}
-                            >
-                              {isExpanded ? 'Згорнути' : 'Деталі'}
-                            </button>
-                            {item.status === 'PENDING' && (
+                          {!isArchiveTab ? (
+                            <div className="btn-group justify-center">
                               <button
-                                className="btn btn-outline-danger btn-sm"
-                                onClick={() => handleCancel(item.id)}
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => toggleRow(item.id)}
                               >
-                                Скасувати
+                                {isExpanded ? 'Згорнути' : 'Деталі'}
                               </button>
-                            )}
-                          </div>
+                              {item.status === 'PENDING' && (
+                                <button
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() => handleCancel(item.id)}
+                                >
+                                  Скасувати
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-subtle">—</span>
+                          )}
                         </td>
                       </tr>
 
-                      {/* РАСКРЫВАЮЩАЯСЯ ДЕТАЛЬНАЯ КАРТОЧКА */}
+                      {/* РАСКРЫВАЮЩАЯСЯ ДЕТАЛЬНАЯ КАРТОЧКА (ТОЛЬКО ДЛЯ АКТИВНЫХ ВНОСОВ) */}
                       {isExpanded && (
                         <tr className="expanded-details-row">
                           <td colSpan="5" className="p-0">
@@ -270,14 +294,7 @@ const PhotoControl = () => {
                                 </div>
                               </div>
 
-                              {/* БЛОК ПРИЧИНЫ ОТКЛОНЕНИЯ (ЕСЛИ УЖЕ ОТКЛОНЕНО) */}
-                              {item.status === 'REJECTED' && item.rejectReason && (
-                                <div style={{ marginTop: '1.25rem', padding: '0.85rem', background: '#fee2e2', borderRadius: '8px', color: '#b91c1c' }}>
-                                  <strong>Причина відмови:</strong> {item.rejectReason}
-                                </div>
-                              )}
-
-                              {/* ФОРМА ПРИНЯТИЯ РЕШЕНИЯ (ЕСЛИ НА ПРОВЕРКЕ) */}
+                              {/* ФОРМА ПРИНЯТИЯ РЕШЕНИЯ */}
                               {item.status === 'SUBMITTED' && (
                                 <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
                                   <div className="input-group-field" style={{ marginBottom: '1rem' }}>

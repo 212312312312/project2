@@ -30,12 +30,21 @@ export const photoControlService = {
 
   // Загрузка фото водителем (из WebView - поддерживает файлы через FormData)
   submitPhotos: async (id, driverId, photoData) => {
-    const isFormData = photoData instanceof FormData;
-    const response = await api.post(
-      `/photo-control/driver/${id}/submit?driverId=${driverId}`, 
-      photoData,
-      isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {}
-    );
-    return response.data;
+    const response = await fetch(`/api/v1/photo-control/driver/${id}/submit?driverId=${driverId}`, {
+      method: 'POST',
+      body: photoData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let message = errorText;
+      try {
+        const json = JSON.parse(errorText);
+        message = json.message || errorText;
+      } catch (_) {}
+      throw new Error(message || 'Помилка завантаження фото');
+    }
+
+    return await response.json();
   }
 };

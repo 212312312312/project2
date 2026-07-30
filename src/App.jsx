@@ -12,12 +12,10 @@ function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* === Публичные роуты (WebView) === */}
+        {/* === Публичные роуты (WebView для водителя) === */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/driver-register/*" element={<DriverRegistrationPage />} />
         <Route path="/driver/photo-upload/*" element={<DriverPhotoUploadWebView />} />
-        <Route path="/photo-control/*" element={<DriverPhotoUploadWebView />} />
-        <Route path="/add-car/*" element={<DriverRegistrationPage />} />
         <Route path="/add-car/*" element={<AddCarPage />} />
 
         {/* === Защищенные роуты (Диспетчерская) === */}
