@@ -76,15 +76,17 @@ export const searchArchiveByPhone = async (phone) => {
 /**
  * (Update) Диспетчер отменяет заказ
  * @param {number} orderId - ID заказа
+ * @param {string} [reasonText] - Причина отмены
  * @returns {Promise<object>} - Обновленный TaxiOrderDto (статус CANCELLED)
  */
-export const cancelOrder = async (orderId) => {
+export const cancelOrder = async (orderId, reasonText = null) => {
   try {
-    // ИСПРАВЛЕНО: api.patch -> api.post (чтобы совпадало с сервером)
-    const response = await api.post(`/admin/orders/${orderId}/cancel`);
+    const response = await api.post(`/admin/orders/${orderId}/cancel`, null, {
+      params: { reasonText }
+    });
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Ошибка отмены заказа');
+    throw new Error(error.response?.data?.message || 'Помилка скасування замовлення');
   }
 };
 
@@ -130,3 +132,5 @@ export const getOrderTrack = async (orderId) => {
   const response = await api.get(`/admin/orders/${orderId}/track`);
   return response.data;
 };
+
+

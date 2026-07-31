@@ -644,31 +644,62 @@ const ActiveOrders = () => {
   };
 
   useEffect(() => {
-    if (selectedOrder) {
-      const targetId = selectedOrder.idLong || selectedOrder.id;
-      
-      const fetchTrackPoints = async () => {
-        try {
-          const points = await getOrderTrack(targetId);
-          setSelectedOrderTrack(points);
-        } catch (err) {
-          console.error("Не вдалося завантажити трек:", err);
-        }
-      };
-
-      fetchTrackPoints();
-
-      // Если поездка активна — каждые 10 секунд подтягиваем новые точки из БД
-      let intervalId;
-      if (['IN_PROGRESS', 'DRIVER_ARRIVED', 'ACCEPTED', 'ARRIVED_AT_WAYPOINT'].includes(selectedOrder.status)) {
-        intervalId = setInterval(fetchTrackPoints, 10000);
+  if (selectedOrder) {
+    const targetId = selectedOrder.idLong || selectedOrder.id;
+    
+    const fetchTrackPoints = async () => {
+      try {
+        const points = await getOrderTrack(targetId);
+        setSelectedOrderTrack(points);
+      } catch (err) {
+        console.error("Не вдалося завантажити трек:", err);
       }
+    };
 
-      return () => clearInterval(intervalId);
-    } else {
-      setSelectedOrderTrack([]);
+    fetchTrackPoints();
+
+    // 🟢 ДОБАВЛЕНО: Подписка на живые GPS координаты стороннего водителя (EvoS) по сокету
+    let trackingSub = null;
+    if (stompClientRef.current && stompClientRef.current.connected) {
+      trackingSub = stompClientRef.current.subscribe(`/topic/admin/tracking/${targetId}`, (message) => {
+        const gpsData = JSON.parse(message.body);
+        if (gpsData && gpsData.lat && gpsData.lng) {
+          // Если это машина EvoS — добавляем или обновляем её маркер
+          setMapDrivers(prev => {
+            const evosDriverId = `evos-${targetId}`;
+            const existingIdx = prev.findIndex(d => d.id === evosDriverId);
+            const evosDriverObj = {
+              id: evosDriverId,
+              fullName: `Водій EvoS (${gpsData.carInfo || 'Партнер'})`,
+              lat: gpsData.lat,
+              lng: gpsData.lng,
+              bearing: gpsData.bearing || 0,
+              isOnline: true
+            };
+            if (existingIdx !== -1) {
+              const copy = [...prev];
+              copy[existingIdx] = evosDriverObj;
+              return copy;
+            }
+            return [...prev, evosDriverObj];
+          });
+        }
+      });
     }
-  }, [selectedOrder]);
+
+    let intervalId;
+    if (['IN_PROGRESS', 'DRIVER_ARRIVED', 'ACCEPTED', 'ARRIVED_AT_WAYPOINT'].includes(selectedOrder.status)) {
+      intervalId = setInterval(fetchTrackPoints, 10000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      if (trackingSub) trackingSub.unsubscribe(); // Отписываемся при смене заказа
+    };
+  } else {
+    setSelectedOrderTrack([]);
+  }
+}, [selectedOrder]);
   
 
 
@@ -752,18 +783,15 @@ const ActiveOrders = () => {
   };
 
 
-  const handleCancel = async (order) => { 
-      // В алерте показываем понятный числовой ID для диспетчера
-      if (window.confirm(`Скасувати замовлення #${order.idLong}?`)) {
-          try { 
-              // На сервер шлем числовой idLong для контроллера (исчезнет ошибка 400 Bad Request)
-              await cancelOrder(order.idLong); 
-              
-              // Для внутренней чистки UI используем строковый UUID брокера сокетов, ничего не ломая!
-              if (selectedOrder?.id === order.id) setSelectedOrder(null); 
-          } catch (err) { alert(err.message); } 
-      }
-  };
+ const handleCancel = async (order) => { 
+    const reason = prompt(`Скасувати замовлення #${order.idLong}? Введіть причину (необов'язково):`);
+    if (reason !== null) {
+        try { 
+            await cancelOrder(order.idLong, reason || 'Скасовано диспетчером'); 
+            if (selectedOrder?.id === order.id) setSelectedOrder(null); 
+        } catch (err) { alert(err.message); } 
+    }
+};
 
   const handleAssign = async (order) => { 
       const did = prompt(`ID водія:`); 
