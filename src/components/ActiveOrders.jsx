@@ -718,24 +718,36 @@ const ActiveOrders = () => {
   }, []);
 
   const handleSocketMessage = (msg) => {
-    // Тепер ми обробляємо і ADD (нове замовлення), і UPDATE (зміна статусу/ціни/водія)
+    // Обновляем и ADD, и UPDATE
     if (msg.action === 'ADD' || msg.action === 'UPDATE') {
         setOrders(prevOrders => {
-            // Шукаємо, чи є вже таке замовлення в нашому списку
             const existingIndex = prevOrders.findIndex(o => o.id === msg.orderId);
             
             if (existingIndex !== -1) {
-                // Если есть — мгновенно обновляем его данные (чтобы не прыгало по экрану)
                 const updated = [...prevOrders];
                 updated[existingIndex] = msg.order;
                 return updated;
             }
-            // Если заказа не было — добавляем его на самый верх списка
             return [msg.order, ...prevOrders];
         });
+
+        // 🟢 ИСПРАВЛЕНИЕ: Если обновленный заказ сейчас выбран на карте диспетчера — 
+        // сразу же обновляем selectedOrder, чтобы карта и карточка изменились мгновенно!
+        setSelectedOrder(prevSelected => {
+            if (prevSelected && (prevSelected.id === msg.orderId || prevSelected.idLong === msg.orderId)) {
+                return msg.order;
+            }
+            return prevSelected;
+        });
+
     } else if (msg.action === 'REMOVE') {
-        // Замовлення скасували або воно зникло з ефіру
         setOrders(prevOrders => prevOrders.filter(o => o.id !== msg.orderId));
+        setSelectedOrder(prevSelected => {
+            if (prevSelected && (prevSelected.id === msg.orderId || prevSelected.idLong === msg.orderId)) {
+                return null;
+            }
+            return prevSelected;
+        });
     }
   };
 

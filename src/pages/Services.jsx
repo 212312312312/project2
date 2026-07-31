@@ -71,6 +71,7 @@ const ServicesPage = () => {
             <thead>
               <tr>
                 <th>Назва послуги</th>
+                <th className="text-center" style={{ width: '180px' }}>Код EvoS</th>
                 <th className="text-center" style={{ width: '180px' }}>Ціна</th>
                 <th className="text-center" style={{ width: '120px' }}>Дії</th>
               </tr>
@@ -78,7 +79,7 @@ const ServicesPage = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="3" className="text-center text-subtle py-8">
+                  <td colSpan="4" className="text-center text-subtle py-8">
                     Завантаження послуг...
                   </td>
                 </tr>
@@ -86,6 +87,15 @@ const ServicesPage = () => {
                 servicesList.map((item) => (
                   <tr key={item.id}>
                     <td className="font-medium">{item.name}</td>
+                    <td className="text-center">
+                      {item.evosCode ? (
+                        <span style={{ backgroundColor: '#e7f5ff', color: '#1c7ed6', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                          {item.evosCode}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#adb5bd' }}>—</span>
+                      )}
+                    </td>
                     <td className="text-center">
                       {item.price === 0 ? (
                         <span className="badge badge-success">Безкоштовно</span>
@@ -105,7 +115,7 @@ const ServicesPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3" className="text-center text-subtle py-8">
+                  <td colSpan="4" className="text-center text-subtle py-8">
                     Список послуг порожній
                   </td>
                 </tr>
@@ -123,7 +133,7 @@ const ServicesPage = () => {
         <ServiceForm 
           onSubmit={handleCreate} 
           onCancel={() => setIsModalOpen(false)} 
-          isLoading={isSubmitting} 
+          isLoading={isSubmitting}
         />
       </Modal>
     </div>
