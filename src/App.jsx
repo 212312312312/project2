@@ -13,10 +13,13 @@ function App() {
     <AuthProvider>
       <Routes>
         {/* === Публичные роуты (WebView для водителя) === */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/driver-register/*" element={<DriverRegistrationPage />} />
-        <Route path="/driver/photo-upload/*" element={<DriverPhotoUploadWebView />} />
-        <Route path="/add-car/*" element={<AddCarPage />} />
+<Route path="/login" element={<LoginPage />} />
+<Route path="/driver-register/*" element={<DriverRegistrationPage />} />
+<Route path="/driver/photo-upload/*" element={<DriverPhotoUploadWebView />} />
+
+{/* 🛠️ Добавлена поддержка точного пути /add-car и /add-car/* */}
+<Route path="/add-car" element={<AddCarPage />} />
+<Route path="/add-car/*" element={<AddCarPage />} />
 
         {/* === Защищенные роуты (Диспетчерская) === */}
         <Route

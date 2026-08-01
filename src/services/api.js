@@ -1,9 +1,11 @@
 import axios from 'axios';
 
-// 0. Базовый адрес вашего продакшн-сервера в Google Cloud Run
-const SERVER_URL = 'http://localhost:8080';
+// 0. Автоматически определяем адрес текущего сервера (ПК, телефон или Cloud Run)
+const SERVER_URL = typeof window !== 'undefined' && window.location.origin 
+  ? window.location.origin 
+  : 'http://localhost:8080';
 
-// 1. Создаем "экземпляр" (instance) axios
+// 1. Создаем экземпляр axios с относительным или динамическим baseURL
 const api = axios.create({
   baseURL: `${SERVER_URL}/api/v1`,
   withCredentials: true // автоматически пересылать HttpOnly куки бэкенду

@@ -95,28 +95,29 @@ const CarRequestsPage = () => {
     }
   };
 
-  // Блок фотографій без емодзі
-  const PhotoBlock = ({ label, url }) => {
-    if (!url) {
-      return (
-        <div className="photo-card">
-          <div className="photo-card-label">{label}</div>
-          <div className="photo-card-placeholder">Відсутнє</div>
-        </div>
-      );
-    }
-
-    const fullUrl = url.startsWith('http') ? url : `http://localhost:8080/uploads/${url}`;
-
+  // 1. Обновлённый PhotoBlock без хардкода localhost:8080/uploads/
+const PhotoBlock = ({ label, url }) => {
+  if (!url) {
     return (
       <div className="photo-card">
         <div className="photo-card-label">{label}</div>
-        <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="photo-card-link">
-          <img src={fullUrl} alt={label} className="photo-card-img" />
-        </a>
+        <div className="photo-card-placeholder">Відсутнє</div>
       </div>
     );
-  };
+  }
+
+  // Если сервер прислал полный URL (http...), используем его напрямую, иначе подставляем /images/
+  const fullUrl = url.startsWith('http') ? url : `/images/${url}`;
+
+  return (
+    <div className="photo-card">
+      <div className="photo-card-label">{label}</div>
+      <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="photo-card-link">
+        <img src={fullUrl} alt={label} className="photo-card-img" />
+      </a>
+    </div>
+  );
+};
 
   if (loading) return <div className="loading-spinner">Завантаження заявок...</div>;
 
@@ -141,16 +142,24 @@ const CarRequestsPage = () => {
         <div className="table-card">
           <div className="table-responsive">
             <table className="main-table">
-              <thead>
-                <tr>
-                  <th className="text-center">ID</th>
-                  <th>Водій</th>
-                  <th>Автомобіль</th>
-                  <th className="text-center">Держ. номер</th>
-                  <th className="text-center">Дії</th>
-                </tr>
-              </thead>
-              <tbody>
+  {/* 🛠️ Жесткое распределение ширины колонок */}
+  <colgroup>
+    <col style={{ width: '60px' }} />   {/* ID */}
+    <col style={{ width: '32%' }} />    {/* Водій */}
+    <col style={{ width: '25%' }} />    {/* Автомобіль */}
+    <col style={{ width: '20%' }} />    {/* Держ. номер */}
+    <col style={{ width: '23%' }} />    {/* Дії */}
+  </colgroup>
+  <thead>
+    <tr>
+      <th className="text-center">ID</th>
+      <th>Водій</th>
+      <th>Автомобіль</th>
+      <th className="text-center">Держ. номер</th>
+      <th className="text-center">Дії</th>
+    </tr>
+  </thead>
+  <tbody>
                 {requests.map((car) => {
                   const isExpanded = expandedId === car.id;
                   return (
@@ -162,9 +171,9 @@ const CarRequestsPage = () => {
                       >
                         <td className="text-center text-subtle">{car.id}</td>
                         <td>
-                          <div className="font-medium">{car.driver?.fullName || 'N/A'}</div>
-                          <div className="text-subtle text-sm">{car.driver?.phoneNumber}</div>
-                        </td>
+  <div className="font-medium">{car.driver?.fullName || 'Не вказано'}</div>
+  <div className="text-subtle text-sm">{car.driver?.phoneNumber || car.driver?.userPhone || '---'}</div>
+</td>
                         <td>
                           {isExpanded ? (
                             <div className="inline-edit-group" onClick={e => e.stopPropagation()}>

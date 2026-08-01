@@ -243,23 +243,26 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
     <MapContainer center={position} zoom={11} style={{ height: "100%", width: "100%" }}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       
-      {/* 1. Если заказ НЕ выбран — показываем абсолютно всех водителей на карте */}
-      {!selectedOrder && safeDrivers.map(driver => {
-        const { lat, lng } = getCoords(driver);
-        if (lat === null || lng === null || lat === 0) return null;
+      {/* 1. Если заказ НЕ выбран — показываем водителей на карте */}
+{!selectedOrder && safeDrivers.map(driver => {
+    const { lat, lng } = getCoords(driver);
+    
+    // Игнорируем нулевые координаты и жесткий OFFLINE
+    if (lat === null || lng === null || lat === 0 || lng === 0) return null;
+    if (driver.searchMode === 'OFFLINE') return null;
 
-        const rotatedIcon = getRotatedIcon(driver, lat, lng);
+    const rotatedIcon = getRotatedIcon(driver, lat, lng);
 
-        return (
-          <SmoothDriverMarker key={`driver-${driver.id || driver.driverId}`} position={[lat, lng]} icon={rotatedIcon}>
+    return (
+        <SmoothDriverMarker key={`driver-${driver.id || driver.driverId}`} position={[lat, lng]} icon={rotatedIcon}>
             <Popup>
-              <strong>{driver.fullName}</strong><br/>
-              ID: {driver.id}<br/>
-              {driver.isOnline ? '🟢 НА ЛІНІЇ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
+                <strong>{driver.fullName}</strong><br/>
+                ID: {driver.id || driver.driverId}<br/>
+                {driver.isOnline ? '🟢 НА ЛІНІЇ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
             </Popup>
-          </SmoothDriverMarker>
-        );
-      })}
+        </SmoothDriverMarker>
+    );
+})}
 
       {/* 2. Если заказ выбран — рисуем его маршрут, точечные маркеры и ТОЛЬКО привязанную машину */}
       {selectedOrder && (
@@ -716,25 +719,42 @@ const ActiveOrders = () => {
         webSocketFactory: () => socket,
         reconnectDelay: 5000,
         onConnect: () => {
-            console.log('Connected to Dispatcher WebSocket');
-            
-            // Загружаем только активные заказы из БД при коннекте/реконнекте
-            fetchActiveOrders(); 
+    console.log('Connected to Dispatcher WebSocket');
+    
+    // Загружаем только активные заказы из БД при коннекте/реконнекте
+    fetchActiveOrders(); 
 
-            // Подписка на системные события заказов
-            client.subscribe('/topic/admin/orders', (message) => {
-                const msg = JSON.parse(message.body);
-                handleSocketMessage(msg);
-            });
+    // Подписка на системные события заказов
+    client.subscribe('/topic/admin/orders', (message) => {
+        const msg = JSON.parse(message.body);
+        handleSocketMessage(msg);
+    });
 
-            // 🔥 ИСПРАВЛЕНО И ОПТИМИЗИРОВАНО: 
-            // Слушаем новый пакетный топик. Никаких циклов и переборов! 
-            // Сервер присылает из Redis готовый массив, мы его мгновенно реактивно рендерим.
-            client.subscribe('/topic/admin/drivers-location', (message) => {
-                const driverBatch = JSON.parse(message.body);
-                setMapDrivers(driverBatch || []);
+    // 1. Пакетное обновление локаций от планировщика
+    client.subscribe('/topic/admin/drivers-location', (message) => {
+        const driverBatch = JSON.parse(message.body);
+        if (Array.isArray(driverBatch)) {
+            // Фильтруем точных офлайн-водителей из батча
+            const activeBatch = driverBatch.filter(d => {
+                const { lat, lng } = getCoords(d);
+                return d.searchMode !== 'OFFLINE' && !(lat === 0 && lng === 0 && !d.isOnline);
             });
-        },
+            setMapDrivers(activeBatch);
+        }
+    });
+
+    // 2. Одиночные обновления координат и удаление локации (logoutFromMap)
+    client.subscribe('/topic/admin/drivers/locations', (message) => {
+        const driverData = JSON.parse(message.body);
+        updateDriverOnMap(driverData);
+    });
+
+    // 3. Изменение статуса водителя (online / offline / searchMode)
+    client.subscribe('/topic/admin/drivers', (message) => {
+        const driverData = JSON.parse(message.body);
+        updateDriverOnMap(driverData);
+    });
+},
         onStompError: (frame) => {
             console.error('WS Error:', frame);
         },
@@ -793,6 +813,33 @@ const ActiveOrders = () => {
     }
 };
 
+const updateDriverOnMap = (driverData) => {
+    if (!driverData) return;
+    const driverId = driverData.id || driverData.driverId;
+    const { lat, lng } = getCoords(driverData);
+
+    // 🔴 ТОЧНЫЙ ОФЛАЙН: Если закрыл приложение (searchMode === 'OFFLINE') или сбросил локацию (0.0)
+    const isExactOffline = 
+        driverData.searchMode === 'OFFLINE' || 
+        driverData.isOffline === true || 
+        (lat === 0 && lng === 0 && !driverData.isOnline);
+
+    if (isExactOffline) {
+        // Полностью удаляем водителя с карты
+        setMapDrivers(prev => prev.filter(d => (d.id || d.driverId) !== driverId));
+    } else {
+        // 🟢 НА ЛИНИИ или ⚪ АКТИВЕН (НЕ НА СМЕНЕ): Обновляем или добавляем маркер
+        setMapDrivers(prev => {
+            const idx = prev.findIndex(d => (d.id || d.driverId) === driverId);
+            if (idx !== -1) {
+                const updated = [...prev];
+                updated[idx] = { ...updated[idx], ...driverData };
+                return updated;
+            }
+            return [...prev, driverData];
+        });
+    }
+};
   const handleAssign = async (order) => { 
       const did = prompt(`ID водія:`); 
       if (did) {
