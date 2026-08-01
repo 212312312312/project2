@@ -669,23 +669,25 @@ const ActiveOrders = () => {
         if (gpsData && gpsData.lat && gpsData.lng) {
           // Если это машина EvoS — добавляем или обновляем её маркер
           setMapDrivers(prev => {
-            const evosDriverId = `evos-${targetId}`;
-            const existingIdx = prev.findIndex(d => d.id === evosDriverId);
-            const evosDriverObj = {
-              id: evosDriverId,
-              fullName: `Водій EvoS (${gpsData.carInfo || 'Партнер'})`,
-              lat: gpsData.lat,
-              lng: gpsData.lng,
-              bearing: gpsData.bearing || 0,
-              isOnline: true
-            };
-            if (existingIdx !== -1) {
-              const copy = [...prev];
-              copy[existingIdx] = evosDriverObj;
-              return copy;
+        const idx = prev.findIndex(d => (d.id || d.driverId) === driverId);
+        
+        if (isExactOffline) {
+            // 🔴 Если водитель в офлайне или закрыл приложение — полностью удаляем его с карты
+            return prev.filter(d => (d.id || d.driverId) !== driverId);
+        } else {
+            // 🟢 Если на линии — добавляем или обновляем
+            if (idx !== -1) {
+                const updated = [...prev];
+                updated[idx] = { 
+                    ...updated[idx], 
+                    ...driverData, 
+                    isOnline: driverData.isOnline !== undefined ? driverData.isOnline : updated[idx].isOnline 
+                };
+                return updated;
             }
-            return [...prev, evosDriverObj];
-          });
+            return [...prev, driverData];
+        }
+    });
         }
       });
     }
@@ -730,14 +732,15 @@ const ActiveOrders = () => {
         handleSocketMessage(msg);
     });
 
-    // 1. Пакетное обновление локаций от планировщика
-    client.subscribe('/topic/admin/drivers-location', (message) => {
+// 1. Пакетное обновление локаций от планировщика
+client.subscribe('/topic/admin/drivers-location', (message) => {
         const driverBatch = JSON.parse(message.body);
         if (Array.isArray(driverBatch)) {
-            // Фильтруем точных офлайн-водителей из батча
             const activeBatch = driverBatch.filter(d => {
                 const { lat, lng } = getCoords(d);
-                return d.searchMode !== 'OFFLINE' && !(lat === 0 && lng === 0 && !d.isOnline);
+                const mode = d.status || d.searchMode;
+                // 🟢 ФИКС: В активный батч попадают ТОЛЬКО водители с isOnline === true
+                return d.isOnline === true && mode !== 'OFFLINE' && !(lat === 0 && lng === 0);
             });
             setMapDrivers(activeBatch);
         }
@@ -817,28 +820,44 @@ const updateDriverOnMap = (driverData) => {
     if (!driverData) return;
     const driverId = driverData.id || driverData.driverId;
     const { lat, lng } = getCoords(driverData);
+    const mode = driverData.status || driverData.searchMode;
 
-    // 🔴 ТОЧНЫЙ ОФЛАЙН: Если закрыл приложение (searchMode === 'OFFLINE') или сбросил локацию (0.0)
+    // 🔴 Проверяем признак офлайна (isOnline === false или режим OFFLINE или 0.0 координаты)
     const isExactOffline = 
-        driverData.searchMode === 'OFFLINE' || 
-        driverData.isOffline === true || 
-        (lat === 0 && lng === 0 && !driverData.isOnline);
+        driverData.isOnline === false || 
+        mode === 'OFFLINE' || 
+        (lat === 0 && lng === 0);
 
-    if (isExactOffline) {
-        // Полностью удаляем водителя с карты
-        setMapDrivers(prev => prev.filter(d => (d.id || d.driverId) !== driverId));
-    } else {
-        // 🟢 НА ЛИНИИ или ⚪ АКТИВЕН (НЕ НА СМЕНЕ): Обновляем или добавляем маркер
-        setMapDrivers(prev => {
-            const idx = prev.findIndex(d => (d.id || d.driverId) === driverId);
+    setMapDrivers(prev => {
+        const idx = prev.findIndex(d => (d.id || d.driverId) === driverId);
+        
+        if (isExactOffline) {
+            // Если водитель в офлайне, принудительно обновляем его флаг isOnline в false (чтобы стал серым ⚪),
+            // либо удаляем с карты, если у него нет координат
             if (idx !== -1) {
                 const updated = [...prev];
-                updated[idx] = { ...updated[idx], ...driverData };
+                updated[idx] = { 
+                    ...updated[idx], 
+                    ...driverData, 
+                    isOnline: false // 👈 Принудительно ставим false для серой иконки ⚪
+                };
+                return updated;
+            }
+            return prev;
+        } else {
+            // 🟢 Если на линии — добавляем или обновляем
+            if (idx !== -1) {
+                const updated = [...prev];
+                updated[idx] = { 
+                    ...updated[idx], 
+                    ...driverData, 
+                    isOnline: driverData.isOnline !== undefined ? driverData.isOnline : updated[idx].isOnline 
+                };
                 return updated;
             }
             return [...prev, driverData];
-        });
-    }
+        }
+    });
 };
   const handleAssign = async (order) => { 
       const did = prompt(`ID водія:`); 
