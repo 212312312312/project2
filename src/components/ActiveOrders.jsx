@@ -244,10 +244,10 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       
       {/* 1. Если заказ НЕ выбран — показываем водителей на карте */}
+{/* 1. Если заказ НЕ выбран — показываем водителей на карте */}
 {!selectedOrder && safeDrivers.map(driver => {
     const { lat, lng } = getCoords(driver);
     
-    // Игнорируем нулевые координаты и жесткий OFFLINE
     if (lat === null || lng === null || lat === 0 || lng === 0) return null;
     if (driver.searchMode === 'OFFLINE') return null;
 
@@ -258,7 +258,7 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
             <Popup>
                 <strong>{driver.fullName}</strong><br/>
                 ID: {driver.id || driver.driverId}<br/>
-                {driver.isOnline ? '🟢 НА ЛІНІЇ' : '⚪ АКТИВЕН (НЕ НА СМЕНЕ)'}
+                {driver.isOnline ? '🟢 НА ЛІНІЇ' : '⚪ В ДОДАТКУ (ОФЛАЙН)'}
             </Popup>
         </SmoothDriverMarker>
     );
@@ -739,13 +739,12 @@ client.subscribe('/topic/admin/drivers-location', (message) => {
             const activeBatch = driverBatch.filter(d => {
                 const { lat, lng } = getCoords(d);
                 const mode = d.status || d.searchMode;
-                // 🟢 ФИКС: В активный батч попадают ТОЛЬКО водители с isOnline === true
-                return d.isOnline === true && mode !== 'OFFLINE' && !(lat === 0 && lng === 0);
+                // 🟢 Принимаем ВСЕХ водителей из приложения (и 🟢 онлайн, и ⚪ офлайн)
+                return mode !== 'OFFLINE' && !(lat === 0 && lng === 0);
             });
-            setMapDrivers(activeBatch);
+            setMapDrivers(activeBatch); // Если водитель убил приложение — придет [] и карта корректно очистится
         }
     });
-
     // 2. Одиночные обновления координат и удаление локации (logoutFromMap)
     client.subscribe('/topic/admin/drivers/locations', (message) => {
         const driverData = JSON.parse(message.body);
@@ -822,36 +821,22 @@ const updateDriverOnMap = (driverData) => {
     const { lat, lng } = getCoords(driverData);
     const mode = driverData.status || driverData.searchMode;
 
-    // 🔴 Проверяем признак офлайна (isOnline === false или режим OFFLINE или 0.0 координаты)
-    const isExactOffline = 
-        driverData.isOnline === false || 
-        mode === 'OFFLINE' || 
-        (lat === 0 && lng === 0);
+    // 🔴 Проверяем полный выход/удаление с карты (режим OFFLINE или сброс координат до 0.0)
+    const isLoggedOut = mode === 'OFFLINE' || (lat === 0 && lng === 0);
 
     setMapDrivers(prev => {
         const idx = prev.findIndex(d => (d.id || d.driverId) === driverId);
         
-        if (isExactOffline) {
-            // Если водитель в офлайне, принудительно обновляем его флаг isOnline в false (чтобы стал серым ⚪),
-            // либо удаляем с карты, если у него нет координат
-            if (idx !== -1) {
-                const updated = [...prev];
-                updated[idx] = { 
-                    ...updated[idx], 
-                    ...driverData, 
-                    isOnline: false // 👈 Принудительно ставим false для серой иконки ⚪
-                };
-                return updated;
-            }
-            return prev;
+        if (isLoggedOut) {
+            // Водитель выбыл из системы — полностью убираем из состояния
+            return prev.filter(d => (d.id || d.driverId) !== driverId);
         } else {
-            // 🟢 Если на линии — добавляем или обновляем
+            // Водитель в приложении (онлайн 🟢 или офлайн ⚪)
             if (idx !== -1) {
                 const updated = [...prev];
                 updated[idx] = { 
                     ...updated[idx], 
-                    ...driverData, 
-                    isOnline: driverData.isOnline !== undefined ? driverData.isOnline : updated[idx].isOnline 
+                    ...driverData 
                 };
                 return updated;
             }
