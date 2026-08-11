@@ -10,11 +10,20 @@ const formatCityName = (city) => {
   return city;
 };
 
-// Блок фотографий с исправленным URL и ленивой загрузкой
-const PhotoBlock = ({ label, url }) => {
-  const fullUrl = getImageUrl(url);
+// Хелпер для получения ссылки на ОРИГИНАЛ (без приставки thumb_)
+const getOriginalImageUrl = (url) => {
+  if (!url) return null;
+  // Убираем thumb_ из имени файла, если оно там есть
+  const originalUrl = url.replace('/thumb_', '/');
+  return getImageUrl(originalUrl);
+};
 
-  if (!fullUrl) {
+// Блок фотографий с превью и кликом для полноэкранного просмотра оригинала
+const PhotoBlock = ({ label, url, onOpenOriginal }) => {
+  const thumbnailUrl = getImageUrl(url);
+  const originalUrl = getOriginalImageUrl(url);
+
+  if (!thumbnailUrl) {
     return (
       <div className="photo-card">
         <div className="photo-card-label">{label}</div>
@@ -26,21 +35,26 @@ const PhotoBlock = ({ label, url }) => {
   return (
     <div className="photo-card">
       <div className="photo-card-label">{label}</div>
-      <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="photo-card-link">
+      <div 
+        className="photo-card-link" 
+        onClick={() => onOpenOriginal(originalUrl, label)}
+        style={{ cursor: 'pointer' }}
+        title="Натисніть для перегляду в оригінальній якості"
+      >
         <img 
-          src={fullUrl} 
+          src={thumbnailUrl} 
           alt={label} 
           className="photo-card-img" 
           loading="lazy" 
           decoding="async"
         />
-      </a>
+      </div>
     </div>
   );
 };
 
 // Компонент карточки водителя с аккордеоном для фото
-const DriverRequestCard = ({ driver, openRejectModal, handleApproveDirectly }) => {
+const DriverRequestCard = ({ driver, openRejectModal, handleApproveDirectly, onOpenOriginal }) => {
   const [showPhotos, setShowPhotos] = useState(false);
 
   return (
@@ -148,9 +162,9 @@ const DriverRequestCard = ({ driver, openRejectModal, handleApproveDirectly }) =
             <div className="request-section">
               <h4 className="section-title">Особисті документи</h4>
               <div className="photos-grid mb-3">
-                <PhotoBlock label="Селфі" url={driver.photoUrl} />
-                <PhotoBlock label="Права (Лице)" url={driver.driverLicenseFront} />
-                <PhotoBlock label="Права (Тил)" url={driver.driverLicenseBack} />
+                <PhotoBlock label="Селфі" url={driver.photoUrl} onOpenOriginal={onOpenOriginal} />
+                <PhotoBlock label="Права (Лице)" url={driver.driverLicenseFront} onOpenOriginal={onOpenOriginal} />
+                <PhotoBlock label="Права (Тил)" url={driver.driverLicenseBack} onOpenOriginal={onOpenOriginal} />
               </div>
             </div>
 
@@ -158,19 +172,19 @@ const DriverRequestCard = ({ driver, openRejectModal, handleApproveDirectly }) =
               <div className="request-section">
                 <h5 className="docs-subtitle">Документи авто</h5>
                 <div className="photos-grid mb-3">
-                  <PhotoBlock label="ТП (Лице)" url={driver.car.techPassportFront} />
-                  <PhotoBlock label="ТП (Тил)" url={driver.car.techPassportBack} />
-                  <PhotoBlock label="Страховка" url={driver.car.insurancePhoto} />
+                  <PhotoBlock label="ТП (Лице)" url={driver.car.techPassportFront} onOpenOriginal={onOpenOriginal} />
+                  <PhotoBlock label="ТП (Тил)" url={driver.car.techPassportBack} onOpenOriginal={onOpenOriginal} />
+                  <PhotoBlock label="Страховка" url={driver.car.insurancePhoto} onOpenOriginal={onOpenOriginal} />
                 </div>
 
                 <h5 className="docs-subtitle">Фотографії авто</h5>
                 <div className="photos-grid">
-                  <PhotoBlock label="Перед" url={driver.car.photoFront} />
-                  <PhotoBlock label="Зад" url={driver.car.photoBack} />
-                  <PhotoBlock label="Ліво" url={driver.car.photoLeft} />
-                  <PhotoBlock label="Право" url={driver.car.photoRight} />
-                  <PhotoBlock label="Салон (Пер)" url={driver.car.photoSeatsFront} />
-                  <PhotoBlock label="Салон (Зад)" url={driver.car.photoSeatsBack} />
+                  <PhotoBlock label="Перед" url={driver.car.photoFront} onOpenOriginal={onOpenOriginal} />
+                  <PhotoBlock label="Зад" url={driver.car.photoBack} onOpenOriginal={onOpenOriginal} />
+                  <PhotoBlock label="Ліво" url={driver.car.photoLeft} onOpenOriginal={onOpenOriginal} />
+                  <PhotoBlock label="Право" url={driver.car.photoRight} onOpenOriginal={onOpenOriginal} />
+                  <PhotoBlock label="Салон (Пер)" url={driver.car.photoSeatsFront} onOpenOriginal={onOpenOriginal} />
+                  <PhotoBlock label="Салон (Зад)" url={driver.car.photoSeatsBack} onOpenOriginal={onOpenOriginal} />
                 </div>
               </div>
             )}
@@ -178,6 +192,45 @@ const DriverRequestCard = ({ driver, openRejectModal, handleApproveDirectly }) =
         )}
 
       </div>
+    </div>
+  );
+};
+
+// Компонент плавной загрузки полноразмерного фото
+const ModalImagePreview = ({ url }) => {
+  const [imgLoading, setImgLoading] = useState(true);
+
+  return (
+    <div style={{ textAlign: 'center', padding: '10px', minHeight: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      {imgLoading && (
+        <div style={{ padding: '40px 0', color: '#0F766E', fontWeight: '600' }}>
+          ⏳ Завантаження оригіналу в максимальній якості...
+        </div>
+      )}
+      <img 
+        src={url} 
+        alt="Оригінал документа" 
+        onLoad={() => setImgLoading(false)}
+        style={{ 
+          maxWidth: '100%', 
+          maxHeight: '75vh', 
+          objectFit: 'contain', 
+          borderRadius: '8px',
+          display: imgLoading ? 'none' : 'block'
+        }} 
+      />
+      {!imgLoading && (
+        <div style={{ marginTop: '15px' }}>
+          <a 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="btn btn-secondary btn-sm"
+          >
+            🔗 Відкрити у новій вкладці
+          </a>
+        </div>
+      )}
     </div>
   );
 };
@@ -191,6 +244,13 @@ const DriverRequestsPage = () => {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Модалка просмотра оригинала фото
+  const [previewImage, setPreviewImage] = useState({ open: false, url: '', label: '' });
+
+  const handleOpenOriginal = (url, label) => {
+    setPreviewImage({ open: true, url, label });
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -272,6 +332,7 @@ const DriverRequestsPage = () => {
               driver={driver} 
               openRejectModal={openRejectModal} 
               handleApproveDirectly={handleApproveDirectly} 
+              onOpenOriginal={handleOpenOriginal}
             />
           ))}
         </div>
@@ -304,6 +365,15 @@ const DriverRequestsPage = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* МОДАЛКА ПЕРЕГЛЯДУ ОРИГІНАЛУ ФОТО З ПЛАВНИМ ЛОАДЕРОМ */}
+      <Modal
+        isOpen={previewImage.open}
+        onClose={() => setPreviewImage({ open: false, url: '', label: '' })}
+        title={previewImage.label || 'Перегляд документа'}
+      >
+        <ModalImagePreview url={previewImage.url} />
       </Modal>
     </div>
   );
