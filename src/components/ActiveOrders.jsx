@@ -535,8 +535,12 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
         <div>
             <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#868e96', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Оплата</div>
             <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#212529', marginTop: '4px' }}>
-                {order.paymentMethod === 'CARD' ? '💳 Банківська картка' : '💵 Готівка'}
-            </div>
+    {order.paymentMethod === 'CARD' 
+        ? '💳 Прив\'язка картки' 
+        : order.paymentMethod === 'DRIVER_CARD' 
+        ? '📲 Водію на картку' 
+        : '💵 Готівка'}
+</div>
         </div>
         <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#868e96', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Вартість</div>
@@ -619,7 +623,13 @@ const ActiveOrders = () => {
           if (!h) h = 40;
 
           // ИСПРАВЛЕНО: Подставляем хост бэкенда для корректной загрузки кастомного маркера на карте
-          const backendHost = window.location.hostname === 'localhost' ? 'http://localhost:8080' : `${window.location.protocol}//${window.location.host}`;
+          // Динамичне формування URL для WebSocket (работает локально и на сервере)
+    const wsUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:8080/ws-taxi' 
+      : 'https://api.unitua.com/ws-taxi';
+    
+    // WebSocket підключення
+    const socket = new SockJS(wsUrl);
           const imageUrl = `${backendHost}${settings.driver_map_icon}?t=${new Date().getTime()}`;
           
           const customIcon = new L.Icon({
@@ -712,13 +722,16 @@ const ActiveOrders = () => {
     // Динамичне формування URL для WebSocket (працює і локально, і на сервері)
     const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
     const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
-    const wsUrl = `${protocol}//${host}/ws-taxi`;
+    const wsUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:8080/ws-taxi' 
+      : 'https://api.unitua.com/ws-taxi';
     
-    // WebSocket підключення
     const socket = new SockJS(wsUrl);
+    const token = localStorage.getItem('token');
     
     const client = new Client({
         webSocketFactory: () => socket,
+        connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
         reconnectDelay: 5000,
         onConnect: () => {
     console.log('Connected to Dispatcher WebSocket');

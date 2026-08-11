@@ -47,10 +47,16 @@ const DashboardLayout = () => {
 
   // --- WEBSOCKET CONNECTION ---
   useEffect(() => {
-    const socket = new SockJS('https://taxi-server-594834712305.europe-central2.run.app/ws-taxi');
+    const wsUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:8080/ws-taxi' 
+      : 'https://api.unitua.com/ws-taxi';
+    const socket = new SockJS(wsUrl);
     
+    const token = localStorage.getItem('token');
+
     const stompClient = new Client({
       webSocketFactory: () => socket,
+      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
       onConnect: () => {
         console.log('WS Connected (Global)');
         

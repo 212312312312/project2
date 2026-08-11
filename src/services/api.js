@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 // 0. Автоматически определяем адрес текущего сервера (ПК, телефон или Cloud Run)
-const SERVER_URL = typeof window !== 'undefined' && window.location.origin 
-  ? window.location.origin 
-  : 'http://localhost:8080';
+const SERVER_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+  ? 'http://localhost:8080' 
+  : 'https://api.unitua.com';
 
 // 1. Создаем экземпляр axios с относительным или динамическим baseURL
 const api = axios.create({
@@ -108,5 +108,16 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// ЗАМЕНИТЬ ФУНКЦИЮ getImageUrl В КОНЦЕ ФАЙЛА src/services/api.js:
+export const getImageUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+        return path;
+    }
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    const baseUrl = SERVER_URL.replace(/\/$/, '');
+    return `${baseUrl}${cleanPath}`;
+};
 
 export default api;

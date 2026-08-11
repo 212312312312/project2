@@ -88,6 +88,11 @@ const SettingsPage = () => {
                         </button>
                     </div>
                 </div>
+
+                <PaymentSettingsCard 
+        settingsData={settings} 
+        onReload={loadSettings} 
+    />
                 <EvosSettingsCard 
     settingsData={settings} 
     onReload={loadSettings} 
@@ -344,6 +349,93 @@ const SettingCard = ({ title, description, settingKey, settingsData, onSave, loa
                 disabled={loading}
             >
                 {loading ? "Збереження..." : "Зберегти"}
+            </button>
+        </div>
+    );
+};
+
+const PaymentSettingsCard = ({ settingsData, onReload }) => {
+    const [enableCard, setEnableCard] = useState(settingsData.enable_card_payment !== 'false');
+    const [enableDriverCard, setEnableDriverCard] = useState(settingsData.enable_driver_card_payment !== 'false');
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        setEnableCard(settingsData.enable_card_payment !== 'false');
+        setEnableDriverCard(settingsData.enable_driver_card_payment !== 'false');
+    }, [settingsData]);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await saveTextSettings({
+                enable_card_payment: enableCard.toString(),
+                enable_driver_card_payment: enableDriverCard.toString()
+            });
+            alert('Налаштування способів оплати збережено успішно!');
+            if (onReload) onReload();
+        } catch (error) {
+            alert('Помилка збереження: ' + error.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="form-section" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.25rem' }}>
+            <h3 className="form-section-title" style={{ margin: '0 0 0.5rem 0' }}>💳 Способи оплати в додатку</h3>
+            <p className="form-hint" style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1rem', lineHeight: '1.4' }}>
+                Керування активними способами оплати для клієнтського додатку.
+            </p>
+
+            {/* Готівка - заблокированный чекбокс */}
+            <div className="form-group" style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input 
+                    type="checkbox" 
+                    id="payment_cash_checkbox"
+                    checked={true} 
+                    disabled={true}
+                    style={{ width: '18px', height: '18px', cursor: 'not-allowed' }}
+                />
+                <label htmlFor="payment_cash_checkbox" className="form-label" style={{ margin: 0, cursor: 'not-allowed', color: '#64748b' }}>
+                    💵 Готівка (Завжди активна)
+                </label>
+            </div>
+
+            {/* Прив'язка картки */}
+            <div className="form-group" style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input 
+                    type="checkbox" 
+                    id="enable_card_checkbox"
+                    checked={enableCard} 
+                    onChange={(e) => setEnableCard(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <label htmlFor="enable_card_checkbox" className="form-label" style={{ margin: 0, cursor: 'pointer', fontWeight: 'bold' }}>
+                    💳 Прив'язка картки
+                </label>
+            </div>
+
+            {/* Водію на картку */}
+            <div className="form-group" style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input 
+                    type="checkbox" 
+                    id="enable_driver_card_checkbox"
+                    checked={enableDriverCard} 
+                    onChange={(e) => setEnableDriverCard(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <label htmlFor="enable_driver_card_checkbox" className="form-label" style={{ margin: 0, cursor: 'pointer', fontWeight: 'bold' }}>
+                    📲 Водію на картку
+                </label>
+            </div>
+
+            <button 
+                className="btn btn-primary" 
+                style={{ width: '100%' }} 
+                onClick={handleSave} 
+                disabled={saving}
+            >
+                {saving ? "Збереження..." : "Зберегти способи оплати"}
             </button>
         </div>
     );

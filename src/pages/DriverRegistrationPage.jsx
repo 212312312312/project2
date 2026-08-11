@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { requestDriverSms, verifyDriverSms, registerDriver } from '../services/authService';
 import { getCities, getCarBrands, getCarModels, evaluateCarTariffs } from '../services/publicService';
-
+import imageCompression from 'browser-image-compression';
 // --- СТИЛІ ---
 
 const colors = {
@@ -669,34 +669,49 @@ const DriverRegistrationPage = () => {
     };
 
     const handleFinalSubmit = async () => {
-        setLoading(true); setError('');
-        try {
-            const fullName = `${formData.lastName} ${formData.firstName} ${formData.middleName}`.trim();
-            const payload = {
-                phoneNumber: formData.phoneNumber,
-                smsCode: formData.smsCode,
-                password: formData.password,
-                fullName: fullName,
-                email: formData.email,
-                rnokpp: formData.rnokpp,
-                driverLicense: formData.driverLicense,
-                city: formData.city,
-                make: formData.make,
-                model: formData.model,
-                color: formData.color,
-                plateNumber: formData.plateNumber,
-                year: parseInt(formData.year),
-                carType: formData.carType
-            };
+    setLoading(true); 
+    setError('');
+    try {
+        // Настройки сжатия: максимум 1 МБ, разрешение 1920px
+        const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
 
-            await registerDriver(payload, files);
-            setStep(8);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
+        // Сжимаем все загруженные файлы
+        const compressedFiles = {};
+        for (const [key, file] of Object.entries(files)) {
+            if (file) {
+                compressedFiles[key] = await imageCompression(file, options);
+            } else {
+                compressedFiles[key] = null;
+            }
         }
-    };
+
+        const fullName = `${formData.lastName} ${formData.firstName} ${formData.middleName}`.trim();
+        const payload = {
+            phoneNumber: formData.phoneNumber,
+            smsCode: formData.smsCode,
+            password: formData.password,
+            fullName: fullName,
+            email: formData.email,
+            rnokpp: formData.rnokpp,
+            driverLicense: formData.driverLicense,
+            city: formData.city,
+            make: formData.make,
+            model: formData.model,
+            color: formData.color,
+            plateNumber: formData.plateNumber,
+            year: parseInt(formData.year),
+            carType: formData.carType
+        };
+
+        // Отправляем уже сжатые 2-3 МБ вместо 100 МБ
+        await registerDriver(payload, compressedFiles);
+        setStep(8);
+    } catch (err) {
+        setError(err.message);
+    } finally {
+        setLoading(false);
+    }
+};
 
     // --- RENDER ---
 
