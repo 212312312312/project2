@@ -62,7 +62,10 @@ const SettingsPage = () => {
             </header>
 
             <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
-                
+                 <SmsSettingsCard 
+                    settingsData={settings} 
+                    onReload={loadSettings} 
+                />   
                 {/* --- КАРТКА ДЛЯ ПРИЧИН СКАСУВАННЯ --- */}
                 <div className="form-section" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
@@ -249,7 +252,74 @@ const EvosSettingsCard = ({ settingsData, onReload }) => {
         </div>
     );
 };
+const SmsSettingsCard = ({ settingsData, onReload }) => {
+    const [smsMode, setSmsMode] = useState(settingsData.sms_mode || 'TEST');
+    const [alphaName, setAlphaName] = useState(settingsData.sms_alpha_name || 'TAXI');
+    const [saving, setSaving] = useState(false);
 
+    useEffect(() => {
+        setSmsMode(settingsData.sms_mode || 'TEST');
+        setAlphaName(settingsData.sms_alpha_name || 'TAXI');
+    }, [settingsData]);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await saveTextSettings({
+                sms_mode: smsMode,
+                sms_alpha_name: alphaName
+            });
+            alert('Налаштування СМС сервісу збережено успішно!');
+            if (onReload) onReload();
+        } catch (error) {
+            alert('Помилка збереження: ' + error.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="form-section" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.25rem' }}>
+            <h3 className="form-section-title" style={{ margin: '0 0 0.5rem 0' }}>📱 СМС сервіс (SMS-Fly)</h3>
+            <p className="form-hint" style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1rem', lineHeight: '1.4' }}>
+                Перемикання між тестовим режимом (код в логах) та продакшеном (реальна відправка СМС).
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Режим роботи</label>
+                <select 
+                    value={smsMode} 
+                    onChange={(e) => setSmsMode(e.target.value)} 
+                    className="input-field"
+                    style={{ fontWeight: 'bold', color: smsMode === 'PROD' ? '#16a34a' : '#d97706' }}
+                >
+                    <option value="TEST">🟡 ТЕСТОВИЙ (СМС код пишеться в логи сервера)</option>
+                    <option value="PROD">🟢 ПРОДАКШЕН (Реальна відправка через SMS-Fly)</option>
+                </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label">Альфа-ім'я (Підпис відправника)</label>
+                <input 
+                    type="text" 
+                    value={alphaName} 
+                    onChange={(e) => setAlphaName(e.target.value)} 
+                    className="input-field"
+                    placeholder="Наприклад: TAXI"
+                />
+            </div>
+
+            <button 
+                className="btn btn-primary" 
+                style={{ width: '100%' }} 
+                onClick={handleSave} 
+                disabled={saving}
+            >
+                {saving ? "Збереження..." : "Зберегти налаштування СМС"}
+            </button>
+        </div>
+    );
+};
 const SettingCard = ({ title, description, settingKey, settingsData, onSave, loading }) => {
     const [preview, setPreview] = useState(null);
     const [file, setFile] = useState(null);
