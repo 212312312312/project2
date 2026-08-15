@@ -469,20 +469,40 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
         <div style={{ borderTop: '1px dashed #dee2e6', paddingTop: '10px' }}>
     <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Водій та Авто</div>
     
-    {order.driver ? (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', color: '#343a40', fontSize: '1.05rem' }}>
-            <a href={`/drivers?openId=${order.driver.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#2e7d32', textDecoration: 'underline' }}>
-                {order.driver.fullName}
-            </a>
-            <span style={{ backgroundColor: '#f1f3f5', color: '#212529', padding: '3px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '800', border: '1px solid #ced4da', letterSpacing: '0.5px' }}>
-                {order.carNumber || order.driver?.carLicensePlate || '—'}
-            </span>
+    {order.driver && order.driver.id !== -1 ? (
+        /* 🟢 Свой локальный водитель */
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', color: '#343a40', fontSize: '1.05rem' }}>
+                <a href={`/drivers?openId=${order.driver.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#2e7d32', textDecoration: 'underline' }}>
+                    {order.driver.fullName}
+                </a>
+                <span style={{ backgroundColor: '#f1f3f5', color: '#212529', padding: '3px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '800', border: '1px solid #ced4da', letterSpacing: '0.5px' }}>
+                    {order.driver.carPlateNumber || order.carNumber || order.driver?.carLicensePlate || '—'}
+                </span>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '2px' }}>
+                🚗 {order.driver.carModel} {order.driver.carColor ? `(${order.driver.carColor})` : ''} • 📞 {order.driver.phoneNumber || order.driver.userPhone || '—'}
+            </div>
         </div>
-    ) : order.isEvosDriverAssigned ? (
-        /* --- ОТОБРАЖЕНИЕ ПАРТНЕРСКОГО ВОДИТЕЛЯ EVOS --- */
-        <div style={{ backgroundColor: '#f3d9fa', color: '#862e9c', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 'bold', border: '1px solid #eebefa' }}>
-            <div>🚖 Водій з EvoS: {order.evosDriverCarInfo || 'Прийнято сторонньою службою'}</div>
-            {order.evosDriverPhone && <div style={{ fontSize: '0.85rem', marginTop: '2px', color: '#5f3dc4' }}>📞 Тел: {order.evosDriverPhone}</div>}
+    ) : (order.isEvosDriverAssigned || (order.driver && order.driver.id === -1) || order.evosDriverCarInfo) ? (
+        /* 🤝 Водитель из партнерской сети СОЗ (EvoS) */
+        <div style={{ backgroundColor: '#f8f0fc', color: '#862e9c', padding: '10px 12px', borderRadius: '8px', fontSize: '0.9rem', border: '1px solid #eebefa', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: '800', color: '#5f3dc4' }}>🤝 Водій СОЗ (EvoS)</span>
+                <span style={{ backgroundColor: '#e599f7', color: '#3b0764', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '900' }}>
+                    {order.driver?.carPlateNumber || order.evosDriverCarInfo?.split(',')[0] || 'ПАРТНЕР'}
+                </span>
+            </div>
+            <div style={{ fontWeight: '600', color: '#212529', fontSize: '0.92rem' }}>
+                🚗 {order.driver?.carModel || order.evosDriverCarInfo || 'Партнерське авто'} {order.driver?.carColor ? `(${order.driver.carColor})` : ''}
+            </div>
+            {(order.driver?.phoneNumber || order.evosDriverPhone) && (
+                <div style={{ fontSize: '0.85rem', color: '#1976d2', fontWeight: '600' }}>
+                    📞 <a href={`tel:${order.driver?.phoneNumber || order.evosDriverPhone}`} style={{ color: '#1976d2', textDecoration: 'underline' }} onClick={(e) => e.stopPropagation()}>
+                        {order.driver?.phoneNumber || order.evosDriverPhone}
+                    </a>
+                </div>
+            )}
         </div>
     ) : (
         <div style={{ color: '#9bc2c1', fontStyle: 'italic', fontSize: '0.95rem', fontWeight: '500', padding: '2px 0' }}>
@@ -671,33 +691,35 @@ const ActiveOrders = () => {
 
     fetchTrackPoints();
 
-    // 🟢 ДОБАВЛЕНО: Подписка на живые GPS координаты стороннего водителя (EvoS) по сокету
+    // 🟢 Подписка на живые GPS координаты водителя (включая EvoS) по сокету
     let trackingSub = null;
     if (stompClientRef.current && stompClientRef.current.connected) {
       trackingSub = stompClientRef.current.subscribe(`/topic/admin/tracking/${targetId}`, (message) => {
         const gpsData = JSON.parse(message.body);
         if (gpsData && gpsData.lat && gpsData.lng) {
-          // Если это машина EvoS — добавляем или обновляем её маркер
+          const partnerDriverId = selectedOrder.driver?.id ?? -1;
+          const partnerDriverObj = {
+            id: partnerDriverId,
+            driverId: partnerDriverId,
+            fullName: selectedOrder.driver?.fullName || 'Водій СОЗ (EvoS)',
+            latitude: gpsData.lat,
+            longitude: gpsData.lng,
+            lat: gpsData.lat,
+            lng: gpsData.lng,
+            bearing: gpsData.bearing || 0,
+            isOnline: true,
+            searchMode: 'ONLINE'
+          };
+
           setMapDrivers(prev => {
-        const idx = prev.findIndex(d => (d.id || d.driverId) === driverId);
-        
-        if (isExactOffline) {
-            // 🔴 Если водитель в офлайне или закрыл приложение — полностью удаляем его с карты
-            return prev.filter(d => (d.id || d.driverId) !== driverId);
-        } else {
-            // 🟢 Если на линии — добавляем или обновляем
+            const idx = prev.findIndex(d => (d.id === partnerDriverId || d.driverId === partnerDriverId));
             if (idx !== -1) {
-                const updated = [...prev];
-                updated[idx] = { 
-                    ...updated[idx], 
-                    ...driverData, 
-                    isOnline: driverData.isOnline !== undefined ? driverData.isOnline : updated[idx].isOnline 
-                };
-                return updated;
+              const updated = [...prev];
+              updated[idx] = { ...updated[idx], ...partnerDriverObj };
+              return updated;
             }
-            return [...prev, driverData];
-        }
-    });
+            return [...prev, partnerDriverObj];
+          });
         }
       });
     }

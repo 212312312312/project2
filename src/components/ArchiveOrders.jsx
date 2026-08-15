@@ -115,7 +115,7 @@ const ArchiveOrders = () => {
       setLoading(true);
       setError('');
       const data = await getArchivedOrders();
-      const sorted = data.sort((a, b) => b.id - a.id);
+      const sorted = data.sort((a, b) => (b.idLong || 0) - (a.idLong || 0));
       setAllOrders(sorted);
     } catch (err) {
       setError(err.message);
@@ -140,6 +140,8 @@ const ArchiveOrders = () => {
     if (searchTerm) {
       result = result.filter(o => 
         o.client?.phoneNumber?.includes(searchTerm) || 
+        o.clientPhone?.includes(searchTerm) ||
+        o.idLong?.toString().includes(searchTerm) ||
         o.id?.toString().includes(searchTerm) ||
         o.uuid?.includes(searchTerm) ||
         o.evosOrderUid?.includes(searchTerm)
@@ -280,25 +282,36 @@ const ArchiveOrders = () => {
 
             <div className="detail-item" style={{ marginBottom: '12px' }}>
               <span className="detail-label">Водій та Авто</span>
-              {selectedOrder.driver ? (
+              {selectedOrder.driver && selectedOrder.driver.id !== -1 ? (
                 <>
                   <span className="detail-value">{selectedOrder.driver.fullName}</span>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                     <span className="text-subtle" style={{ fontSize: '0.85rem' }}>📞 {selectedOrder.driver.phoneNumber || '—'}</span>
                     <span className="badge" style={{ background: '#e2e8f0', color: '#0f172a' }}>
-                      {selectedOrder.carNumber || selectedOrder.driver.carLicensePlate || '—'}
+                      {selectedOrder.driver.carPlateNumber || selectedOrder.carNumber || selectedOrder.driver.carLicensePlate || '—'}
                     </span>
                   </div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>
+                    🚗 {selectedOrder.driver.carModel} {selectedOrder.driver.carColor ? `(${selectedOrder.driver.carColor})` : ''}
+                  </div>
                 </>
-              ) : selectedOrder.evosDriverCarInfo ? (
-                <>
-                  <span className="detail-value">🚖 {selectedOrder.evosDriverCarInfo}</span>
-                  {selectedOrder.evosDriverPhone && (
-                    <span className="text-subtle" style={{ fontSize: '0.85rem', display: 'block', marginTop: '4px' }}>
-                      📞 {selectedOrder.evosDriverPhone}
+              ) : (selectedOrder.isSentToEvos || selectedOrder.evosDriverCarInfo || (selectedOrder.driver && selectedOrder.driver.id === -1)) ? (
+                <div style={{ backgroundColor: '#f8f0fc', padding: '8px 10px', borderRadius: '6px', border: '1px solid #eebefa' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, color: '#862e9c', fontSize: '0.9rem' }}>🤝 Водій СОЗ (EvoS)</span>
+                    <span className="badge" style={{ background: '#e599f7', color: '#3b0764', fontSize: '0.75rem' }}>
+                      {selectedOrder.driver?.carPlateNumber || selectedOrder.evosDriverCarInfo?.split(',')[0] || 'ПАРТНЕР'}
                     </span>
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1e293b', marginTop: '3px' }}>
+                    🚗 {selectedOrder.driver?.carModel || selectedOrder.evosDriverCarInfo || 'Партнерське авто'}
+                  </div>
+                  {(selectedOrder.driver?.phoneNumber || selectedOrder.evosDriverPhone) && (
+                    <div className="text-subtle" style={{ fontSize: '0.85rem', marginTop: '2px', color: '#0284c7' }}>
+                      📞 {selectedOrder.driver?.phoneNumber || selectedOrder.evosDriverPhone}
+                    </div>
                   )}
-                </>
+                </div>
               ) : (
                 <span className="text-subtle" style={{ fontStyle: 'italic' }}>
                   Водія не було призначено
@@ -478,9 +491,9 @@ const ArchiveOrders = () => {
               {filteredOrders.length > 0 ? (
                 filteredOrders.map((order) => {
                   const isEvos = order.isSentToEvos || !!order.evosOrderUid;
-                  const driverDisplayName = order.driver 
+                  const driverDisplayName = order.driver && order.driver.id !== -1
                     ? order.driver.fullName 
-                    : (order.evosDriverCarInfo ? `🚖 ${order.evosDriverCarInfo}` : '—');
+                    : (order.driver?.carModel || order.evosDriverCarInfo ? `🤝 EvoS: ${order.driver?.carModel || order.evosDriverCarInfo}` : '—');
 
                   return (
                     <tr 
@@ -491,7 +504,7 @@ const ArchiveOrders = () => {
                       title="Подвійний клік для деталей"
                     >
                       <td className="font-medium" style={{ padding: '0.9rem 1.1rem', whiteSpace: 'nowrap' }}>
-                        #{order.id} {isEvos && <span title="Перекинуто в EvoS">🌐</span>}
+                        #{order.idLong || order.id} {isEvos && <span title="Перекинуто в EvoS">🌐</span>}
                       </td>
                       <td className="text-center" style={{ padding: '0.9rem 1.1rem' }}>
                         <span className={`badge ${order.status === 'CANCELLED' ? 'badge-danger' : 'badge-success'}`}>

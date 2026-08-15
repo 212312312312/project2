@@ -1,0 +1,104 @@
+.payouts-container {
+  margin-top: 16px;
+}
+
+.payouts-subtabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.payouts-subtab-btn {
+  padding: 10px 18px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: var(--bg-card, #ffffff);
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.payouts-subtab-btn:hover {
+  border-color: var(--primary-color, #3b82f6);
+  color: var(--primary-color, #3b82f6);
+}
+
+/* Активный таб берет акцентный цвет из темы вашего приложения */
+.payouts-subtab-btn.active {
+  background-color: var(--primary-color, #3b82f6);
+  color: #ffffff;
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.payouts-loading,
+.payouts-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+  font-size: 15px;
+  background-color: var(--bg-card, #ffffff);
+  border-radius: var(--radius-md, 8px);
+  border: 1px dashed var(--border-color, #cbd5e1);
+}
+
+.payouts-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--bg-card, #ffffff);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
+}
+
+.payouts-table th,
+.payouts-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+  font-size: 14px;
+}
+
+.payouts-table th {
+  background-color: var(--table-header-bg, #f8fafc);
+  color: var(--text-muted, #475569);
+  font-weight: 600;
+}
+
+.amount-cell {
+  color: var(--success-color, #16a34a);
+}
+
+.phone-link {
+  color: var(--primary-color, #3b82f6);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.phone-link:hover {
+  text-decoration: underline;
+}
+
+.btn-confirm-payout {
+  background-color: var(--success-color, #16a34a);
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-confirm-payout:hover {
+  opacity: 0.9;
+}
+
+.btn-confirm-payout:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
