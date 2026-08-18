@@ -49,6 +49,17 @@ const getCoords = (driver) => {
     return { lat, lng };
 };
 
+// 🟢 Вставляем сюда:
+const isPartnerDriver = (driver) => {
+    const id = driver.id || driver.driverId;
+    return id === -1 || driver.isPartner === true || Boolean(driver.evosDriverCarInfo);
+};
+
+const isDriverOnline = (driver) => {
+    if (isPartnerDriver(driver)) return true;
+    return driver.isOnline === true || driver.online === true || driver.searchMode === 'ONLINE' || driver.status === 'ONLINE';
+};
+
 const getStatusLabel = (status) => {
     switch (status) {
         case 'SCHEDULED': return 'Заплановано';
@@ -202,35 +213,49 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
   // Функция генерации иконки с углом поворота
   const getRotatedIcon = (driver, lat, lng) => {
     const driverId = driver.id || driver.driverId;
-    let bearing = 0;
+    let bearing = driver.bearing || 0;
     
     const prev = prevPositionsRef.current[driverId];
     if (prev) {
-      // Если координаты изменились — считаем новый угол, если нет — сохраняем старый
       if (prev.lat === lat && prev.lng === lng) {
-        bearing = prev.bearing || 0;
+        bearing = prev.bearing || bearing;
       } else {
         bearing = calculateBearing(prev.lat, prev.lng, lat, lng);
         prevPositionsRef.current[driverId] = { lat, lng, bearing };
       }
     } else {
-      prevPositionsRef.current[driverId] = { lat, lng, bearing: 0 };
+      prevPositionsRef.current[driverId] = { lat, lng, bearing };
     }
 
-    let iconUrl = driver.isOnline 
-      ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
-      : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png';
-    let size = [25, 41];
-    
-    if (driver.isOnline && customOnlineIcon) {
-      iconUrl = customOnlineIcon.options.iconUrl;
-      size = customOnlineIcon.options.iconSize || [40, 40];
+    const isPartner = isPartnerDriver(driver);
+    const isOnline = isDriverOnline(driver);
+
+    // Выбираем оформление маркера
+    let iconUrl;
+    let badgeHtml = '';
+
+    if (isPartner) {
+      // Маркер партнера СОЗ: фиолетовый бейдж
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png';
+      badgeHtml = `<span style="position: absolute; top: -10px; right: -10px; background: #7950f2; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 4px; border-radius: 4px; border: 1px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">СОЗ</span>`;
+    } else if (isOnline) {
+      // Наш водитель онлайн (зеленый или кастомный)
+      iconUrl = customOnlineIcon?.options?.iconUrl || 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
+    } else {
+      // Наш водитель офлайн в приложении (серый)
+      iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png';
     }
+
+    const size = (isOnline && customOnlineIcon && !isPartner) 
+      ? (customOnlineIcon.options.iconSize || [40, 40]) 
+      : [25, 41];
     
-    // Оборачиваем маркер в divIcon и плавно крутим через CSS transform
     return L.divIcon({
-      html: `<div style="transform: rotate(${Math.round(bearing)}deg); transform-origin: center; width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center; transition: transform 0.5s ease;">
-               <img src="${iconUrl}" style="width: 100%; height: 100%; object-fit: contain;" />
+      html: `<div style="position: relative; width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center;">
+               <div style="transform: rotate(${Math.round(bearing)}deg); transform-origin: center; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transition: transform 0.5s ease;">
+                 <img src="${iconUrl}" style="width: 100%; height: 100%; object-fit: contain;" />
+               </div>
+               ${badgeHtml}
              </div>`,
       className: 'rotated-driver-container',
       iconSize: size,
@@ -264,24 +289,31 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
     );
 })}
 
-      {/* 2. Если заказ выбран — рисуем его маршрут, точечные маркеры и ТОЛЬКО привязанную машину */}
+      {/* 2. Если заказ выбран — рисуем его маршрут и привязанную машину */}
       {selectedOrder && (
         <>
-          {/* Рендеринг назначенного водителя на маршруте с поворотом */}
+          {/* Рендеринг назначенного водителя (локального или партнера) */}
           {selectedOrder.driver && (() => {
               const assignedDriver = safeDrivers.find(d => (d.id === selectedOrder.driver.id || d.driverId === selectedOrder.driver.id));
-              if (!assignedDriver) return null;
+              
+              // 🟢 Если водителя нет в общем списке онлайн-машин, берем координаты из selectedOrder.driver
+              const driverObj = assignedDriver || {
+                  ...selectedOrder.driver,
+                  id: selectedOrder.driver.id || -1,
+                  isOnline: true,
+                  fullName: selectedOrder.driver.fullName || 'Водій'
+              };
 
-              const { lat, lng } = getCoords(assignedDriver);
-              if (lat === null || lng === null || lat === 0) return null;
+              const { lat, lng } = getCoords(driverObj);
+              if (lat === null || lng === null || lat === 0 || lng === 0) return null;
 
-              const rotatedIcon = getRotatedIcon(assignedDriver, lat, lng);
+              const rotatedIcon = getRotatedIcon(driverObj, lat, lng);
 
               return (
-                  <SmoothDriverMarker key={`driver-assigned-${assignedDriver.id}`} position={[lat, lng]} icon={rotatedIcon}>
+                  <SmoothDriverMarker key={`driver-assigned-${driverObj.id || 'partner'}`} position={[lat, lng]} icon={rotatedIcon}>
                     <Popup>
-                      <strong>{assignedDriver.fullName} (Призначений)</strong><br/>
-                      ID водія: {assignedDriver.id}<br/>
+                      <strong>{driverObj.fullName}</strong><br/>
+                      {driverObj.carModel ? `🚗 ${driverObj.carModel}` : ''} {driverObj.carPlateNumber ? `[${driverObj.carPlateNumber}]` : ''}<br/>
                       Статус поїздки: {getStatusLabel(selectedOrder.status)}
                     </Popup>
                   </SmoothDriverMarker>
@@ -637,19 +669,12 @@ const ActiveOrders = () => {
       try {
         const settings = await getAllSettings();
         if (settings && settings.driver_map_icon) {
-          let w = parseInt(settings.driver_map_icon_width);
-          let h = parseInt(settings.driver_map_icon_height);
-          if (!w) w = 40;
-          if (!h) h = 40;
+          let w = parseInt(settings.driver_map_icon_width) || 40;
+          let h = parseInt(settings.driver_map_icon_height) || 40;
 
-          // ИСПРАВЛЕНО: Подставляем хост бэкенда для корректной загрузки кастомного маркера на карте
-          // Динамичне формування URL для WebSocket (работает локально и на сервере)
-    const wsUrl = window.location.hostname === 'localhost' 
-      ? 'http://localhost:8080/ws-taxi' 
-      : 'https://api.unitua.com/ws-taxi';
-    
-    // WebSocket підключення
-    const socket = new SockJS(wsUrl);
+          const backendHost = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8080' 
+            : 'https://api.unitua.com';
           const imageUrl = `${backendHost}${settings.driver_map_icon}?t=${new Date().getTime()}`;
           
           const customIcon = new L.Icon({
@@ -677,66 +702,94 @@ const ActiveOrders = () => {
   };
 
   useEffect(() => {
-  if (selectedOrder) {
-    const targetId = selectedOrder.idLong || selectedOrder.id;
-    
-    const fetchTrackPoints = async () => {
-      try {
-        const points = await getOrderTrack(targetId);
-        setSelectedOrderTrack(points);
-      } catch (err) {
-        console.error("Не вдалося завантажити трек:", err);
-      }
-    };
-
-    fetchTrackPoints();
-
-    // 🟢 Подписка на живые GPS координаты водителя (включая EvoS) по сокету
-    let trackingSub = null;
-    if (stompClientRef.current && stompClientRef.current.connected) {
-      trackingSub = stompClientRef.current.subscribe(`/topic/admin/tracking/${targetId}`, (message) => {
-        const gpsData = JSON.parse(message.body);
-        if (gpsData && gpsData.lat && gpsData.lng) {
-          const partnerDriverId = selectedOrder.driver?.id ?? -1;
-          const partnerDriverObj = {
-            id: partnerDriverId,
-            driverId: partnerDriverId,
-            fullName: selectedOrder.driver?.fullName || 'Водій СОЗ (EvoS)',
-            latitude: gpsData.lat,
-            longitude: gpsData.lng,
-            lat: gpsData.lat,
-            lng: gpsData.lng,
-            bearing: gpsData.bearing || 0,
-            isOnline: true,
-            searchMode: 'ONLINE'
-          };
-
-          setMapDrivers(prev => {
-            const idx = prev.findIndex(d => (d.id === partnerDriverId || d.driverId === partnerDriverId));
-            if (idx !== -1) {
-              const updated = [...prev];
-              updated[idx] = { ...updated[idx], ...partnerDriverObj };
-              return updated;
-            }
-            return [...prev, partnerDriverObj];
-          });
+    if (selectedOrder) {
+      const targetUuid = selectedOrder.id;
+      const targetIdLong = selectedOrder.idLong;
+      
+      const fetchTrackPoints = async () => {
+        try {
+          const targetId = targetIdLong || targetUuid;
+          const points = await getOrderTrack(targetId);
+          setSelectedOrderTrack(points);
+        } catch (err) {
+          console.error("Не вдалося завантажити трек:", err);
         }
-      });
-    }
+      };
 
-    let intervalId;
-    if (['IN_PROGRESS', 'DRIVER_ARRIVED', 'ACCEPTED', 'ARRIVED_AT_WAYPOINT'].includes(selectedOrder.status)) {
-      intervalId = setInterval(fetchTrackPoints, 10000);
-    }
+      fetchTrackPoints();
 
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-      if (trackingSub) trackingSub.unsubscribe(); // Отписываемся при смене заказа
-    };
-  } else {
-    setSelectedOrderTrack([]);
-  }
-}, [selectedOrder]);
+      // 🟢 Универсальный обработчик GPS координат водителя (штатного и партнера)
+      const handleGpsUpdate = (message) => {
+        try {
+          const gpsData = JSON.parse(message.body);
+          if (gpsData && gpsData.lat && gpsData.lng) {
+            const partnerDriverId = selectedOrder.driver?.id ?? -1;
+            const partnerDriverObj = {
+              id: partnerDriverId,
+              driverId: partnerDriverId,
+              fullName: selectedOrder.driver?.fullName || 'Водій СОЗ (EvoS)',
+              carModel: selectedOrder.driver?.carModel,
+              carPlateNumber: selectedOrder.driver?.carPlateNumber,
+              latitude: gpsData.lat,
+              longitude: gpsData.lng,
+              lat: gpsData.lat,
+              lng: gpsData.lng,
+              bearing: gpsData.bearing || 0,
+              isOnline: true,
+              searchMode: 'ONLINE'
+            };
+
+            setMapDrivers(prev => {
+              const idx = prev.findIndex(d => (d.id === partnerDriverId || d.driverId === partnerDriverId));
+              if (idx !== -1) {
+                const updated = [...prev];
+                updated[idx] = { ...updated[idx], ...partnerDriverObj };
+                return updated;
+              }
+              return [...prev, partnerDriverObj];
+            });
+
+            // Мгновенно обновляем координаты в объекте выбранного заказа
+            setSelectedOrder(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                driver: prev.driver ? {
+                  ...prev.driver,
+                  latitude: gpsData.lat,
+                  longitude: gpsData.lng,
+                  bearing: gpsData.bearing || 0
+                } : prev.driver
+              };
+            });
+          }
+        } catch (e) {
+          console.error("Помилка парсингу GPS даних трекінгу:", e);
+        }
+      };
+
+      let subUuid = null;
+      let subLong = null;
+
+      if (stompClientRef.current && stompClientRef.current.connected) {
+        if (targetUuid) subUuid = stompClientRef.current.subscribe(`/topic/admin/tracking/${targetUuid}`, handleGpsUpdate);
+        if (targetIdLong) subLong = stompClientRef.current.subscribe(`/topic/admin/tracking/${targetIdLong}`, handleGpsUpdate);
+      }
+
+      let intervalId;
+      if (['IN_PROGRESS', 'DRIVER_ARRIVED', 'ACCEPTED', 'ARRIVED_AT_WAYPOINT'].includes(selectedOrder.status)) {
+        intervalId = setInterval(fetchTrackPoints, 10000);
+      }
+
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+        if (subUuid) subUuid.unsubscribe();
+        if (subLong) subLong.unsubscribe();
+      };
+    } else {
+      setSelectedOrderTrack([]);
+    }
+  }, [selectedOrder]);
   
 
 
@@ -771,13 +824,28 @@ const ActiveOrders = () => {
 client.subscribe('/topic/admin/drivers-location', (message) => {
         const driverBatch = JSON.parse(message.body);
         if (Array.isArray(driverBatch)) {
-            const activeBatch = driverBatch.filter(d => {
-                const { lat, lng } = getCoords(d);
-                const mode = d.status || d.searchMode;
-                // 🟢 Принимаем ВСЕХ водителей из приложения (и 🟢 онлайн, и ⚪ офлайн)
-                return mode !== 'OFFLINE' && !(lat === 0 && lng === 0);
+            setMapDrivers(prev => {
+                const driverMap = new Map();
+                // Сохраняем всех текущих известных водителей
+                prev.forEach(d => {
+                    const id = d.id || d.driverId;
+                    if (id) driverMap.set(id, d);
+                });
+
+                // Обновляем свежими координатами из батча
+                driverBatch.forEach(d => {
+                    const id = d.id || d.driverId;
+                    if (id) {
+                        const { lat, lng } = getCoords(d);
+                        if (lat !== 0 && lng !== 0) {
+                            const existing = driverMap.get(id) || {};
+                            driverMap.set(id, { ...existing, ...d });
+                        }
+                    }
+                });
+
+                return Array.from(driverMap.values());
             });
-            setMapDrivers(activeBatch); // Если водитель убил приложение — придет [] и карта корректно очистится
         }
     });
     // 2. Одиночные обновления координат и удаление локации (logoutFromMap)
@@ -856,23 +924,16 @@ const updateDriverOnMap = (driverData) => {
     const { lat, lng } = getCoords(driverData);
     const mode = driverData.status || driverData.searchMode;
 
-    // 🔴 Проверяем полный выход/удаление с карты (режим OFFLINE или сброс координат до 0.0)
-    const isLoggedOut = mode === 'OFFLINE' || (lat === 0 && lng === 0);
+    const isLoggedOut = mode === 'OFFLINE' && (lat === 0 || lat === null);
 
     setMapDrivers(prev => {
-        const idx = prev.findIndex(d => (d.id || d.driverId) === driverId);
-        
         if (isLoggedOut) {
-            // Водитель выбыл из системы — полностью убираем из состояния
             return prev.filter(d => (d.id || d.driverId) !== driverId);
         } else {
-            // Водитель в приложении (онлайн 🟢 или офлайн ⚪)
+            const idx = prev.findIndex(d => (d.id || d.driverId) === driverId);
             if (idx !== -1) {
                 const updated = [...prev];
-                updated[idx] = { 
-                    ...updated[idx], 
-                    ...driverData 
-                };
+                updated[idx] = { ...updated[idx], ...driverData };
                 return updated;
             }
             return [...prev, driverData];
@@ -915,9 +976,10 @@ const updateDriverOnMap = (driverData) => {
     }
   });
 
-  const totalDrivers = mapDrivers.length;
-  const onlineDrivers = mapDrivers.filter(d => d.isOnline).length;
-  const activeDrivers = totalDrivers - onlineDrivers;
+const localDrivers = mapDrivers.filter(d => !isPartnerDriver(d));
+  const onlineLocalDrivers = localDrivers.filter(d => isDriverOnline(d)).length;
+  const offlineLocalDrivers = localDrivers.length - onlineLocalDrivers;
+  const partnerDriversCount = mapDrivers.filter(d => isPartnerDriver(d)).length;
 
   return (
     <div className="active-orders-layout">
@@ -968,12 +1030,15 @@ const updateDriverOnMap = (driverData) => {
       <div className="map-container">
         <div className="orders-list-header">
           {selectedOrder ? (
-              <h3>Маршрут #{selectedOrder.id}</h3>
+              <h3>Маршрут #{selectedOrder.idLong || selectedOrder.id}</h3>
           ) : (
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                   <h3 style={{ margin: 0 }}>Водії:</h3>
-                  <span style={{ color: 'green', fontWeight: 'bold' }}>🟢 {onlineDrivers}</span>
-                  <span style={{ color: 'gray', fontWeight: 'bold' }}>⚪ {activeDrivers}</span>
+                  <span title="Наші водії на лінії" style={{ color: '#2b8a3e', fontWeight: 'bold' }}>🟢 {onlineLocalDrivers}</span>
+                  <span title="Наші водії в додатку (не на зміні)" style={{ color: '#868e96', fontWeight: 'bold' }}>⚪ {offlineLocalDrivers}</span>
+                  {partnerDriversCount > 0 && (
+                      <span title="Водії партнерської мережі СОЗ" style={{ color: '#7950f2', fontWeight: 'bold' }}>🤝 {partnerDriversCount}</span>
+                  )}
               </div>
           )}
           
