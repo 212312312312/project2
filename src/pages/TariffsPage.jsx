@@ -190,8 +190,24 @@ const TariffsPage = () => {
                       )}
                     </td>
                     <td className="text-center text-subtle">#{tariff.id}</td>
+                    
                     <td>
                       <strong className="font-medium">{tariff.name}</strong>
+                      {tariff.evosTariffName && (
+                        <span 
+                          className="badge" 
+                          style={{ 
+                            padding: '0.15rem 0.4rem', 
+                            fontSize: '0.7rem', 
+                            marginLeft: '6px', 
+                            backgroundColor: '#2563eb', 
+                            color: '#fff',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          EvoS: {tariff.evosTariffName}
+                        </span>
+                      )}
                       {tariff.isBeta && (
                         <span className="badge badge-danger ml-2" style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem', marginLeft: '6px' }}>
                           BETA

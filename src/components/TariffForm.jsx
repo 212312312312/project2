@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { getEvosTariffs } from '../services/tariffService';
 import '../assets/Form.css';
 
 const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
+  // 🟢 Инициализируем состояние тарифов EvoS
+  const [evosTariffs, setEvosTariffs] = useState([]);
+
   const [formData, setFormData] = useState({
     name: '',
+    evosTariffName: '',
     basePrice: 0.0,
     pricePerKm: 0.0,
     pricePerKmOutCity: 0.0,
@@ -20,30 +25,60 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
 
   const isEditMode = initialData !== null;
 
+  // Безопасная загрузка тарифов биржи EvoS
   useEffect(() => {
-    if (isEditMode) {
+    let isMounted = true;
+    getEvosTariffs()
+      .then((data) => {
+        if (isMounted && Array.isArray(data)) {
+          setEvosTariffs(data);
+        }
+      })
+      .catch((err) => {
+        console.error('Не вдалося завантажити тарифи EvoS:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Заполнение формы при открытии на редактирование
+  useEffect(() => {
+    if (isEditMode && initialData) {
       setFormData({
         name: initialData.name || '',
-        basePrice: initialData.basePrice || 0,
-        pricePerKm: initialData.pricePerKm || 0,
-        pricePerKmOutCity: initialData.pricePerKmOutCity || 0,
-        extraWaypointPrice: initialData.extraWaypointPrice || 0,
-        freeWaitingMinutes: initialData.freeWaitingMinutes || 3,
-        pricePerWaitingMinute: initialData.pricePerWaitingMinute || 0,
+        evosTariffName: (typeof initialData.evosTariffName === 'object'
+          ? initialData.evosTariffName?.name
+          : initialData.evosTariffName) || '',
+        basePrice: initialData.basePrice ?? 0.0,
+        pricePerKm: initialData.pricePerKm ?? 0.0,
+        pricePerKmOutCity: initialData.pricePerKmOutCity ?? 0.0,
+        extraWaypointPrice: initialData.extraWaypointPrice ?? 0.0,
+        freeWaitingMinutes: initialData.freeWaitingMinutes ?? 3,
+        pricePerWaitingMinute: initialData.pricePerWaitingMinute ?? 0.0,
         isActive: initialData.isActive ?? true,
-        isBeta: initialData.isBeta || false,
-        isUnavailable: initialData.isUnavailable || false,
+        isBeta: initialData.isBeta ?? false,
+        isUnavailable: initialData.isUnavailable ?? false,
       });
-      setExistingImageUrl(initialData.imageUrl); 
+      setExistingImageUrl(initialData.imageUrl || null);
     } else {
       setFormData({
-        name: '', basePrice: 0.0, pricePerKm: 0.0, pricePerKmOutCity: 0.0,
-        extraWaypointPrice: 0.0, freeWaitingMinutes: 3, pricePerWaitingMinute: 0.0, 
-        isActive: true, isBeta: false, isUnavailable: false,
+        name: '',
+        evosTariffName: '',
+        basePrice: 0.0,
+        pricePerKm: 0.0,
+        pricePerKmOutCity: 0.0,
+        extraWaypointPrice: 0.0,
+        freeWaitingMinutes: 3,
+        pricePerWaitingMinute: 0.0,
+        isActive: true,
+        isBeta: false,
+        isUnavailable: false,
       });
       setExistingImageUrl(null);
     }
-    setSelectedFile(null); 
+    setSelectedFile(null);
   }, [initialData, isEditMode]);
 
   const handleChange = (e) => {
@@ -64,11 +99,12 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     e.preventDefault();
     const dataToSend = {
       ...formData,
+      evosTariffName: formData.evosTariffName ? formData.evosTariffName : null,
       basePrice: parseFloat(formData.basePrice) || 0,
       pricePerKm: parseFloat(formData.pricePerKm) || 0,
       pricePerKmOutCity: parseFloat(formData.pricePerKmOutCity) || 0,
       extraWaypointPrice: parseFloat(formData.extraWaypointPrice) || 0,
-      freeWaitingMinutes: parseInt(formData.freeWaitingMinutes) || 0,
+      freeWaitingMinutes: parseInt(formData.freeWaitingMinutes, 10) || 0,
       pricePerWaitingMinute: parseFloat(formData.pricePerWaitingMinute) || 0,
     };
     
@@ -92,6 +128,30 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
               placeholder="Наприклад: Стандарт" 
               required 
             />
+          </div>
+
+          <div className="form-group span-2">
+            <label className="form-label">Відповідний тариф у біржі СОЗ (EvoS)</label>
+            <select
+              name="evosTariffName"
+              className="input-field"
+              value={formData.evosTariffName || ''}
+              onChange={handleChange}
+            >
+              <option value="">-- Без прив'язки до біржі EvoS --</option>
+              {Array.isArray(evosTariffs) && evosTariffs.map((item, idx) => {
+                const tariffName = typeof item === 'string' ? item : item?.name;
+                if (!tariffName) return null;
+                return (
+                  <option key={`${tariffName}-${idx}`} value={tariffName}>
+                    {tariffName}
+                  </option>
+                );
+              })}
+            </select>
+            <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-subtle, #888)', marginTop: '4px', display: 'block' }}>
+              Клас авто, з яким замовлення цього тарифу створюватиметься у партнерській біржі EvoS
+            </span>
           </div>
 
           <div className="form-group">

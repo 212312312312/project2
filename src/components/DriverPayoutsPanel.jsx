@@ -55,6 +55,46 @@ export const DriverPayoutsPanel = () => {
     });
   };
 
+  // --- ДОБАВЛЕНО: Умный парсинг сырой строки EvoS ---
+  const formatDriverName = (rawName) => {
+    if (!rawName) return '—';
+    // Если это не партнер EvoS (обычное Имя Фамилия) - отдаем как есть
+    if (!rawName.includes(',')) return rawName;
+
+    // Разбиваем строку: "AA1818CO, черный(без шашки), Хундай Элантра, +380933464747"
+    const parts = rawName.split(',').map(p => p.trim());
+    
+    // Номер машины (обычно первый элемент)
+    const carNumber = parts[0];
+    
+    // Ищем марку машины (обычно предпоследний элемент, перед телефоном)
+    let carModel = '';
+    if (parts.length >= 3) {
+       // Берем элемент, который не является телефоном (не начинается с + и не содержит только цифры)
+       const potentialModel = parts[parts.length - 2];
+       if (/[a-zA-Zа-яА-ЯіІїЇєЄ]/.test(potentialModel)) {
+           carModel = potentialModel;
+       }
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <span style={{ fontWeight: '600' }}>Партнер EvoS</span>
+        <span style={{ fontSize: '0.85em', color: '#6b7280' }}>
+          {carModel} <span style={{ 
+              background: '#f3f4f6', 
+              padding: '2px 6px', 
+              borderRadius: '4px', 
+              border: '1px solid #e5e7eb',
+              color: '#374151',
+              fontWeight: '500',
+              marginLeft: '4px'
+          }}>{carNumber}</span>
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="payouts-container">
       <div className="payouts-subtabs">
@@ -104,7 +144,7 @@ export const DriverPayoutsPanel = () => {
               {payouts.map((item) => (
                 <tr key={item.id}>
                   <td>#{item.id}</td>
-                  <td><strong>{item.driverName}</strong></td>
+                  <td>{formatDriverName(item.driverName)}</td>
                   <td>
                     <a href={`tel:${item.driverPhone}`} className="phone-link">
                       {item.driverPhone || '—'}

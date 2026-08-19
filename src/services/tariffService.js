@@ -110,3 +110,18 @@ export const updateMinDistance = async (distance) => {
     throw new Error(error.response?.data?.message || 'Помилка оновлення мінімального кілометражу');
   }
 };
+
+/**
+ * Получает список доступных тарифов из EvoS / СОЗ
+ * @returns {Promise<Array<string>>}
+ */
+export const getEvosTariffs = async () => {
+  try {
+    const response = await api.get('/admin/tariffs/evos-tariffs');
+    // Если ответ пришел массивом — возвращаем, иначе пустой массив
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Помилка завантаження тарифів EvoS:', error);
+    return [];
+  }
+};
