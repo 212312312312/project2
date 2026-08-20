@@ -9,6 +9,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
     name: '',
     evosTariffName: '',
+    bodyType: '',
     basePrice: 0.0,
     pricePerKm: 0.0,
     pricePerKmOutCity: 0.0,
@@ -51,6 +52,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
         evosTariffName: (typeof initialData.evosTariffName === 'object'
           ? initialData.evosTariffName?.name
           : initialData.evosTariffName) || '',
+        bodyType: initialData.bodyType || '',
         basePrice: initialData.basePrice ?? 0.0,
         pricePerKm: initialData.pricePerKm ?? 0.0,
         pricePerKmOutCity: initialData.pricePerKmOutCity ?? 0.0,
@@ -66,6 +68,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
       setFormData({
         name: '',
         evosTariffName: '',
+        bodyType: '',
         basePrice: 0.0,
         pricePerKm: 0.0,
         pricePerKmOutCity: 0.0,
@@ -100,6 +103,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     const dataToSend = {
       ...formData,
       evosTariffName: formData.evosTariffName ? formData.evosTariffName : null,
+      bodyType: formData.bodyType ? formData.bodyType : null,
       basePrice: parseFloat(formData.basePrice) || 0,
       pricePerKm: parseFloat(formData.pricePerKm) || 0,
       pricePerKmOutCity: parseFloat(formData.pricePerKmOutCity) || 0,
@@ -128,6 +132,23 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
               placeholder="Наприклад: Стандарт" 
               required 
             />
+          </div>
+
+          <div className="form-group span-2">
+            <label className="form-label">Кузовний клас (Опціонально)</label>
+            <select
+              name="bodyType"
+              className="input-field"
+              value={formData.bodyType || ''}
+              onChange={handleChange}
+            >
+              <option value="">-- Звичайний тариф (без прив'язки до кузова) --</option>
+              <option value="UNIVERSAL">Універсал</option>
+              <option value="MINIBUS">Мікроавтобус / Мінівен</option>
+            </select>
+            <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-subtle, #888)', marginTop: '4px', display: 'block' }}>
+              Водії з відповідним типом кузова отримають цей тариф автоматично при реєстрації
+            </span>
           </div>
 
           <div className="form-group span-2">

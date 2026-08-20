@@ -193,6 +193,21 @@ const TariffsPage = () => {
                     
                     <td>
                       <strong className="font-medium">{tariff.name}</strong>
+                      {tariff.bodyType && (
+                        <span 
+                          className="badge" 
+                          style={{ 
+                            padding: '0.15rem 0.4rem', 
+                            fontSize: '0.7rem', 
+                            marginLeft: '6px', 
+                            backgroundColor: '#8b5cf6', 
+                            color: '#fff',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          {tariff.bodyType === 'UNIVERSAL' ? 'Універсал' : tariff.bodyType === 'MINIBUS' ? 'Мікроавтобус' : tariff.bodyType}
+                        </span>
+                      )}
                       {tariff.evosTariffName && (
                         <span 
                           className="badge" 

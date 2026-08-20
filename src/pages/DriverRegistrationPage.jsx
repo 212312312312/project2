@@ -501,17 +501,16 @@ const DriverRegistrationPage = () => {
         carInteriorBack: null
     });
 
-    const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
     const availableYears = Array.from({ length: currentYear - 1999 }, (_, i) => currentYear - i);
 
     const colorsList = ['Чорний', 'Білий', 'Сірий', 'Сріблястий', 'Синій', 'Червоний', 'Зелений', 'Коричневий', 'Жовтий', 'Інший'];
-    const carTypesList = ['Седан', 'Хетчбек', 'Універсал', 'Кросовер / Позашляховик', 'Мінівен', 'Купе'];
+    const carTypesList = ['Седан', 'Хетчбек', 'Універсал', 'Кросовер / Позашляховик', 'Мікроавтобус / Мінівен', 'Купе'];
 
     useEffect(() => {
         getCities().then(res => setCities(res)).catch(() => {});
         getCarBrands().then(res => setBrands(res)).catch(() => {});
     }, []);
-
     useEffect(() => {
         if (formData.brandId) {
             getCarModels(formData.brandId)
