@@ -135,21 +135,25 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
           </div>
 
           <div className="form-group span-2">
-            <label className="form-label">Кузовний клас (Опціонально)</label>
-            <select
-              name="bodyType"
-              className="input-field"
-              value={formData.bodyType || ''}
-              onChange={handleChange}
-            >
-              <option value="">-- Звичайний тариф (без прив'язки до кузова) --</option>
-              <option value="UNIVERSAL">Універсал</option>
-              <option value="MINIBUS">Мікроавтобус / Мінівен</option>
-            </select>
-            <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-subtle, #888)', marginTop: '4px', display: 'block' }}>
-              Водії з відповідним типом кузова отримають цей тариф автоматично при реєстрації
-            </span>
-          </div>
+  <label className="form-label">Кузовний клас (Опціонально)</label>
+  <select
+    name="bodyType"
+    className="input-field"
+    value={formData.bodyType || ''}
+    onChange={handleChange}
+  >
+    <option value="">-- Звичайний тариф (без прив'язки до кузова) --</option>
+    <option value="Універсал">Універсал</option>
+    <option value="Мікроавтобус / Мінівен">Мікроавтобус / Мінівен</option>
+    <option value="Кросовер / Позашляховик">Кросовер / Позашляховик</option>
+    <option value="Хетчбек">Хетчбек</option>
+    <option value="Седан">Седан</option>
+    <option value="Купе">Купе</option>
+  </select>
+  <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-subtle, #888)', marginTop: '4px', display: 'block' }}>
+    Водії з відповідним типом кузова отримають цей тариф автоматично при реєстрації
+  </span>
+</div>
 
           <div className="form-group span-2">
             <label className="form-label">Відповідний тариф у біржі СОЗ (EvoS)</label>

@@ -540,35 +540,38 @@ const DriverRegistrationPage = () => {
     }, [formData.city, formData.modelId, formData.year]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        
-        if (name === 'smsCode') {
-            const cleanValue = value.replace(/[^0-9]/g, '').slice(0, 6);
-            setFormData(prev => ({ ...prev, [name]: cleanValue }));
-        } else if (name === 'brandId') {
-            const selectedBrand = brands.find(b => b.id === Number(value));
-            setFormData(prev => ({
-                ...prev,
-                brandId: value,
-                make: selectedBrand ? selectedBrand.name : '',
-                modelId: '',
-                model: '',
-                year: ''
-            }));
-            setEvaluationResult(null);
-        } else if (name === 'modelId') {
-            const selectedModel = models.find(m => m.id === Number(value));
-            setFormData(prev => ({
-                ...prev,
-                modelId: value,
-                model: selectedModel ? selectedModel.name : '',
-                year: ''
-            }));
-            setEvaluationResult(null);
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
-    };
+    const { name, value } = e.target;
+    
+    if (name === 'smsCode') {
+        const cleanValue = value.replace(/[^0-9]/g, '').slice(0, 6);
+        setFormData(prev => ({ ...prev, [name]: cleanValue }));
+    } else if (name === 'plateNumber') {
+        setFormData(prev => ({ ...prev, [name]: value.toUpperCase().trim() }));
+    } else if (name === 'brandId') {
+        const selectedBrand = brands.find(b => b.id === Number(value));
+        setFormData(prev => ({
+            ...prev,
+            brandId: value,
+            make: selectedBrand ? selectedBrand.name : '',
+            modelId: '',
+            model: '',
+            year: ''
+        }));
+        setEvaluationResult(null);
+    } else if (name === 'modelId') {
+        const selectedModel = models.find(m => m.id === Number(value));
+        setFormData(prev => ({
+            ...prev,
+            modelId: value,
+            model: selectedModel ? selectedModel.name : '',
+            year: ''
+        }));
+        setEvaluationResult(null);
+    } else {
+        // ОБЯЗАТЕЛЬНО: сюда попадает phoneNumber и остальные поля
+        setFormData(prev => ({ ...prev, [name]: value }));
+    }
+};
 
     const handleFileChange = (e, fieldName) => {
         if (e.target.files && e.target.files[0]) {

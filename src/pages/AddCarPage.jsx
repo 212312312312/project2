@@ -396,7 +396,7 @@ const AddCarPage = () => {
   const availableYears = Array.from({ length: currentYear - 1999 }, (_, i) => currentYear - i);
 
   const colorsList = ['Чорний', 'Білий', 'Сірий', 'Сріблястий', 'Синій', 'Червоний', 'Зелений', 'Коричневий', 'Жовтий', 'Інший'];
-  const carTypesList = ['Седан', 'Хетчбек', 'Універсал', 'Кросовер / Позашляховик', 'Мінівен', 'Купе'];
+  const carTypesList = ['Седан', 'Хетчбек', 'Універсал', 'Кросовер / Позашляховик', 'Мікроавтобус / Мінівен', 'Купе'];
   useEffect(() => {
   // 1. Сохраняем токен из URL в localStorage для Axios (api.js)
   if (token) {
@@ -442,8 +442,10 @@ const AddCarPage = () => {
   }, [formData.city, formData.modelId, formData.year]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'brandId') {
+  const { name, value } = e.target;
+  if (name === 'plate_number') {
+    setFormData(prev => ({ ...prev, [name]: value.toUpperCase().trim() }));
+  } else if (name === 'brandId') {
       const selectedBrand = brands.find(b => b.id === Number(value));
       setFormData(prev => ({
         ...prev,

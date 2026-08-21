@@ -44,9 +44,10 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
   }, [initialData, isEditMode]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const { name, value } = e.target;
+  const val = name === 'plateNumber' ? value.toUpperCase().trim() : value;
+  setFormData(prev => ({ ...prev, [name]: val }));
+};
 
   const handleTariffChange = (e) => {
     const tariffId = parseInt(e.target.value);
@@ -165,13 +166,13 @@ const DriverForm = ({ initialData, availableTariffs, onSubmit, onCancel, isLoadi
           <div className="form-group">
             <label>Тип кузова *</label>
             <select name="carType" value={formData.carType} onChange={handleChange} required>
-              <option value="Седан">Седан</option>
-              <option value="Хетчбек">Хетчбек</option>
-              <option value="Універсал">Універсал</option>
-              <option value="Кросовер">Кросовер</option>
-              <option value="Пікап">Пікап</option>
-              <option value="Мінівен">Мінівен</option> 
-            </select>
+  <option value="Седан">Седан</option>
+  <option value="Хетчбек">Хетчбек</option>
+  <option value="Універсал">Універсал</option>
+  <option value="Кросовер / Позашляховик">Кросовер / Позашляховик</option>
+  <option value="Мікроавтобус / Мінівен">Мікроавтобус / Мінівен</option>
+  <option value="Купе">Купе</option>
+</select>
           </div>
           <div className="form-group">
             <label>Колір *</label>

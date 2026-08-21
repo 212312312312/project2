@@ -43,9 +43,10 @@ const CarRequestsPage = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditData(prev => ({ ...prev, [name]: value }));
-  };
+  const { name, value } = e.target;
+  const finalValue = name === 'plateNumber' ? value.toUpperCase().trim() : value;
+  setEditData(prev => ({ ...prev, [name]: finalValue }));
+};
 
   const handleSaveChanges = async (id) => {
     try {
@@ -271,19 +272,21 @@ const PhotoBlock = ({ label, url }) => {
                                 </div>
 
                                 <div className="input-group-field">
-                                  <label className="field-label">Тип авто (Тариф)</label>
-                                  <select 
-                                    name="carType" 
-                                    value={editData.carType} 
-                                    onChange={handleInputChange} 
-                                    className="input-field"
-                                  >
-                                    <option value="Standard">Standard</option>
-                                    <option value="Comfort">Comfort</option>
-                                    <option value="Business">Business</option>
-                                    <option value="Minivan">Minivan</option>
-                                  </select>
-                                </div>
+  <label className="field-label">Тип кузова</label>
+  <select 
+    name="carType" 
+    value={editData.carType || 'Седан'} 
+    onChange={handleInputChange} 
+    className="input-field"
+  >
+    <option value="Седан">Седан</option>
+    <option value="Хетчбек">Хетчбек</option>
+    <option value="Універсал">Універсал</option>
+    <option value="Кросовер / Позашляховик">Кросовер / Позашляховик</option>
+    <option value="Мікроавтобус / Мінівен">Мікроавтобус / Мінівен</option>
+    <option value="Купе">Купе</option>
+  </select>
+</div>
 
                                 <div className="input-group-field">
                                   <label className="field-label">VIN-код</label>
