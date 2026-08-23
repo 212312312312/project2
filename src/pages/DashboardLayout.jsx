@@ -4,7 +4,7 @@ import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'reac
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
-// Импортируем ВСЕ страницы
+// Імпортуємо ВСІ сторінки
 import OrdersPage from './OrdersPage';
 import DriversPage from './DriversPage'; 
 import ClientsPage from './ClientsPage';
@@ -24,6 +24,7 @@ import ClientInfoPage from './ClientInfoPage';
 import FinancePage from './FinancePage';
 import PhotoControl from './PhotoControl';
 import DriverPhotoUploadWebView from './DriverPhotoUploadWebView';
+import SupportPage from './SupportPage'; // 👈 Додано сторінку підтримки
 
 const sosStyle = {
   backgroundColor: '#ff4d4d',
@@ -35,13 +36,13 @@ const sosStyle = {
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
   
-  // Определяем, является ли пользователь Администратором
+  // Визначаємо, чи є користувач Адміністратором
   const isAdmin = user && user.role === 'ADMINISTRATOR';
   
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Состояние для SOS
+  // Стан для SOS
   const [sosAlert, setSosAlert] = useState(false);
   const [sosList, setSosList] = useState([]);
 
@@ -81,7 +82,7 @@ const DashboardLayout = () => {
     return () => stompClient.deactivate();
   }, [location.pathname]);
 
-  // Сброс алерта при переходе на страницу новостей
+  // Скидання алерту при переході на сторінку новин
   useEffect(() => {
     if (location.pathname === '/news') {
       setSosAlert(false);
@@ -91,22 +92,23 @@ const DashboardLayout = () => {
   return (
     <div className="dashboard-layout">
       <header className="dashboard-header">
-        <h1>Unit-App (Диспетчерская)</h1>
+        <h1>Unit-App (Диспетчерська)</h1>
         <div className="user-info">
           <span>{user?.fullName} ({user?.role})</span>
-          <button onClick={logout}>Выйти</button>
+          <button onClick={logout}>Вийти</button>
         </div>
       </header>
       
       <nav className="dashboard-nav">
-        {/* Общие вкладки для ADMIN и DISPATCHER */}
-        <NavLink to="/" end>Заказы</NavLink>
-        <NavLink to="/drivers">Водители</NavLink>
-        <NavLink to="/clients">Клиенты</NavLink>
+        {/* Загальні вкладки для ADMIN та DISPATCHER */}
+        <NavLink to="/" end>Замовлення</NavLink>
+        <NavLink to="/support" style={{ color: '#0088cc', fontWeight: '500' }}>Підтримка</NavLink>
+        <NavLink to="/drivers">Водії</NavLink>
+        <NavLink to="/clients">Клієнти</NavLink>
         <NavLink to="/photo-control" style={{ color: '#e67e22', fontWeight: '500' }}>Фотоконтроль</NavLink>
         <NavLink to="/analytics" style={{ color: '#0288d1', fontWeight: '500' }}>Аналітика</NavLink>
         
-        {/* Вкладки ТОЛЬКО ДЛЯ АДМИНА */}
+        {/* Вкладки ТІЛЬКИ ДЛЯ АДМІНА */}
         {isAdmin && (
           <>
             <NavLink to="/car-requests" className="nav-item">Заявки авто</NavLink>
@@ -122,8 +124,8 @@ const DashboardLayout = () => {
             <NavLink to="/finance" style={{ color: '#2e7d32', fontWeight: '500' }}>Фінанси</NavLink>
             <NavLink to="/ratings">Відгуки</NavLink>
             <NavLink to="/services">Дод. послуги</NavLink>
-            <NavLink to="/tariffs">Тарифы</NavLink>
-            <NavLink to="/dispatchers">Диспетчеры</NavLink>
+            <NavLink to="/tariffs">Тарифи</NavLink>
+            <NavLink to="/dispatchers">Диспетчери</NavLink>
             <NavLink to="/promos">Акції</NavLink>
             <NavLink to="/promocodes">Промокоди</NavLink>
             <NavLink to="/sectors">Сектори</NavLink>
@@ -134,18 +136,19 @@ const DashboardLayout = () => {
 
       <main className="dashboard-content">
         <Routes>
-          {/* Общие роуты */}
+          {/* Загальні роути */}
           <Route path="/" element={<OrdersPage />} />
+          <Route path="/support" element={<SupportPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/drivers" element={<DriversPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/client-info" element={<ClientInfoPage />} />
           <Route path="/photo-control" element={<PhotoControl />} />
           
-          {/* Публичный WebView роут для водителя */}
+          {/* Публічний WebView роут для водія */}
           <Route path="/driver/photo-upload" element={<DriverPhotoUploadWebView />} />
           
-          {/* Роуты ТОЛЬКО ДЛЯ АДМИНА */}
+          {/* Роути ТІЛЬКИ ДЛЯ АДМІНА */}
           {isAdmin ? (
             <>
               <Route path="/news" element={<NewsPage sosList={sosList} setSosList={setSosList} />} />
@@ -163,7 +166,7 @@ const DashboardLayout = () => {
             </>
           ) : (
             <>
-              {/* Защита роутов для обычного диспетчера */}
+              {/* Захист роутів для звичайного диспетчера */}
               <Route path="/news" element={<Navigate to="/" replace />} />
               <Route path="/ratings" element={<Navigate to="/" replace />} />
               <Route path="/services" element={<Navigate to="/" replace />} />
@@ -178,7 +181,7 @@ const DashboardLayout = () => {
             </>
           )}
           
-          <Route path="*" element={<h2>Страница не найдена</h2>} />
+          <Route path="*" element={<h2>Сторінка не знайдена</h2>} />
         </Routes>
       </main>
     </div>

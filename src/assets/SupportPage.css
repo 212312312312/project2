@@ -1,0 +1,242 @@
+.support-container {
+  display: flex;
+  /* Збільшуємо відступ зверху/знизу, щоб вмістити шапку і меню без прокручування екрана */
+  height: calc(100vh - 190px);
+  min-height: 420px;
+  max-height: calc(100vh - 190px);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  margin: 8px 12px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ================= ЛІВА ПАНЕЛЬ (СПИСОК ТІКЕТІВ) ================= */
+.support-sidebar {
+  width: 340px;
+  min-width: 320px;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+.support-sidebar-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+/* Вкладки фільтрів */
+.support-tabs {
+  display: flex;
+  gap: 4px;
+  background: #e2e8f0;
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.support-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.15s ease;
+}
+
+.support-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.ticket-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.ticket-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ticket-item:hover {
+  background: #f1f5f9;
+}
+
+.ticket-item.active {
+  background: #e0f2fe;
+  border-left: 4px solid #0284c7;
+}
+
+.ticket-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.ticket-phone {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ticket-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.badge-OPEN { background: #fef08a; color: #854d0e; }
+.badge-IN_PROGRESS { background: #bae6fd; color: #0369a1; }
+.badge-CLOSED { background: #e2e8f0; color: #475569; }
+
+.ticket-preview {
+  font-size: 13px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* ================= ПРАВА ПАНЕЛЬ (ЧАТ) ================= */
+.support-chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+.chat-header {
+  padding: 12px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 60px;
+}
+
+.chat-header-info h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.chat-header-info span {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.chat-actions button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  margin-left: 8px;
+  transition: opacity 0.15s;
+}
+
+.chat-actions button:hover {
+  opacity: 0.9;
+}
+
+.btn-start-chat { background: #0284c7; color: #ffffff; }
+.btn-close-ticket { background: #ef4444; color: #ffffff; }
+
+.chat-messages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-bubble {
+  max-width: 65%;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.msg-CLIENT {
+  align-self: flex-start;
+  background: #ffffff;
+  color: #0f172a;
+  border-bottom-left-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.msg-DISPATCHER {
+  align-self: flex-end;
+  background: #dcfce7;
+  color: #14532d;
+  border-bottom-right-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.msg-time {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.chat-input-area {
+  padding: 12px 18px;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 10px;
+}
+
+.chat-input-area input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  outline: none;
+  font-size: 14px;
+}
+
+.chat-input-area input:focus {
+  border-color: #0284c7;
+}
+
+.chat-input-area button {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 0 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.empty-chat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+  font-size: 15px;
+}
