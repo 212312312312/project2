@@ -1,8 +1,8 @@
-import api from './api'; // Our configured axios
+import api from './api';
 
 /**
- * (Read) Gets the list of ALL tariffs
- * @returns {Promise<Array>} - Array of CarTariffDto objects
+ * (Read) Отримання списку всіх тарифів
+ * @returns {Promise<Array>}
  */
 export const getAllTariffs = async () => {
   try {
@@ -12,48 +12,45 @@ export const getAllTariffs = async () => {
     throw new Error(error.response?.data?.message || 'Failed to load tariffs');
   }
 };
+
+/**
+ * Зміна черги/порядку відображення тарифів
+ */
 export const reorderTariff = async (id, direction) => {
   try {
-    // 🔥 ФИКС: Возвращаем правильный префикс пути /admin/tariffs
     const response = await api.post(`/admin/tariffs/${id}/reorder?direction=${direction}`);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Помилка изменения порядка тарифов');
+    throw new Error(error.response?.data?.message || 'Помилка зміни порядку тарифів');
   }
 };
+
 /**
- * (Create) Creates a new tariff with an optional image
- * @param {object} tariffData - The form data (JS object)
- * (file) file - The file object (or null)
+ * (Create) Створення нового тарифу з файлом зображення
+ * @param {object} tariffData - JS-об'єкт форми
+ * @param {File|null} file - Файл зображення
  */
 export const createTariff = async (tariffData, file) => {
-  // 1. Create FormData
   const formData = new FormData();
-  
-  // 2. Add the JSON data as a string (as required by our backend)
-  // The backend will parse this string
   formData.append('request', JSON.stringify(tariffData));
   
-  // 3. Add the file (if it exists)
   if (file) {
     formData.append('file', file);
   }
 
   try {
-    // 4. Send as 'multipart/form-data'
-    // Axios will set the 'Content-Type' header automatically for FormData
     const response = await api.post('/admin/tariffs', formData);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Error creating tariff');
+    throw new Error(error.response?.data?.message || 'Помилка створення тарифу');
   }
 };
 
 /**
- * (Update) Updates an existing tariff
- * @param {number} id - Tariff ID
- * @param {object} tariffData - The form data (JS object)
- * (file) file - The new file object (or null)
+ * (Update) Оновлення існуючого тарифу
+ * @param {number} id - ID тарифу
+ * @param {object} tariffData - JS-об'єкт форми
+ * @param {File|null} file - Новий файл зображення (якщо обрано)
  */
 export const updateTariff = async (id, tariffData, file) => {
   const formData = new FormData();
@@ -64,43 +61,40 @@ export const updateTariff = async (id, tariffData, file) => {
   }
 
   try {
-    // We use PUT, as defined in the backend controller
     const response = await api.put(`/admin/tariffs/${id}`, formData);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Error updating tariff');
+    throw new Error(error.response?.data?.message || 'Помилка оновлення тарифу');
   }
 };
 
 /**
- * (Delete) Deletes a tariff
- * @param {number} id - Tariff ID
- * @returns {Promise<object>} - Success message
+ * (Delete) Видалення тарифу
+ * @param {number} id - ID тарифу
  */
 export const deleteTariff = async (id) => {
   try {
     const response = await api.delete(`/admin/tariffs/${id}`);
-    return response.data; // { message: "..." }
+    return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Error deleting tariff');
+    throw new Error(error.response?.data?.message || 'Помилка видалення тарифу');
   }
 };
 
-
 /**
- * Получает глобальный минимальный километраж поездки (в км)
+ * Отримання глобального мінімального кілометражу поїздки (у км)
  */
 export const getMinDistance = async () => {
   try {
     const response = await api.get('/admin/tariffs/min-distance');
-    return response.data; // Ожидаем { minDistance: X }
+    return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Помилка завантаження мінімального кілометражу');
   }
 };
 
 /**
- * Обновляет глобальный минимальный километраж поездки для всех тарифов
+ * Оновлення глобального мінімального кілометражу поїздки для всіх тарифів
  */
 export const updateMinDistance = async (distance) => {
   try {
@@ -112,13 +106,12 @@ export const updateMinDistance = async (distance) => {
 };
 
 /**
- * Получает список доступных тарифов из EvoS / СОЗ
+ * Отримання списку доступних тарифів з EvoS / СОЗ
  * @returns {Promise<Array<string>>}
  */
 export const getEvosTariffs = async () => {
   try {
     const response = await api.get('/admin/tariffs/evos-tariffs');
-    // Если ответ пришел массивом — возвращаем, иначе пустой массив
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     console.error('Помилка завантаження тарифів EvoS:', error);

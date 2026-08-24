@@ -3,7 +3,6 @@ import { getEvosTariffs } from '../services/tariffService';
 import '../assets/Form.css';
 
 const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
-  // 🟢 Инициализируем состояние тарифов EvoS
   const [evosTariffs, setEvosTariffs] = useState([]);
 
   const [formData, setFormData] = useState({
@@ -22,6 +21,7 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
   });
   
   const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(null);
 
   const isEditMode = initialData !== null;
@@ -82,7 +82,20 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
       setExistingImageUrl(null);
     }
     setSelectedFile(null);
+    setPreviewUrl(null);
   }, [initialData, isEditMode]);
+
+  // Генерация локального превью при выборе нового файла
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setPreviewUrl(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedFile]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -115,6 +128,8 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
     onSubmit(dataToSend, selectedFile);
   };
 
+  const displayImage = previewUrl || existingImageUrl;
+
   return (
     <form onSubmit={handleSubmit} className="modal-form">
       <div className="form-section">
@@ -135,25 +150,25 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
           </div>
 
           <div className="form-group span-2">
-  <label className="form-label">Кузовний клас (Опціонально)</label>
-  <select
-    name="bodyType"
-    className="input-field"
-    value={formData.bodyType || ''}
-    onChange={handleChange}
-  >
-    <option value="">-- Звичайний тариф (без прив'язки до кузова) --</option>
-    <option value="Універсал">Універсал</option>
-    <option value="Мікроавтобус / Мінівен">Мікроавтобус / Мінівен</option>
-    <option value="Кросовер / Позашляховик">Кросовер / Позашляховик</option>
-    <option value="Хетчбек">Хетчбек</option>
-    <option value="Седан">Седан</option>
-    <option value="Купе">Купе</option>
-  </select>
-  <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-subtle, #888)', marginTop: '4px', display: 'block' }}>
-    Водії з відповідним типом кузова отримають цей тариф автоматично при реєстрації
-  </span>
-</div>
+            <label className="form-label">Кузовний клас (Опціонально)</label>
+            <select
+              name="bodyType"
+              className="input-field"
+              value={formData.bodyType || ''}
+              onChange={handleChange}
+            >
+              <option value="">-- Звичайний тариф (без прив'язки до кузова) --</option>
+              <option value="Універсал">Універсал</option>
+              <option value="Мікроавтобус / Мінівен">Мікроавтобус / Мінівен</option>
+              <option value="Кросовер / Позашляховик">Кросовер / Позашляховик</option>
+              <option value="Хетчбек">Хетчбек</option>
+              <option value="Седан">Седан</option>
+              <option value="Купе">Купе</option>
+            </select>
+            <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-subtle, #888)', marginTop: '4px', display: 'block' }}>
+              Водії з відповідним типом кузова отримають цей тариф автоматично при реєстрації
+            </span>
+          </div>
 
           <div className="form-group span-2">
             <label className="form-label">Відповідний тариф у біржі СОЗ (EvoS)</label>
@@ -291,23 +306,38 @@ const TariffForm = ({ initialData, onSubmit, onCancel, isLoading }) => {
       </div>
 
       <div className="form-section">
-        <h3 className="form-section-title">Іконка тарифу (PNG)</h3>
+        <h3 className="form-section-title">Іконка тарифу (WebP / PNG / JPEG)</h3>
         <div className="form-group">
           <input 
             type="file" 
             className="input-field" 
             onChange={handleFileChange} 
-            accept="image/png, image/jpeg" 
+            accept="image/webp, image/png, image/jpeg, image/jpg" 
           />
+          <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-subtle, #888)', marginTop: '4px', display: 'block' }}>
+            Сервер автоматично обріже порожні поля (Auto-trim) та сконвертує файл у оптимізований WebP (~20-40 КБ).
+          </span>
           
-          {isEditMode && existingImageUrl && !selectedFile && (
-            <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span className="form-hint">Поточна іконка:</span>
-              <img 
-                src={existingImageUrl} 
-                alt={formData.name} 
-                style={{ width: 36, height: 36, objectFit: 'contain' }}
-              />
+          {displayImage && (
+            <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span className="form-hint">{previewUrl ? 'Нова іконка:' : 'Поточна іконка:'}</span>
+              <div style={{
+                width: 56,
+                height: 56,
+                borderRadius: '8px',
+                border: '1px solid var(--border-color, #e2e8f0)',
+                background: 'rgba(0,0,0,0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px'
+              }}>
+                <img 
+                  src={displayImage} 
+                  alt={formData.name} 
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                />
+              </div>
             </div>
           )}
         </div>

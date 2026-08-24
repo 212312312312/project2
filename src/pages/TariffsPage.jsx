@@ -158,7 +158,7 @@ const TariffsPage = () => {
           <table className="main-table">
             <thead>
               <tr>
-                <th className="text-center" style={{ width: '60px' }}>Іконка</th>
+                <th className="text-center" style={{ width: '70px' }}>Іконка</th>
                 <th className="text-center" style={{ width: '50px' }}>ID</th>
                 <th>Назва</th>
                 <th className="text-center">Статус</th>
@@ -180,11 +180,23 @@ const TariffsPage = () => {
                   >
                     <td className="text-center">
                       {tariff.imageUrl ? (
-                        <img 
-                          src={tariff.imageUrl} 
-                          alt={tariff.name} 
-                          style={{ width: '36px', height: '36px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
-                        />
+                        <div style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '6px',
+                          background: 'rgba(0,0,0,0.03)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto',
+                          padding: '2px'
+                        }}>
+                          <img 
+                            src={tariff.imageUrl} 
+                            alt={tariff.name} 
+                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+                          />
+                        </div>
                       ) : (
                         <span className="text-subtle">—</span>
                       )}

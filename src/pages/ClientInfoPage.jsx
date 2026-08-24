@@ -97,6 +97,10 @@ const ClientInfoPage = () => {
             <span style={{ fontWeight: '600', color: '#000' }}>{client.phoneNumber}</span>
           </div>
           <div style={{ display: 'flex', borderBottom: '1px dashed #eee', paddingBottom: '10px' }}>
+            <span style={{ fontWeight: 'bold', width: '200px', color: '#555' }}>Email:</span>
+            <span style={{ fontWeight: '600', color: '#555' }}>{client.email || '—'}</span>
+          </div>
+          <div style={{ display: 'flex', borderBottom: '1px dashed #eee', paddingBottom: '10px' }}>
             <span style={{ fontWeight: 'bold', width: '200px', color: '#555' }}>Кількість поїздок:</span>
             <span style={{ fontWeight: 'bold', color: '#2e7d32', fontSize: '18px' }}>{client.tripsCount ?? 0}</span>
           </div>
