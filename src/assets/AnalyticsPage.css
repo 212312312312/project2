@@ -14,7 +14,7 @@
 /* Сітка KPI Карток */
 .analytics-kpi-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
   gap: 1.25rem !important;
   margin-bottom: 1.5rem !important;
 }
@@ -54,19 +54,148 @@
   line-height: 1.2 !important;
 }
 
+.kpi-sub {
+  font-size: 0.78rem !important;
+  color: #64748b !important;
+  margin-top: 0.4rem !important;
+}
+
 .kpi-card.revenue { border-left-color: #10b981 !important; }
 .kpi-card.revenue .kpi-value { color: #059669 !important; }
 .kpi-card.conversion { border-left-color: #8b5cf6 !important; }
 .kpi-card.conversion .kpi-value { color: #7c3aed !important; }
 .kpi-card.fulfillment { border-left-color: #10b981 !important; background-color: #f0fdf4 !important; }
+.kpi-card.timer { border-left-color: #0284c7 !important; background-color: #f0f9ff !important; }
+.kpi-card.boost { border-left-color: #f59e0b !important; background-color: #fffbeb !important; }
+.kpi-card.danger { border-left-color: #ef4444 !important; background-color: #fef2f2 !important; }
+.kpi-card.warning { border-left-color: #f97316 !important; }
 
-/* ДВОКОЛОНОЧНА СІТКА З ИДЕАЛЬНОЙ ВЫСОТОЙ */
+/* Payback & Fraud Grid */
+.payback-fraud-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 1.5rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+@media (max-width: 1024px) {
+  .payback-fraud-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.card-header-badge {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding-bottom: 0.75rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.unit-tag {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 0.2rem 0.6rem !important;
+  border-radius: 9999px !important;
+  text-transform: uppercase !important;
+}
+.tag-blue { background: #e0f2fe !important; color: #0369a1 !important; }
+.tag-red { background: #fee2e2 !important; color: #b91c1c !important; }
+.tag-purple { background: #ede9fe !important; color: #6d28d9 !important; }
+
+.payback-stats-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 1rem !important;
+}
+
+.payback-item {
+  background: #f8fafc !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.25rem !important;
+}
+
+.payback-item.highlighted {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+.payback-label {
+  font-size: 0.78rem !important;
+  color: #64748b !important;
+  font-weight: 600 !important;
+}
+
+.payback-value {
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+}
+
+.fraud-stats-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+}
+
+.fraud-kpi {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  background: #fef2f2 !important;
+  border: 1px solid #fee2e2 !important;
+  border-radius: 8px !important;
+  padding: 0.85rem 1.2rem !important;
+}
+
+.fraud-icon {
+  font-size: 1.8rem !important;
+}
+
+.fraud-number {
+  margin: 0 !important;
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  color: #b91c1c !important;
+}
+
+.fraud-desc {
+  font-size: 0.8rem !important;
+  color: #7f1d1d !important;
+  font-weight: 600 !important;
+}
+
+/* Когортна Таблиця */
+.cohort-table th,
+.cohort-table td {
+  padding: 0.85rem 0.75rem !important;
+}
+
+.retention-pill {
+  display: inline-block !important;
+  padding: 0.25rem 0.75rem !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+}
+
+.pill-green { background: #dcfce7 !important; color: #15803d !important; }
+.pill-yellow { background: #fef9c3 !important; color: #a16207 !important; }
+.pill-red { background: #fee2e2 !important; color: #b91c1c !important; }
+.pill-blue { background: #e0f2fe !important; color: #0369a1 !important; }
+
+/* Двоколоночна сітка */
 .analytics-tables-grid {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
   gap: 1.5rem !important;
   margin-bottom: 1.5rem !important;
-  align-items: stretch !important; /* Выравнивает всю сетку по высоте */
+  align-items: stretch !important;
 }
 
 @media (max-width: 1024px) {
@@ -80,46 +209,90 @@
   flex-direction: column !important;
   justify-content: space-between !important;
   width: 100% !important;
-  height: 100% !important; /* Занимает всю высоту ячейки сетки */
+  height: 100% !important;
   min-width: 0 !important;
 }
 
-.analytics-section .table-card {
-  flex: 1 1 auto !important; /* Заставляет карточку растягиваться на все свободное место */
-  display: flex !important;
-  flex-direction: column !important;
+.table-card {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   border-radius: 8px !important;
   width: 100% !important;
+  min-width: 0 !important;
   overflow: hidden !important;
   margin-bottom: 0.75rem !important;
+  padding: 1.25rem !important;
 }
 
-.analytics-section .table-responsive {
-  flex: 1 1 auto !important;
-  width: 100% !important;
-  overflow-x: auto !important;
+.table-card-title {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  padding: 0.25rem 0 0.75rem 0 !important;
+  margin: 0 !important;
+  color: #0f172a !important;
 }
 
-.analytics-section table.main-table {
+.table-responsive {
   width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important; /* Убираем полосы прокрутки внутри ячейки */
+}
+
+/* Таблиці: Жорсткий сброс глобальних min-width */
+.analytics-container table.main-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
   table-layout: fixed !important;
   border-collapse: collapse !important;
-  min-width: 0 !important;
 }
 
-.analytics-section table.main-table th,
-.analytics-section table.main-table td {
-  min-width: 0 !important;
+.analytics-container table.main-table th {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.4px !important;
   padding: 0.65rem 0.5rem !important;
-  font-size: 0.82rem !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  white-space: nowrap !important;
+}
+
+.analytics-container table.main-table td {
+  padding: 0.65rem 0.5rem !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  font-size: 0.85rem !important;
+  color: #1e293b !important;
+  vertical-align: middle !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
 }
 
-/* ИДЕАЛЬНО ВЫРАВНЕННЫЕ ПЛАШКИ ПОДСКАЗОК ВНИЗУ */
+/* Таблиця тарифів: Ідеальний розподіл */
+.tariff-table th:first-child,
+.tariff-table td:first-child {
+  padding-left: 0.25rem !important;
+}
+
+.tariff-table th:last-child,
+.tariff-table td:last-child {
+  padding-right: 0.25rem !important;
+}
+
+/* Класи вирівнювання та кольору */
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
+.text-left { text-align: left !important; }
+.text-success { color: #15803d !important; font-weight: 700 !important; }
+.text-danger { color: #dc2626 !important; }
+.text-primary { color: #0284c7 !important; }
+.text-subtle { color: #94a3b8 !important; }
+.font-medium { font-weight: 600 !important; }
+
+/* Підказки */
 .analytics-help-text {
   background: #f8fafc !important;
   border: 1px solid #e2e8f0 !important;
@@ -129,13 +302,10 @@
   font-size: 0.82rem !important;
   color: #475569 !important;
   line-height: 1.4 !important;
-  min-height: 74px !important; /* Гарантирует одинаковую высоту нижней синей рамки */
   display: flex !important;
   align-items: center !important;
-  margin-top: auto !important; /* Прижимает подсказку строго к низу */
 }
 
-/* Бейджи для трафика */
 .traffic-badge {
   display: inline-block !important;
   background: #e0f2fe !important;
@@ -173,7 +343,6 @@
   display: block !important;
 }
 
-/* Прогрес-бари */
 .time-bar-container {
   display: flex !important;
   align-items: center !important;
@@ -187,7 +356,6 @@
   background-color: #0284c7 !important;
 }
 
-/* Кроки воронки конверсії */
 .funnel-list {
   display: flex !important;
   flex-direction: column !important;
@@ -199,16 +367,4 @@
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   border-radius: 8px !important;
-}
-
-.analytics-loading,
-.analytics-error {
-  padding: 3rem 1rem !important;
-  text-align: center !important;
-  font-size: 1rem !important;
-  color: #64748b !important;
-}
-
-.analytics-error {
-  color: #ef4444 !important;
 }
