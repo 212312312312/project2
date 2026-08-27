@@ -408,7 +408,18 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
 
   const renderConfirmationStatus = (order) => {
       if (order.status !== 'SCHEDULED') return null;
-      if (!order.driver) return <span style={{fontSize: '0.8rem', color: '#868e96', fontWeight: '700'}}>🔍 ПОШУК ВОДІЯ...</span>;
+
+      // 👈 ДОБАВЛЕНО: Партнерский борт забронировал/принял предзаказ в EvoS
+      if (order.isEvosDriverAssigned || order.evosDriverCarInfo) {
+          return <span style={{color: '#7950f2', fontWeight: 'bold', fontSize: '0.85rem'}}>🤝 Закріплено за бортом СОЗ (EvoS)</span>;
+      }
+
+      if (!order.driver) {
+          if (order.isSentToEvos) {
+              return <span style={{fontSize: '0.8rem', color: '#1c7ed6', fontWeight: '700'}}>🌐 В ЕФІРІ EVOS (ОЧІКУЄ БОРТ)</span>;
+          }
+          return <span style={{fontSize: '0.8rem', color: '#868e96', fontWeight: '700'}}>🔍 ПОШУК ВОДІЯ...</span>;
+      }
 
       if (order.isDriverConfirmed) {
           return <span style={{color: '#2b8a3e', fontWeight: 'bold', fontSize: '0.85rem'}}>✅ Підтверджено водієм</span>;
@@ -538,7 +549,9 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
         </div>
     ) : (
         <div style={{ color: '#9bc2c1', fontStyle: 'italic', fontSize: '0.95rem', fontWeight: '500', padding: '2px 0' }}>
-            {order.status === 'SCHEDULED' ? '🤖 Буде призначено автоматично' : '🔍 Пошук вільної машини...'}
+            {order.status === 'SCHEDULED' 
+                ? (order.isSentToEvos ? '🌐 На біржі EvoS: очікує взяття водієм' : '🤖 Буде призначено автоматично')
+                : '🔍 Пошук вільної машини...'}
         </div>
     )}
 </div>
@@ -617,7 +630,8 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
 
   {/* КРУПНЫЕ КНОПКИ ДЕЙСТВИЙ */}
   <div className="order-card-actions" style={{ marginTop: '6px', display: 'flex', gap: '10px' }}>
-    {order.status === 'REQUESTED' && (
+    {/* 👈 ИСПРАВЛЕНО: Диспетчер может назначить локального водителя как на эфирный, так и на свободный предзаказ */}
+    {(order.status === 'REQUESTED' || (order.status === 'SCHEDULED' && !order.driver && !order.isEvosDriverAssigned)) && (
         <button 
           className="btn-primary" 
           style={{ flex: 1, padding: '12px', fontSize: '1rem', fontWeight: '700', borderRadius: '8px', cursor: 'pointer' }} 
@@ -629,8 +643,8 @@ const OrderList = ({ orders, onCancel, onAssign, onSelectOrder, selectedOrderId 
     <button 
       className="btn-danger" 
       style={{ 
-        flex: order.status === 'REQUESTED' ? 1 : 'none', 
-        width: order.status === 'REQUESTED' ? 'auto' : '100%',
+        flex: (order.status === 'REQUESTED' || (order.status === 'SCHEDULED' && !order.driver && !order.isEvosDriverAssigned)) ? 1 : 'none', 
+        width: (order.status === 'REQUESTED' || (order.status === 'SCHEDULED' && !order.driver && !order.isEvosDriverAssigned)) ? 'auto' : '100%',
         padding: '12px',
         fontSize: '1rem',
         fontWeight: '700',
@@ -908,11 +922,12 @@ client.subscribe('/topic/admin/drivers-location', (message) => {
   };
 
 
- const handleCancel = async (order) => { 
-    const reason = prompt(`Скасувати замовлення #${order.idLong}? Введіть причину (необов'язково):`);
+const handleCancel = async (order) => { 
+    const targetId = order.idLong || order.id; // 👈 Защита от undefined
+    const reason = prompt(`Скасувати замовлення #${targetId}? Введіть причину (необов'язково):`);
     if (reason !== null) {
         try { 
-            await cancelOrder(order.idLong, reason || 'Скасовано диспетчером'); 
+            await cancelOrder(targetId, reason || 'Скасовано диспетчером'); 
             if (selectedOrder?.id === order.id) setSelectedOrder(null); 
         } catch (err) { alert(err.message); } 
     }
