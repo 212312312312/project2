@@ -17,14 +17,19 @@ const PromosPage = () => {
   const [plans, setPlans] = useState([]);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [newPlan, setNewPlan] = useState({ 
-    title: '', description: '', startDate: '', endDate: '', maxUses: '' 
+    title: '', 
+    description: '', 
+    startDate: '', 
+    endDate: '', 
+    maxUses: '',
+    estimatedMinFare: '75' // Базовая стоимость минималки по умолчанию для калькулятора
   });
 
   const fetchPromos = async () => {
     try {
       setLoading(true);
       const data = await getAllPromos();
-      setPromos(data);
+      setPromos(Array.isArray(data) ? data : []);
     } catch (e) {
       alert(e.message);
     } finally {
@@ -35,7 +40,7 @@ const PromosPage = () => {
   const fetchPlans = async () => {
     try {
       const planData = await getAllPromoPlans();
-      setPlans(planData);
+      setPlans(Array.isArray(planData) ? planData : []);
     } catch (e) {
       console.error(e.message);
     }
@@ -75,7 +80,8 @@ const PromosPage = () => {
     try {
       setIsSubmitting(true);
       const planData = {
-        ...newPlan,
+        title: newPlan.title,
+        description: newPlan.description,
         startDate: newPlan.startDate ? `${newPlan.startDate}:00` : new Date().toISOString(),
         endDate: newPlan.endDate ? `${newPlan.endDate}:00` : new Date().toISOString(),
         maxUses: newPlan.maxUses ? parseInt(newPlan.maxUses) : null,
@@ -83,7 +89,14 @@ const PromosPage = () => {
       };
       await createPromoPlan(planData);
       setIsPlanModalOpen(false);
-      setNewPlan({ title: '', description: '', startDate: '', endDate: '', maxUses: '' });
+      setNewPlan({ 
+        title: '', 
+        description: '', 
+        startDate: '', 
+        endDate: '', 
+        maxUses: '',
+        estimatedMinFare: '75'
+      });
       fetchPlans();
     } catch (e) {
       alert(e.message);
@@ -111,6 +124,20 @@ const PromosPage = () => {
       }
     }
   };
+
+  // Расчеты для калькулятора глобального плана
+  const planUses = parseInt(newPlan.maxUses) || 0;
+  const minFare = parseFloat(newPlan.estimatedMinFare) || 0;
+  const maxPlanBudget = planUses > 0 && minFare > 0 ? planUses * minFare : null;
+
+  // Расчет продолжительности плана
+  let planDurationHours = null;
+  if (newPlan.startDate && newPlan.endDate) {
+    const diffMs = new Date(newPlan.endDate) - new Date(newPlan.startDate);
+    if (diffMs > 0) {
+      planDurationHours = Math.round(diffMs / (1000 * 60 * 60));
+    }
+  }
 
   if (loading) return <div className="loading-spinner">Завантаження акцій...</div>;
 
@@ -215,10 +242,7 @@ const PromosPage = () => {
         </div>
       </div>
 
-      {/* Разделитель секций */}
-      <hr style={{ margin: '2.5rem 0', border: '0', borderTop: '1px solid #e2e8f0' }} />
-
-      {/* --- СЕКЦИЯ 2: ГЛОБАЛЬНЫЕ ПЛАНИ БЕСПЛАТНОЙ МИНИМАЛКИ --- */}
+      {/* --- СЕКЦИЯ 2: ГЛОБАЛЬНЫЕ ПЛАНЫ БЕСПЛАТНОЙ МИНИМАЛКИ --- */}
       <header className="page-header">
         <div className="header-title-group">
           <h1>Глобальні плани: Безкоштовна мінімалка</h1>
@@ -314,11 +338,11 @@ const PromosPage = () => {
         />
       </Modal>
 
-      {/* Модалка создания глобального календарного плана */}
+      {/* Модалка создания глобального календарного плана с калькулятором */}
       <Modal 
         isOpen={isPlanModalOpen} 
         onClose={() => setIsPlanModalOpen(false)} 
-        title="Новий Календарний План"
+        title="Новий Календарний План: Безкоштовна мінімалка"
       >
         <form onSubmit={handleCreatePlan} className="modal-form">
           <div className="form-section">
@@ -326,30 +350,30 @@ const PromosPage = () => {
             
             <div className="form-grid-2col">
               <div className="form-group span-2">
-                <label className="form-label">Назва акції</label>
+                <label className="form-label">Назва акційного плану *</label>
                 <input 
                   type="text" 
                   className="input-field"
                   required 
                   value={newPlan.title} 
                   onChange={e => setNewPlan({...newPlan, title: e.target.value})} 
-                  placeholder="Наприклад: Акція на першу поїздку UNIT"
+                  placeholder="Наприклад: Безкоштовний старт у вихідні"
                 />
               </div>
 
               <div className="form-group span-2">
-                <label className="form-label">Опис для клієнта в додатку</label>
+                <label className="form-label">Опис для клієнтського додатку</label>
                 <textarea 
                   className="input-field"
-                  style={{ minHeight: '80px', resize: 'vertical' }}
+                  style={{ minHeight: '65px', resize: 'vertical' }}
                   value={newPlan.description} 
                   onChange={e => setNewPlan({...newPlan, description: e.target.value})} 
-                  placeholder="Мінімальна вартість поїздки 0 грн! Доплачуємо тільки за км."
+                  placeholder="Мінімальна вартість поїздки 0 грн! Оплачується тільки кілометраж."
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Дата початку акції</label>
+                <label className="form-label">Дата початку акції *</label>
                 <input 
                   type="datetime-local" 
                   className="input-field"
@@ -360,7 +384,7 @@ const PromosPage = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Дата закінчення акції</label>
+                <label className="form-label">Дата завершення акції *</label>
                 <input 
                   type="datetime-local" 
                   className="input-field"
@@ -370,19 +394,70 @@ const PromosPage = () => {
                 />
               </div>
 
-              <div className="form-group span-2">
-                <label className="form-label">Глобальний ліміт активацій (Кількість планів)</label>
+              <div className="form-group">
+                <label className="form-label">Глобальний ліміт активацій (поїздок)</label>
                 <input 
                   type="number" 
                   min="1"
                   className="input-field"
                   value={newPlan.maxUses} 
                   onChange={e => setNewPlan({...newPlan, maxUses: e.target.value})} 
-                  placeholder="Залиште порожнім, якщо без обмежень"
+                  placeholder="Пусто = без обмежень"
                 />
-                <span className="form-hint">Скільки всього клієнтів в системі встигнуть скористатися планом</span>
+                <span className="form-hint">Загальна кількість безкоштовних мінімалок</span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Середня вартість мінімалки (грн)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  className="input-field"
+                  value={newPlan.estimatedMinFare} 
+                  onChange={e => setNewPlan({...newPlan, estimatedMinFare: e.target.value})} 
+                  placeholder="Напр. 75"
+                />
+                <span className="form-hint">Використовується для розрахунку компенсацій водіям</span>
               </div>
             </div>
+
+            {/* --- КАЛЬКУЛЯТОР ВЫПЛАТ ДЛЯ БЕСПЛАТНОЙ МИНИМАЛКИ --- */}
+            {planUses > 0 ? (
+              <div className="budget-calculator">
+                <div className="budget-calculator-header">
+                  <h4 className="budget-calculator-title">📊 Фінансовий розрахунок навантаження</h4>
+                  <span className="budget-calculator-badge">Бюджет зафіксовано</span>
+                </div>
+                <p className="budget-description">
+                  При використанні ліміту в <strong>{planUses.toLocaleString()}</strong> безкоштовних мінімалок 
+                  {planDurationHours ? ` за період ${planDurationHours} год.` : ''}, максимальна сума компенсацій автопарку складе:
+                </p>
+                <div className="budget-grid">
+                  <div className="budget-metric">
+                    <span className="budget-metric-label">Ліміт активацій:</span>
+                    <span className="budget-metric-value">{planUses.toLocaleString()} поїздок</span>
+                  </div>
+                  <div className="budget-metric">
+                    <span className="budget-metric-label">Вартість мінімалки:</span>
+                    <span className="budget-metric-value">~{minFare} ₴</span>
+                  </div>
+                  <div className="budget-metric">
+                    <span className="budget-metric-label">Макс. виплата водіям:</span>
+                    <span className="budget-metric-value highlight">{maxPlanBudget?.toLocaleString()} ₴</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="budget-calculator warning">
+                <div className="budget-calculator-header">
+                  <h4 className="budget-calculator-title">⚠️ Необмежений глобальний план</h4>
+                  <span className="budget-calculator-badge">Високий ризик</span>
+                </div>
+                <p className="budget-description">
+                  Ліміт активацій не встановлено. Усі клієнти у вказаний проміжок часу здійснюватимуть поїздки з нульовою мінімалкою, а повна вартість мінімального тарифу компенсуватиметься сервісом без обмеження суми ($\infty$).
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="form-actions justify-end">

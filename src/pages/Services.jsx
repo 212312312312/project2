@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllServices, createService, deleteService } from '../services/servicesService';
+import { getAllServices, createService, updateService, deleteService } from '../services/servicesService';
 import Modal from '../components/Modal'; 
 import ServiceForm from '../components/ServiceForm';
 
@@ -7,13 +7,14 @@ const ServicesPage = () => {
   const [servicesList, setServicesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchServices = async () => {
     try {
       setLoading(true);
       const data = await getAllServices();
-      setServicesList(data);
+      setServicesList(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
       alert("Не вдалося завантажити послуги");
@@ -26,14 +27,29 @@ const ServicesPage = () => {
     fetchServices();
   }, []);
 
-  const handleCreate = async (data) => {
+  const handleOpenCreateModal = () => {
+    setEditingService(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (service) => {
+    setEditingService(service);
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (data) => {
     try {
       setIsSubmitting(true);
-      await createService(data);
+      if (editingService) {
+        await updateService(editingService.id, data);
+      } else {
+        await createService(data);
+      }
       setIsModalOpen(false);
+      setEditingService(null);
       fetchServices();
     } catch (e) {
-      alert(e.message);
+      alert(e.message || "Помилка збереження послуги");
     } finally {
       setIsSubmitting(false);
     }
@@ -45,7 +61,7 @@ const ServicesPage = () => {
         await deleteService(id);
         fetchServices();
       } catch (e) {
-        alert(e.message);
+        alert(e.message || "Помилка видалення");
       }
     }
   };
@@ -59,7 +75,7 @@ const ServicesPage = () => {
         </div>
 
         <div className="header-actions">
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+          <button className="btn btn-primary" onClick={handleOpenCreateModal}>
             + Створити послугу
           </button>
         </div>
@@ -70,30 +86,40 @@ const ServicesPage = () => {
           <table className="main-table">
             <thead>
               <tr>
+                <th className="text-center" style={{ width: '60px' }}>ID</th>
                 <th>Назва послуги</th>
-                <th className="text-center" style={{ width: '180px' }}>Код EvoS</th>
-                <th className="text-center" style={{ width: '180px' }}>Ціна</th>
-                <th className="text-center" style={{ width: '120px' }}>Дії</th>
+                <th className="text-center" style={{ width: '200px' }}>Код EvoS</th>
+                <th className="text-center" style={{ width: '160px' }}>Ціна</th>
+                <th className="text-center" style={{ width: '180px' }}>Дії</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="text-center text-subtle py-8">
+                  <td colSpan="5" className="text-center text-subtle py-8">
                     Завантаження послуг...
                   </td>
                 </tr>
               ) : servicesList.length > 0 ? (
                 servicesList.map((item) => (
                   <tr key={item.id}>
+                    <td className="text-center text-subtle">#{item.id}</td>
                     <td className="font-medium">{item.name}</td>
                     <td className="text-center">
                       {item.evosCode ? (
-                        <span style={{ backgroundColor: '#e7f5ff', color: '#1c7ed6', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                        <span style={{ 
+                          backgroundColor: '#e0f2fe', 
+                          color: '#0369a1', 
+                          padding: '3px 8px', 
+                          borderRadius: '4px', 
+                          fontWeight: '700', 
+                          fontSize: '0.82rem',
+                          border: '1px solid #bae6fd'
+                        }}>
                           {item.evosCode}
                         </span>
                       ) : (
-                        <span style={{ color: '#adb5bd' }}>—</span>
+                        <span className="text-subtle">—</span>
                       )}
                     </td>
                     <td className="text-center">
@@ -104,19 +130,27 @@ const ServicesPage = () => {
                       )}
                     </td>
                     <td className="text-center">
-                      <button 
-                        className="btn btn-sm btn-ghost-danger"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        Видалити
-                      </button>
+                      <div className="btn-group justify-center" style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        <button 
+                          className="btn btn-sm btn-outline"
+                          onClick={() => handleOpenEditModal(item)}
+                        >
+                          Редагувати
+                        </button>
+                        <button 
+                          className="btn btn-sm btn-ghost-danger"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          Видалити
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="text-center text-subtle py-8">
-                    Список послуг порожній
+                  <td colSpan="5" className="text-center text-subtle py-8">
+                    Список послуг порожній. Створіть першу послугу!
                   </td>
                 </tr>
               )}
@@ -127,13 +161,20 @@ const ServicesPage = () => {
 
       <Modal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title="Нова послуга"
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingService(null);
+        }} 
+        title={editingService ? "Редагування послуги" : "Нова послуга"}
       >
         <ServiceForm 
-          onSubmit={handleCreate} 
-          onCancel={() => setIsModalOpen(false)} 
+          onSubmit={handleSave} 
+          onCancel={() => {
+            setIsModalOpen(false);
+            setEditingService(null);
+          }} 
           isLoading={isSubmitting}
+          initialData={editingService}
         />
       </Modal>
     </div>

@@ -1,7 +1,6 @@
-import api from './api'; // 👈 Импортируем наш настроенный Axios экземпляр
+import api from './api';
 
-// baseURL в api.js уже равен '/api/v1', поэтому пишем только относительный путь
-const ROUTE_URL = '/admin/services'; 
+const ROUTE_URL = '/admin/services';
 
 export const getAllServices = async () => {
   try {
@@ -20,6 +19,16 @@ export const createService = async (serviceData) => {
   } catch (error) {
     console.error('Error creating service:', error);
     throw new Error('Помилка створення послуги');
+  }
+};
+
+export const updateService = async (id, serviceData) => {
+  try {
+    const response = await api.put(`${ROUTE_URL}/${id}`, serviceData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating service:', error);
+    throw new Error('Помилка оновлення послуги');
   }
 };
 

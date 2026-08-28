@@ -40,7 +40,7 @@
 
 .form-section-title,
 .form-section h3 {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-main, #0f172a);
   margin: 0 0 0.5rem 0;
@@ -49,7 +49,6 @@
   width: 100%;
 }
 
-/* Специальная адаптация под DriverForm (когда слева колонка с фото) */
 .form-section:has(.photo-column),
 .form-section.photo-layout {
   flex-direction: row;
@@ -73,6 +72,13 @@
 .form-group.span-2,
 .full-width {
   grid-column: 1 / -1 !important;
+}
+
+.form-row {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+  gap: 1rem !important;
+  width: 100% !important;
 }
 
 /* ============================================================
@@ -99,10 +105,13 @@
 .input-field,
 .app-form .form-group input,
 .app-form .form-group select,
-.entity-form .form-group input[type="text"],
-.entity-form .form-group input[type="tel"],
-.entity-form .form-group input[type="password"],
-.entity-form .form-group input[type="number"] {
+.app-form .form-group textarea,
+.entity-form .form-group input,
+.entity-form .form-group select,
+.entity-form .form-group textarea,
+.modal-form input,
+.modal-form select,
+.modal-form textarea {
   width: 100% !important;
   padding: 0.65rem 0.85rem !important;
   border: 1px solid var(--border-color, #cbd5e1);
@@ -116,7 +125,11 @@
 
 .input-field:focus,
 .app-form .form-group input:focus,
-.app-form .form-group select:focus {
+.app-form .form-group select:focus,
+.modal-form input:focus,
+.modal-form select:focus,
+.entity-form input:focus,
+.entity-form select:focus {
   border-color: var(--primary-color, #0284c7);
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 }
@@ -132,121 +145,128 @@
 .form-hint {
   font-size: 0.78rem;
   color: var(--text-muted, #64748b);
+  line-height: 1.3;
 }
 
 /* ============================================================
-   6. БЛОКИ ФОТО И ДОКУМЕНТОВ (DRIVER FORM PHOTO & DOCS)
+   6. ФИНАНСОВЫЙ КАЛЬКУЛЯТОР БЮДЖЕТА (BUDGET CALCULATOR)
    ============================================================ */
-.photo-column {
-  width: 200px;
-  flex-shrink: 0;
+.budget-calculator {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 0.5rem 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 0.75rem;
 }
 
-.image-preview-box {
-  width: 180px;
-  height: 180px;
-  border: 2px dashed #cbd5e1;
-  border-radius: 8px;
+.budget-calculator.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-left-color: #d97706;
+}
+
+.budget-calculator.danger {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  border-left-color: #e11d48;
+}
+
+.budget-calculator-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: #fff;
-  position: relative;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-.image-preview-box img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.image-preview-box span {
-  color: #94a3b8;
-  font-size: 0.8rem;
-  text-align: center;
-  padding: 0.5rem;
-}
-
-.custom-file-upload {
-  border: 1px solid #cbd5e1;
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  background: #fff;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-align: center;
-  width: 100%;
-  transition: all 0.2s;
-}
-
-.custom-file-upload:hover {
-  background: #f1f5f9;
-  border-color: #0284c7;
-}
-
-.docs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
-  width: 100%;
-}
-
-.doc-item {
+.budget-calculator-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #15803d;
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  background: #fff;
-  padding: 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  margin: 0;
 }
 
-.doc-item label {
+.budget-calculator.warning .budget-calculator-title {
+  color: #b45309;
+}
+
+.budget-calculator.danger .budget-calculator-title {
+  color: #be123c;
+}
+
+.budget-calculator-badge {
   font-size: 0.75rem;
-  font-weight: 600;
-  color: #475569;
-  text-align: center;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: #dcfce7;
+  color: #166534;
 }
 
-.doc-item .image-preview-box {
-  width: 100%;
-  height: 110px;
-  border-width: 1px;
+.budget-calculator.warning .budget-calculator-badge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.budget-calculator.danger .budget-calculator-badge {
+  background: #ffe4e6;
+  color: #9f1239;
+}
+
+.budget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.budget-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.budget-metric-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.budget-metric-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.budget-metric-value.highlight {
+  color: #16a34a;
+}
+
+.budget-calculator.warning .budget-metric-value.highlight {
+  color: #d97706;
+}
+
+.budget-calculator.danger .budget-metric-value.highlight {
+  color: #e11d48;
+}
+
+.budget-description {
+  font-size: 0.83rem;
+  color: #334155;
+  line-height: 1.4;
+  margin: 0;
 }
 
 /* ============================================================
    7. ЧЕКБОКСЫ И ПЕРЕКЛЮЧАТЕЛИ
    ============================================================ */
-.form-checkboxes-group {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0.75rem !important;
-  background: #ffffff;
-  padding: 1rem !important;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  width: 100% !important;
-}
-
-.checkbox-group {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 0.75rem;
-  padding: 1rem;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  width: 100%;
-}
-
 .checkbox-item,
 .checkbox-label {
   display: flex !important;
@@ -267,8 +287,8 @@
 
 .checkbox-item input[type="checkbox"],
 .checkbox-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 18px !important;
+  height: 18px !important;
   cursor: pointer;
   accent-color: var(--primary-color, #0284c7);
 }
@@ -291,19 +311,9 @@
 }
 
 /* ============================================================
-   9. АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ ЭКРАНОВ
+   9. АДАПТИВНОСТЬ
    ============================================================ */
 @media (max-width: 768px) {
-  .form-section:has(.photo-column),
-  .form-section.photo-layout {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .photo-column {
-    width: 100%;
-  }
-
   .form-grid-2col,
   .fields-column,
   .entity-form .form-grid {

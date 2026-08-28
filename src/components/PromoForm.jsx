@@ -33,7 +33,7 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
     const dataToSend = {
       title: formData.title,
       description: formData.description,
-      requiredRides: parseInt(formData.requiredRides),
+      requiredRides: parseInt(formData.requiredRides) || 0,
       requiredDistanceKm: parseFloat(formData.requiredDistanceKm) || 0.0,
       discountPercent: parseFloat(formData.discountPercent),
       requiredTariffId: formData.requiredTariffId ? parseInt(formData.requiredTariffId) : null,
@@ -46,157 +46,211 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
     onSubmit(dataToSend);
   };
 
-  // Внутренний калькулятор максимального бюджета компенсации
-  const calculateMaxBudget = () => {
-    const allocations = parseInt(formData.maxAllocations);
-    const maxDiscount = parseFloat(formData.maxDiscountAmount);
-    
-    if (!allocations || !maxDiscount || allocations <= 0 || maxDiscount <= 0) {
-      return null;
-    }
-    return allocations * maxDiscount;
-  };
-
-  const maxBudget = calculateMaxBudget();
+  // Расчет максимального лимита расходов
+  const allocations = parseInt(formData.maxAllocations) || 0;
+  const maxDiscount = parseFloat(formData.maxDiscountAmount) || 0;
+  const hasLimit = allocations > 0 && maxDiscount > 0;
+  const maxTotalBudget = hasLimit ? allocations * maxDiscount : null;
 
   return (
-    <form onSubmit={handleSubmit} className="entity-form">
-      <div className="form-grid">
-        <div className="form-group">
-          <label>Название Акции</label>
-          <input 
-            type="text" name="title" 
-            placeholder="Напр: Легкий старт" 
-            value={formData.title} onChange={handleChange} required 
-          />
-        </div>
+    <form onSubmit={handleSubmit} className="modal-form">
+      <div className="form-section">
+        <h3 className="form-section-title">Основна інформація</h3>
         
-        <div className="form-group">
-          <label>Описание задания</label>
-          <input 
-            type="text" name="description" 
-            placeholder="Напр: Зроби 5 поїздок" 
-            value={formData.description} onChange={handleChange} required 
-          />
-        </div>
+        <div className="form-grid-2col">
+          <div className="form-group span-2">
+            <label className="form-label">Назва акції *</label>
+            <input 
+              type="text" 
+              name="title" 
+              className="input-field"
+              placeholder="Наприклад: Легкий старт для нових клієнтів" 
+              value={formData.title} 
+              onChange={handleChange} 
+              required 
+            />
+          </div>
+          
+          <div className="form-group span-2">
+            <label className="form-label">Опис завдання для клієнта *</label>
+            <textarea 
+              name="description" 
+              className="input-field"
+              style={{ minHeight: '65px', resize: 'vertical' }}
+              placeholder="Наприклад: Зроби 5 поїздок по місту та отримай знижку на наступну!" 
+              value={formData.description} 
+              onChange={handleChange} 
+              required 
+            />
+          </div>
 
-        <div className="form-group-row" style={{display:'flex', gap:'10px'}}>
-            <div className="form-group" style={{flex:1}}>
-              <label>Поїздок (шт)</label>
-              <input 
-                type="number" name="requiredRides" min="0"
-                placeholder="0 = не треба"
-                value={formData.requiredRides} onChange={handleChange} 
-              />
-            </div>
-            
-            <div className="form-group" style={{flex:1}}>
-              <label>АБО Дистанція (км)</label>
-              <input 
-                type="number" name="requiredDistanceKm" min="0" step="0.1"
-                placeholder="0 = не треба"
-                value={formData.requiredDistanceKm} onChange={handleChange} 
-              />
-            </div>
-        </div>
-
-        <div className="form-group">
-          <label>Відсоток знижки (%)</label>
-          <input 
-            type="number" name="discountPercent" min="1" max="100"
-            value={formData.discountPercent} onChange={handleChange} required 
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Макс. сума знижки (грн)</label>
-          <input 
-            type="number" name="maxDiscountAmount" min="0" placeholder="Пусто = без ліміту"
-            value={formData.maxDiscountAmount} onChange={handleChange} 
-          />
-          <small style={{color: '#666', fontSize: '0.8rem'}}>Залиште пустим, якщо ліміту немає</small>
-        </div>
-
-        {/* --- ПОЛЕ: Лимит мест для ограничения рисков --- */}
-        <div className="form-group">
-          <label>Загальна кількість місць (Ліміт клієнтів)</label>
-          <input 
-            type="number" name="maxAllocations" min="1" 
-            placeholder="Пусто = без ліміту (для всіх)"
-            value={formData.maxAllocations} onChange={handleChange} 
-          />
-          <small style={{color: '#666', fontSize: '0.8rem'}}>
-            Скільки всього клієнтів зможуть отримати це завдання (з пріоритетом за поїздками)
-          </small>
-        </div>
-
-        <div className="form-group">
-          <label>Клас авто (Тариф)</label>
-          <select 
-            name="requiredTariffId" 
-            value={formData.requiredTariffId} 
-            onChange={handleChange}
-            style={{ padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }}
-          >
-            <option value="">— Будь-який (Прочерк) —</option>
-            {tariffs.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <input 
-            type="checkbox" 
-            name="isOneTime" 
-            id="isOneTime"
-            checked={formData.isOneTime} 
-            onChange={handleChange}
-            style={{ width: '20px', height: '20px' }}
-          />
-          <label htmlFor="isOneTime" style={{ marginBottom: 0, cursor: 'pointer' }}>
-            Це одноразова акція?
-          </label>
-        </div>
-
-        <div className="form-group">
-          <label>Термін дії знижки (днів)</label>
-          <input 
-            type="number" name="activeDaysDuration" min="1"
-            placeholder="Пусто = безстрокова"
-            value={formData.activeDaysDuration} onChange={handleChange} 
-          />
-          <small style={{color:'#666'}}>Скільки днів є у клієнта, щоб використати знижку після отримання.</small>
+          <div className="form-group">
+            <label className="form-label">Умова: Кількість поїздок (шт)</label>
+            <input 
+              type="number" 
+              name="requiredRides" 
+              min="0"
+              className="input-field"
+              placeholder="0 = не вимагається"
+              value={formData.requiredRides} 
+              onChange={handleChange} 
+            />
+            <span className="form-hint">Скільки поїздок повинен виконати клієнт</span>
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">АБО Дистанція (км)</label>
+            <input 
+              type="number" 
+              name="requiredDistanceKm" 
+              min="0" 
+              step="0.1"
+              className="input-field"
+              placeholder="0 = не вимагається"
+              value={formData.requiredDistanceKm} 
+              onChange={handleChange} 
+            />
+            <span className="form-hint">Сумарний кілометраж для заліку</span>
+          </div>
         </div>
       </div>
 
-      {/* --- ВИЗУАЛЬНЫЙ КАЛЬКУЛЯТОР РАСХОДОВ --- */}
-      {maxBudget !== null && (
-        <div className="budget-calculator" style={{
-          background: '#fff0f5',
-          padding: '15px',
-          borderRadius: '6px',
-          borderLeft: '4px solid #e91e63',
-          margin: '20px 0 10px 0'
-        }}>
-          <h4 style={{ margin: '0 0 5px 0', color: '#c2185b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            📊 Фінансовий калькулятор лімітів:
-          </h4>
-          <p style={{ margin: 0, fontSize: '0.9rem', color: '#333', lineHeight: '1.4' }}>
-            При виділенні <strong>{formData.maxAllocations}</strong> місць та обмеженні знижки у <strong>{formData.maxDiscountAmount} грн</strong> на поїздку, максимальне навантаження на бюджет (виплата компенсацій водіям) складе не більше ніж:
-          </p>
-          <div style={{ marginTop: '8px', fontSize: '1.25rem', fontWeight: 'bold', color: '#e91e63' }}>
-            {maxBudget.toLocaleString()} грн
+      <div className="form-section">
+        <h3 className="form-section-title">Параметри винагороди та фінансові ліміти</h3>
+
+        <div className="form-grid-2col">
+          <div className="form-group">
+            <label className="form-label">Відсоток знижки (%) *</label>
+            <input 
+              type="number" 
+              name="discountPercent" 
+              min="1" 
+              max="100"
+              className="input-field"
+              value={formData.discountPercent} 
+              onChange={handleChange} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Макс. сума знижки на поїздку (грн)</label>
+            <input 
+              type="number" 
+              name="maxDiscountAmount" 
+              min="0" 
+              className="input-field"
+              placeholder="Пусто = без ліміту суми"
+              value={formData.maxDiscountAmount} 
+              onChange={handleChange} 
+            />
+            <span className="form-hint">Стеля компенсації на 1 поїздку</span>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ліміт місць (Кількість клієнтів)</label>
+            <input 
+              type="number" 
+              name="maxAllocations" 
+              min="1" 
+              className="input-field"
+              placeholder="Пусто = для всіх без обмежень"
+              value={formData.maxAllocations} 
+              onChange={handleChange} 
+            />
+            <span className="form-hint">Скільки клієнтів зможуть завершити акцію</span>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Цільовий тариф</label>
+            <select 
+              name="requiredTariffId" 
+              className="input-field"
+              value={formData.requiredTariffId} 
+              onChange={handleChange}
+            >
+              <option value="">— Будь-який тариф —</option>
+              {tariffs.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <span className="form-hint">Тариф, на якому діє акція</span>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Термін дії після отримання (днів)</label>
+            <input 
+              type="number" 
+              name="activeDaysDuration" 
+              min="1"
+              className="input-field"
+              placeholder="Пусто = безстроково"
+              value={formData.activeDaysDuration} 
+              onChange={handleChange} 
+            />
+          </div>
+
+          <div className="form-group" style={{ justifyContent: 'center' }}>
+            <label className="checkbox-label" style={{ marginTop: '1.2rem' }}>
+              <input 
+                type="checkbox" 
+                name="isOneTime" 
+                checked={formData.isOneTime} 
+                onChange={handleChange}
+              />
+              <span>Одноразова акція для клієнта</span>
+            </label>
           </div>
         </div>
-      )}
 
-      <div className="form-actions">
-        <button type="button" className="btn-secondary" onClick={onCancel} disabled={isLoading}>
-          Відміна
+        {/* --- ФИНАНСОВЫЙ КАЛЬКУЛЯТОР БЮДЖЕТА АКЦИИ --- */}
+        {hasLimit ? (
+          <div className="budget-calculator">
+            <div className="budget-calculator-header">
+              <h4 className="budget-calculator-title">📊 Фінансовий ліміт витрат компанії</h4>
+              <span className="budget-calculator-badge">Бюджет зафіксовано</span>
+            </div>
+            <p className="budget-description">
+              При успішному виконанні завдання <strong>{allocations}</strong> клієнтами та виплаті макс. знижки <strong>{maxDiscount} ₴</strong>:
+            </p>
+            <div className="budget-grid">
+              <div className="budget-metric">
+                <span className="budget-metric-label">Клієнтів:</span>
+                <span className="budget-metric-value">{allocations.toLocaleString()} чол.</span>
+              </div>
+              <div className="budget-metric">
+                <span className="budget-metric-label">Макс. на поїздку:</span>
+                <span className="budget-metric-value">{maxDiscount} ₴</span>
+              </div>
+              <div className="budget-metric">
+                <span className="budget-metric-label">Граничний бюджет:</span>
+                <span className="budget-metric-value highlight">{maxTotalBudget.toLocaleString()} ₴</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="budget-calculator warning">
+            <div className="budget-calculator-header">
+              <h4 className="budget-calculator-title">⚠️ Необмежений бюджет</h4>
+              <span className="budget-calculator-badge">Увага</span>
+            </div>
+            <p className="budget-description">
+              {!allocations && !maxDiscount 
+                ? 'Ліміт кількості клієнтів та суми знижки не вказано. Загальні витрати на компенсації водіям не обмежені.'
+                : !allocations 
+                  ? 'Не вказано загальну кількість місць (клієнтів). Будь-який клієнт зможе скористатися акцією.'
+                  : 'Не вказано максимальну суму знижки у гривнях на одну поїздку.'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="form-actions justify-end">
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={isLoading}>
+          Скасувати
         </button>
-        <button type="submit" className="btn-primary" disabled={isLoading}>
-          {isLoading ? 'Створення...' : 'Створити'}
+        <button type="submit" className="btn btn-primary" disabled={isLoading}>
+          {isLoading ? 'Збереження...' : 'Створити акцію'}
         </button>
       </div>
     </form>

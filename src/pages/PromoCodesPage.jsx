@@ -46,7 +46,7 @@ const PromoCodesPage = () => {
 
         <div className="header-actions">
           <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            + Створити код
+            + Створити промокод
           </button>
         </div>
       </header>
@@ -56,10 +56,12 @@ const PromoCodesPage = () => {
           <table className="main-table">
             <thead>
               <tr>
+                <th className="text-center" style={{ width: '50px' }}>ID</th>
                 <th>Промокод</th>
                 <th className="text-center">Знижка</th>
                 <th className="text-center">Макс. сума</th>
                 <th className="text-center">Діє після вводу</th>
+                <th className="text-center">Термін коду</th>
                 <th className="text-center">Ліміт</th>
                 <th className="text-center">Використано</th>
                 <th className="text-center" style={{ width: '120px' }}>Дії</th>
@@ -69,8 +71,9 @@ const PromoCodesPage = () => {
               {promoCodes.length > 0 ? (
                 promoCodes.map((item) => (
                   <tr key={item.id}>
+                    <td className="text-center text-subtle">#{item.id}</td>
                     <td>
-                      <strong className="font-medium text-primary" style={{ letterSpacing: '0.5px' }}>
+                      <strong className="font-medium text-primary" style={{ letterSpacing: '0.8px' }}>
                         {item.code}
                       </strong>
                     </td>
@@ -81,19 +84,28 @@ const PromoCodesPage = () => {
                       {item.maxDiscountAmount ? `${item.maxDiscountAmount} ₴` : <span className="text-subtle">∞</span>}
                     </td>
                     <td className="text-center">
-                      {item.activationDurationHours ? (
+                      {item.durationHours || item.activationDurationHours ? (
                         <span className="badge badge-warning">
-                          {item.activationDurationHours} год.
+                          {item.durationHours || item.activationDurationHours} год.
                         </span>
                       ) : (
                         <span className="text-subtle">Безстроково</span>
                       )}
                     </td>
-                    <td className="text-center font-medium">
-                      {item.usageLimit ? item.usageLimit : <span className="text-subtle">∞</span>}
+                    <td className="text-center text-subtle">
+                      {item.activeDays ? `${item.activeDays} дн.` : '∞'}
                     </td>
                     <td className="text-center font-medium">
-                      {item.usedCount}
+                      {item.usageLimit ? (
+                        <span className="text-primary">{item.usageLimit}</span>
+                      ) : (
+                        <span className="text-subtle">∞</span>
+                      )}
+                    </td>
+                    <td className="text-center font-medium">
+                      <span className={item.usedCount > 0 ? 'text-success' : 'text-subtle'}>
+                        {item.usedCount || 0}
+                      </span>
                     </td>
                     <td className="text-center">
                       <button 
@@ -107,7 +119,7 @@ const PromoCodesPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="text-center text-subtle py-8">
+                  <td colSpan="9" className="text-center text-subtle py-8">
                     Промокоди не знайдені. Створіть перший промокод.
                   </td>
                 </tr>

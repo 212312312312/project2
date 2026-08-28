@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../assets/Form.css';
 
 const EVOS_SERVICE_OPTIONS = [
@@ -14,10 +14,22 @@ const EVOS_SERVICE_OPTIONS = [
   { value: 'MEET', label: '🪧 Зустріч з табличкою (MEET)' }
 ];
 
-const ServiceForm = ({ onSubmit, onCancel, isLoading }) => {
+const ServiceForm = ({ onSubmit, onCancel, isLoading, initialData = null }) => {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [evosCode, setEvosCode] = useState('');
+
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.name || '');
+      setPrice(initialData.price !== undefined && initialData.price !== null ? initialData.price.toString() : '');
+      setEvosCode(initialData.evosCode || '');
+    } else {
+      setName('');
+      setPrice('');
+      setEvosCode('');
+    }
+  }, [initialData]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -27,13 +39,17 @@ const ServiceForm = ({ onSubmit, onCancel, isLoading }) => {
       finalPrice = 0.0;
     }
 
-    onSubmit({ name, price: finalPrice, evosCode: evosCode || null });
+    onSubmit({ 
+      name: name.trim(), 
+      price: finalPrice, 
+      evosCode: evosCode || null 
+    });
   };
 
   return (
     <form onSubmit={handleSubmit} className="modal-form">
       <div className="form-group">
-        <label className="form-label">Назва послуги</label>
+        <label className="form-label">Назва послуги *</label>
         <input
           type="text"
           className="input-field"
@@ -69,7 +85,7 @@ const ServiceForm = ({ onSubmit, onCancel, isLoading }) => {
             </option>
           ))}
         </select>
-        <span className="form-hint">Оберіть системний код для передачі партнерам</span>
+        <span className="form-hint">Оберіть системний код для передачі партнерській мережі</span>
       </div>
 
       <div className="form-actions justify-end">
@@ -86,7 +102,7 @@ const ServiceForm = ({ onSubmit, onCancel, isLoading }) => {
           className="btn btn-primary"
           disabled={isLoading}
         >
-          {isLoading ? 'Збереження...' : 'Зберегти'}
+          {isLoading ? 'Збереження...' : initialData ? 'Оновити послугу' : 'Створити'}
         </button>
       </div>
     </form>
