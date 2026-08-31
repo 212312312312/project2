@@ -14,7 +14,8 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
     isOneTime: true,
     maxDiscountAmount: '',
     activeDaysDuration: '',
-    maxAllocations: '' // Лимит мест для клиентов
+    maxAllocations: '',
+    taskDurationDays: '' // <- ДОБАВЛЕНО: Время жизни задания в днях
   });
 
   useEffect(() => {
@@ -40,7 +41,8 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
       isOneTime: formData.isOneTime,
       maxDiscountAmount: formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : null,
       activeDaysDuration: formData.activeDaysDuration ? parseInt(formData.activeDaysDuration) : null,
-      maxAllocations: formData.maxAllocations ? parseInt(formData.maxAllocations) : null
+      maxAllocations: formData.maxAllocations ? parseInt(formData.maxAllocations) : null,
+      taskDurationDays: formData.taskDurationDays ? parseInt(formData.taskDurationDays) : null // <- ДОБАВЛЕНО
     };
 
     onSubmit(dataToSend);
@@ -85,6 +87,18 @@ const PromoForm = ({ onSubmit, onCancel, isLoading }) => {
           </div>
 
           <div className="form-group">
+            <label className="form-label">Термін дії самого завдання (днів)</label>
+            <input 
+              type="number" 
+              name="taskDurationDays" 
+              min="1"
+              className="input-field"
+              placeholder="Пусто = безстроково"
+              value={formData.taskDurationDays} 
+              onChange={handleChange} 
+            />
+            <span className="form-hint">Скільки днів завдання доступне для виконання</span>
+          </div><div className="form-group">
             <label className="form-label">Умова: Кількість поїздок (шт)</label>
             <input 
               type="number" 

@@ -159,31 +159,35 @@ const PromosPage = () => {
 
       <div className="table-card" style={{ marginBottom: '2.5rem' }}>
         <div className="table-responsive">
-          <table className="main-table">
+          <table className="main-table" style={{ width: '100%', tableLayout: 'auto' }}>
             <thead>
               <tr>
-                <th className="text-center" style={{ width: '50px' }}>ID</th>
-                <th>Назва</th>
-                <th>Опис</th>
-                <th className="text-center">Умова</th>
-                <th className="text-center">Тариф</th>
-                <th className="text-center">Знижка</th>
-                <th className="text-center">Термін дії</th>
-                <th className="text-center">Макс. сума</th>
-                <th className="text-center">Ліміт місць</th>
-                <th className="text-center" style={{ width: '120px' }}>Дії</th>
+                <th className="text-center" style={{ width: '45px', whiteSpace: 'nowrap' }}>ID</th>
+                <th style={{ minWidth: '120px', whiteSpace: 'nowrap' }}>Назва</th>
+                <th style={{ minWidth: '150px' }}>Опис</th>
+                <th className="text-center" style={{ width: '110px', whiteSpace: 'nowrap' }}>Умова</th>
+                <th className="text-center" style={{ width: '110px', whiteSpace: 'nowrap' }}>Тариф</th>
+                <th className="text-center" style={{ width: '80px', whiteSpace: 'nowrap' }}>Знижка</th>
+                <th className="text-center" style={{ width: '130px', whiteSpace: 'nowrap' }}>Термін завдання</th>
+                <th className="text-center" style={{ width: '110px', whiteSpace: 'nowrap' }}>Дія знижки</th>
+                <th className="text-center" style={{ width: '100px', whiteSpace: 'nowrap' }}>Макс. сума</th>
+                <th className="text-center" style={{ width: '100px', whiteSpace: 'nowrap' }}>Ліміт місць</th>
+                <th className="text-center" style={{ width: '90px', whiteSpace: 'nowrap' }}>Дії</th>
               </tr>
             </thead>
             <tbody>
               {promos.length > 0 ? (
                 promos.map(p => (
                   <tr key={p.id}>
-                    <td className="text-center text-subtle">#{p.id}</td>
-                    <td>
-                      <strong className="font-medium">{p.title}</strong>
+                    <td className="text-center text-subtle" style={{ whiteSpace: 'nowrap' }}>#{p.id}</td>
+                    
+                    <td style={{ fontWeight: 500 }}>{p.title}</td>
+                    
+                    <td className="text-subtle" style={{ fontSize: '0.88rem' }}>
+                      {p.description || '—'}
                     </td>
-                    <td className="text-subtle" style={{ fontSize: '0.88rem' }}>{p.description || '—'}</td>
-                    <td className="text-center">
+                    
+                    <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
                       {p.requiredDistanceMeters > 0 ? (
                         <span className="font-medium text-primary">
                           {(p.requiredDistanceMeters / 1000).toFixed(1)} км
@@ -192,15 +196,34 @@ const PromosPage = () => {
                         <span className="font-medium">{p.requiredRides} поїздок</span>
                       )}
                     </td>
-                    <td className="text-center">
+                    
+                    <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
                       {p.requiredTariff ? (
                         <span className="badge badge-success">{p.requiredTariff.name}</span>
                       ) : (
                         <span className="text-subtle">— Будь-який —</span>
                       )}
                     </td>
-                    <td className="text-center font-medium text-success">{p.discountPercent}%</td>
-                    <td className="text-center">
+                    
+                    <td className="text-center font-medium text-success" style={{ whiteSpace: 'nowrap' }}>
+                      {p.discountPercent}%
+                    </td>
+                    
+                    {/* Термін дії завдання */}
+                    <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
+                      {p.expiresAt ? (
+                        <span className="badge badge-primary" title={new Date(p.expiresAt).toLocaleString()}>
+                          до {new Date(p.expiresAt).toLocaleDateString()}
+                        </span>
+                      ) : p.taskDurationDays ? (
+                        <span className="badge badge-primary">{p.taskDurationDays} дн.</span>
+                      ) : (
+                        <span className="text-subtle">∞</span>
+                      )}
+                    </td>
+
+                    {/* Дія знижки після завершення */}
+                    <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
                       {p.activeDaysDuration && p.activeDaysDuration > 0 ? (
                         <span className="badge badge-warning">
                           {p.activeDaysDuration} дн.
@@ -209,21 +232,24 @@ const PromosPage = () => {
                         <span className="text-subtle">∞</span>
                       )}
                     </td>
-                    <td className="text-center font-medium">
+                    
+                    <td className="text-center font-medium" style={{ whiteSpace: 'nowrap' }}>
                       {p.maxDiscountAmount ? (
                         <span>до {p.maxDiscountAmount} ₴</span>
                       ) : (
                         <span className="text-subtle">∞</span>
                       )}
                     </td>
-                    <td className="text-center font-medium">
+                    
+                    <td className="text-center font-medium" style={{ whiteSpace: 'nowrap' }}>
                       {p.maxAllocations ? (
                         <span className="text-danger">{p.maxAllocations} чол.</span>
                       ) : (
                         <span className="text-subtle">∞</span>
                       )}
                     </td>
-                    <td className="text-center">
+                    
+                    <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
                       <button className="btn btn-sm btn-ghost-danger" onClick={() => handleDelete(p.id)}>
                         Видалити
                       </button>
@@ -232,7 +258,7 @@ const PromosPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="10" className="text-center text-subtle py-8">
+                  <td colSpan="11" className="text-center text-subtle py-8">
                     Акцій немає. Створіть першу акцію!
                   </td>
                 </tr>
