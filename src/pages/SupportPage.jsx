@@ -10,7 +10,15 @@ const SupportPage = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [activeTab, setActiveTab] = useState('ACTIVE'); // ACTIVE, IN_PROGRESS, NO_MSG, CLOSED
+  const [previewImage, setPreviewImage] = useState(null); // Модалка для перегляду фото
   const messagesEndRef = useRef(null);
+
+  const getMediaUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const base = window.location.hostname === 'localhost' ? 'http://localhost:8080' : 'https://api.unitua.com';
+    return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
 
   const loadTickets = async () => {
     try {
@@ -121,19 +129,16 @@ const SupportPage = () => {
     }
   };
 
-  // Фільтрація списку тікетів за вкладками
   const filteredTickets = tickets.filter((t) => {
     const hasMessage = Boolean(t.lastMessage && t.lastMessage.trim().length > 0);
 
     if (activeTab === 'ACTIVE') {
-      // Тільки активні OPEN тікети, де клієнт РЕАЛЬНО написав повідомлення
       return t.status === 'OPEN' && hasMessage;
     }
     if (activeTab === 'IN_PROGRESS') {
       return t.status === 'IN_PROGRESS';
     }
     if (activeTab === 'NO_MSG') {
-      // Клієнт тільки поділився номером, але не написав проблему
       return t.status === 'OPEN' && !hasMessage;
     }
     if (activeTab === 'CLOSED') {
@@ -223,14 +228,54 @@ const SupportPage = () => {
             </div>
 
             <div className="chat-messages">
-              {messages.map((m) => (
-                <div key={m.id} className={`message-bubble msg-${m.senderType}`}>
-                  <div>{m.text}</div>
-                  <div className="msg-time">
-                    {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {messages.map((m) => {
+                const fullMediaUrl = getMediaUrl(m.mediaUrl);
+                return (
+                  <div key={m.id} className={`message-bubble msg-${m.senderType}`}>
+                    {/* Відображення фото */}
+                    {m.mediaType === 'PHOTO' && fullMediaUrl && (
+                      <div style={{ marginBottom: m.text ? '8px' : '0' }}>
+                        <img
+                          src={fullMediaUrl}
+                          alt="Вкладення"
+                          onClick={() => setPreviewImage(fullMediaUrl)}
+                          style={{
+                            maxWidth: '240px',
+                            maxHeight: '240px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'block',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Відображення відео */}
+                    {m.mediaType === 'VIDEO' && fullMediaUrl && (
+                      <div style={{ marginBottom: m.text ? '8px' : '0' }}>
+                        <video
+                          src={fullMediaUrl}
+                          controls
+                          style={{
+                            maxWidth: '280px',
+                            maxHeight: '240px',
+                            borderRadius: '8px',
+                            display: 'block'
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Текст або підпис */}
+                    {m.text && <div>{m.text}</div>}
+
+                    <div className="msg-time">
+                      {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
 
@@ -256,6 +301,36 @@ const SupportPage = () => {
           </div>
         )}
       </div>
+
+      {/* Модальне вікно для збільшення фото */}
+      {previewImage && (
+        <div
+          onClick={() => setPreviewImage(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            cursor: 'zoom-out',
+            padding: '20px'
+          }}
+        >
+          <img
+            src={previewImage}
+            alt="Повнорозмірне фото"
+            style={{
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              borderRadius: '8px',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+              objectFit: 'contain'
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

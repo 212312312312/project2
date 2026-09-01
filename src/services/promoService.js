@@ -70,7 +70,7 @@ export const getAllPromoPlans = async () => {
 
 export const createPromoPlan = async (planData) => {
   try {
-    // planData: { title, description, startDate, endDate, isActive }
+    // planData: { title, description, planType, discountPercent, maxDiscountAmount, validityHours, startDate, endDate, maxUses, isActive }
     const response = await api.post('/admin/promos/plans', planData);
     return response.data;
   } catch (error) {
