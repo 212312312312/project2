@@ -118,3 +118,90 @@ export const getEvosTariffs = async () => {
     return [];
   }
 };
+
+/**
+ * Отримання повної конфігурації динамічних коефіцієнтів (час + погода + live-погода)
+ */
+export const getSurgeConfig = async () => {
+  try {
+    const response = await api.get('/admin/tariffs/surge');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка завантаження конфігурації коефіцієнтів');
+  }
+};
+
+/**
+ * Створення або оновлення правила коефіцієнта по часу
+ */
+export const saveTimeSurgeRule = async (ruleData) => {
+  try {
+    const response = await api.post('/admin/tariffs/surge/time-rules', ruleData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка збереження правила часу');
+  }
+};
+
+/**
+ * Видалення правила коефіцієнта по часу
+ */
+export const deleteTimeSurgeRule = async (id) => {
+  try {
+    const response = await api.delete(`/admin/tariffs/surge/time-rules/${id}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка видалення правила');
+  }
+};
+
+/**
+ * Перемикання активності правила часу
+ */
+export const toggleTimeSurgeRule = async (id) => {
+  try {
+    const response = await api.put(`/admin/tariffs/surge/time-rules/${id}/toggle`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка перемикання правила');
+  }
+};
+
+/**
+ * Глобальне ввімкнення / вимкнення погодного коефіцієнта
+ */
+export const toggleWeatherSurge = async (enabled) => {
+  try {
+    const response = await api.put(`/admin/tariffs/surge/weather-toggle?enabled=${enabled}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка зміни статусу погоди');
+  }
+};
+
+/**
+ * Оновлення множника конкретного типу погоди
+ */
+export const updateWeatherSurgeRule = async (id, multiplier, isActive) => {
+  try {
+    const response = await api.put(
+      `/admin/tariffs/surge/weather-rules/${id}?multiplier=${multiplier}&isActive=${isActive}`
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка оновлення погодного правила');
+  }
+};
+
+/**
+ * Отримання свіжих даних про погоду Open-Meteo
+ */
+export const getLiveWeather = async (lat, lng) => {
+  try {
+    const params = lat && lng ? `?lat=${lat}&lng=${lng}` : '';
+    const response = await api.get(`/admin/tariffs/surge/live-weather${params}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Помилка завантаження погоди');
+  }
+};
