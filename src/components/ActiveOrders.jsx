@@ -152,30 +152,54 @@ const SmoothDriverMarker = ({ position, icon, children }) => {
 const MapFocusController = ({ selectedOrder, drivers }) => {
   const map = useMap(); 
   const hasInitialZoom = useRef(false);
+  const lastFocusedOrderIdRef = useRef(null);
 
+  // 1. Фокусування на замовленні: виконується ТІЛЬКИ ОДИН РАЗ при виборі картки
   useEffect(() => {
-    const bounds = [];
-    if (selectedOrder && selectedOrder.originLat && selectedOrder.destLat) {
+    if (!selectedOrder) {
+      lastFocusedOrderIdRef.current = null;
+      return;
+    }
+
+    const currentOrderId = selectedOrder.idLong || selectedOrder.id;
+
+    // Якщо це замовлення вже було зведене в кадр — не перебиваємо зум диспетчера
+    if (lastFocusedOrderIdRef.current === currentOrderId) {
+      return;
+    }
+
+    if (selectedOrder.originLat && selectedOrder.destLat) {
+      const bounds = [];
       bounds.push([selectedOrder.originLat, selectedOrder.originLng]);
       bounds.push([selectedOrder.destLat, selectedOrder.destLng]);
       if (selectedOrder.stops) {
-        selectedOrder.stops.forEach(s => { if(s.lat) bounds.push([s.lat, s.lng]) });
+        selectedOrder.stops.forEach(s => { if (s.lat) bounds.push([s.lat, s.lng]); });
       }
-    } 
-    else if (!hasInitialZoom.current && drivers && drivers.length > 0) {
+
+      if (bounds.length > 0) {
+        lastFocusedOrderIdRef.current = currentOrderId;
+        try { 
+          map.fitBounds(bounds, { padding: [80, 80], maxZoom: 15 }); 
+        } catch (e) {}
+      }
+    }
+  }, [selectedOrder?.id, selectedOrder?.idLong, map]);
+
+  // 2. Первинне автоохоплення водіїв лише один раз під час завантаження сторінки
+  useEffect(() => {
+    if (!hasInitialZoom.current && drivers && drivers.length > 0 && !selectedOrder) {
+      const bounds = [];
       drivers.forEach(d => {
         const { lat, lng } = getCoords(d);
-        if (lat && lng && lat !== 0) {
-          bounds.push([lat, lng]);
-        }
+        if (lat && lng && lat !== 0) bounds.push([lat, lng]);
       });
-      if (bounds.length > 0) hasInitialZoom.current = true;
+      if (bounds.length > 0) {
+        hasInitialZoom.current = true;
+        try { map.fitBounds(bounds, { padding: [80, 80], maxZoom: 14 }); } catch (e) {}
+      }
     }
+  }, [drivers?.length, selectedOrder, map]);
 
-    if (bounds.length > 0) {
-      try { map.fitBounds(bounds, { padding: [80, 80], maxZoom: 15 }); } catch (e) {}
-    }
-  }, [selectedOrder, drivers, map]);
   return null;
 };
 
@@ -1021,21 +1045,34 @@ const localDrivers = mapDrivers.filter(d => !isPartnerDriver(d));
              <h3>{activeTab === 'SCHEDULED' ? 'Заплановані' : 'В ефірі'} ({filteredOrders.length})</h3>
           </div>
           
-          <div style={{display: 'flex', gap: '5px', width: '100%'}}>
-              <input type="text" placeholder="Пошук (телефон, ID)..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{flex: 1}}/>
-              
-              {activeTab === 'ACTIVE' && (
-                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                      <option value="ALL">Всі активні (з пошуком)</option>
-                      <option value="ACTIVE">В роботі (всі)</option>
-                      <option value="REQUESTED">Пошук водія</option>
-                      <option value="OFFERING">Пропонуємо поїздку</option>
-                      <option value="ACCEPTED">Водій їде до клієнта</option>
-                      <option value="DRIVER_ARRIVED">Водій очікує</option>
-                      <option value="IN_PROGRESS">В дорозі з клієнтом</option>
-                      <option value="ARRIVED_AT_WAYPOINT">На проміжній точці</option>
-                  </select>
-              )}
+          <div className="orders-filter-row">
+            <div className="orders-search-wrapper">
+              <span className="orders-search-icon">🔍</span>
+              <input 
+                type="text" 
+                className="orders-search-input"
+                placeholder="Пошук за телефоном або ID..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+              />
+            </div>
+            
+            {activeTab === 'ACTIVE' && (
+              <select 
+                className="orders-status-select"
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="ALL">Всі активні</option>
+                <option value="ACTIVE">В роботі (всі)</option>
+                <option value="REQUESTED">Пошук водія</option>
+                <option value="OFFERING">Пропонуємо</option>
+                <option value="ACCEPTED">Водій їде</option>
+                <option value="DRIVER_ARRIVED">Очікує пасажира</option>
+                <option value="IN_PROGRESS">В дорозі</option>
+                <option value="ARRIVED_AT_WAYPOINT">На зупинці</option>
+              </select>
+            )}
           </div>
         </div>
         
@@ -1045,19 +1082,39 @@ const localDrivers = mapDrivers.filter(d => !isPartnerDriver(d));
       <div className="map-container">
         <div className="orders-list-header">
           {selectedOrder ? (
-              <h3>Маршрут #{selectedOrder.idLong || selectedOrder.id}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h3 style={{ margin: 0 }}>Маршрут #{selectedOrder.idLong || selectedOrder.id}</h3>
+            </div>
           ) : (
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0 }}>Водії:</h3>
-                  <span title="Наші водії на лінії" style={{ color: '#2b8a3e', fontWeight: 'bold' }}>🟢 {onlineLocalDrivers}</span>
-                  <span title="Наші водії в додатку (не на зміні)" style={{ color: '#868e96', fontWeight: 'bold' }}>⚪ {offlineLocalDrivers}</span>
-                  {partnerDriversCount > 0 && (
-                      <span title="Водії партнерської мережі СОЗ" style={{ color: '#7950f2', fontWeight: 'bold' }}>🤝 {partnerDriversCount}</span>
-                  )}
+            <div className="drivers-status-bar">
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginRight: '4px' }}>
+                Водії:
+              </span>
+              
+              <div className="driver-pill driver-pill-online" title="Водії на лінії готові до замовлень">
+                <span className="status-dot dot-online" />
+                <span>На лінії: <strong>{onlineLocalDrivers}</strong></span>
               </div>
+
+              <div className="driver-pill driver-pill-offline" title="У додатку, але не на зміні">
+                <span className="status-dot dot-offline" />
+                <span>Офлайн: <strong>{offlineLocalDrivers}</strong></span>
+              </div>
+
+              {partnerDriversCount > 0 && (
+                <div className="driver-pill driver-pill-partner" title="Борти партнерської мережі СОЗ">
+                  <span className="status-dot dot-partner" />
+                  <span>СОЗ: <strong>{partnerDriversCount}</strong></span>
+                </div>
+              )}
+            </div>
           )}
           
-          {selectedOrder && <button onClick={() => setSelectedOrder(null)}>Скинути</button>}
+          {selectedOrder && (
+            <button className="btn-reset-order" onClick={() => setSelectedOrder(null)}>
+              ✕ Показати всіх водіїв
+            </button>
+          )}
         </div>
         <DriverMap drivers={mapDrivers} selectedOrder={selectedOrder} customOnlineIcon={onlineIcon} dbTrack={selectedOrderTrack} />
       </div>

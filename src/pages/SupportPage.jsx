@@ -9,9 +9,20 @@ const SupportPage = () => {
   const [activeTicket, setActiveTicket] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [activeTab, setActiveTab] = useState('ACTIVE'); // ACTIVE, IN_PROGRESS, NO_MSG, CLOSED
-  const [previewImage, setPreviewImage] = useState(null); // Модалка для перегляду фото
+  const [activeTab, setActiveTab] = useState('ACTIVE'); // ACTIVE, IN_PROGRESS, NO_MSG, CLOSED, BLOCKED
+  const [previewImage, setPreviewImage] = useState(null);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [blockedSearchTerm, setBlockedSearchTerm] = useState('');
   const messagesEndRef = useRef(null);
+
+  const loadBlockedUsers = async () => {
+    try {
+      const res = await supportService.getBlockedUsers();
+      setBlockedUsers(res.data);
+    } catch (e) {
+      console.error('Помилка завантаження заблокованих:', e);
+    }
+  };
 
   const getMediaUrl = (url) => {
     if (!url) return '';
@@ -40,6 +51,7 @@ const SupportPage = () => {
 
   useEffect(() => {
     loadTickets();
+    loadBlockedUsers();
 
     const wsUrl = window.location.hostname === 'localhost'
       ? 'http://localhost:8080/ws-taxi'
@@ -129,6 +141,31 @@ const SupportPage = () => {
     }
   };
 
+  const handleBlockUser = async () => {
+    if (!activeTicket) return;
+    const reason = window.prompt(`Заблокувати клієнта ${activeTicket.phoneNumber}? Вкажіть причину (спам, нецензурна лексика):`);
+    if (reason === null) return;
+
+    try {
+      await supportService.blockUser(activeTicket.id, reason);
+      setActiveTicket(null);
+      loadTickets();
+      loadBlockedUsers();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Помилка блокування');
+    }
+  };
+
+  const handleUnblockUser = async (blockedId, phone) => {
+    if (!window.confirm(`Розблокувати користувача ${phone || ''}?`)) return;
+    try {
+      await supportService.unblockUser(blockedId);
+      loadBlockedUsers();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Помилка розблокування');
+    }
+  };
+
   const filteredTickets = tickets.filter((t) => {
     const hasMessage = Boolean(t.lastMessage && t.lastMessage.trim().length > 0);
 
@@ -152,7 +189,7 @@ const SupportPage = () => {
       {/* Ліва колонка */}
       <div className="support-sidebar">
         <div className="support-sidebar-header">
-          <div className="support-tabs">
+          <div className="support-tabs-grid">
             <button
               className={`support-tab ${activeTab === 'ACTIVE' ? 'active' : ''}`}
               onClick={() => setActiveTab('ACTIVE')}
@@ -178,6 +215,13 @@ const SupportPage = () => {
               Закриті
             </button>
           </div>
+
+          <button
+            className={`support-tab-blocked ${activeTab === 'BLOCKED' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('BLOCKED'); setActiveTicket(null); }}
+          >
+          Заблоковані користувачі ({blockedUsers.length})
+          </button>
         </div>
 
         <div className="ticket-list">
@@ -206,7 +250,77 @@ const SupportPage = () => {
 
       {/* Права колонка */}
       <div className="support-chat-area">
-        {activeTicket ? (
+        {activeTab === 'BLOCKED' ? (() => {
+          const filteredBlocked = blockedUsers.filter((b) =>
+            (b.phoneNumber || '').toLowerCase().includes(blockedSearchTerm.trim().toLowerCase())
+          );
+
+          return (
+            <div className="blocked-users-view">
+              <div className="blocked-users-header">
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '18px', color: '#0f172a' }}>🚫 Заблоковані користувачі чату</h2>
+                  <span style={{ fontSize: '13px', color: '#64748b' }}>Користувачі з цього списку не можуть надсилати повідомлення в бота</span>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <input
+                    type="text"
+                    placeholder="🔍 Пошук за номером..."
+                    value={blockedSearchTerm}
+                    onChange={(e) => setBlockedSearchTerm(e.target.value)}
+                    style={{
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                      minWidth: '220px',
+                      outline: 'none',
+                      backgroundColor: '#ffffff'
+                    }}
+                  />
+                  <span className="count-badge" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                    Знайдено: {filteredBlocked.length}
+                  </span>
+                </div>
+              </div>
+
+              {filteredBlocked.length > 0 ? (
+                <table className="blocked-table">
+                  <thead>
+                    <tr>
+                      <th>Телефон</th>
+                      <th>Ім'я / Telegram ID</th>
+                      <th>Причина</th>
+                      <th>Дата блокування</th>
+                      <th style={{ textAlign: 'center' }}>Дія</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBlocked.map((b) => (
+                    <tr key={b.id}>
+                      <td style={{ fontWeight: 600 }}>{b.phoneNumber}</td>
+                      <td>{b.userName || '—'} <span style={{ color: '#94a3b8', fontSize: '12px' }}>({b.telegramChatId})</span></td>
+                      <td style={{ color: '#dc2626' }}>{b.reason || 'Порушення правил'}</td>
+                      <td style={{ color: '#64748b', fontSize: '13px' }}>
+                        {new Date(b.blockedAt).toLocaleString('uk-UA')}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button className="btn-unblock" onClick={() => handleUnblockUser(b.id, b.phoneNumber)}>
+                          Розблокувати
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 0' }}>
+                {blockedSearchTerm ? 'За вказаним номером нічого не знайдено' : 'Список заблокованих користувачів порожній'}
+              </div>
+            )}
+          </div>
+        ); })() : activeTicket ? (
           <>
             <div className="chat-header">
               <div className="chat-header-info">
@@ -224,6 +338,9 @@ const SupportPage = () => {
                     🔒 Закрити
                   </button>
                 )}
+                <button className="btn-block-user" onClick={handleBlockUser} title="Заблокувати клієнта і припинити отримання повідомлень">
+                  🚫 Заблокувати
+                </button>
               </div>
             </div>
 

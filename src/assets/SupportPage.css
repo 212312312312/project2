@@ -12,10 +12,9 @@
   border: 1px solid #e2e8f0;
 }
 
-/* ================= ЛІВА ПАНЕЛЬ (СПИСОК ТІКЕТІВ) ================= */
 .support-sidebar {
-  width: 340px;
-  min-width: 320px;
+  width: 360px;
+  min-width: 340px;
   border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
@@ -23,37 +22,71 @@
 }
 
 .support-sidebar-header {
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-bottom: 1px solid #e2e8f0;
   background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* Вкладки фільтрів */
-.support-tabs {
-  display: flex;
-  gap: 4px;
+/* 4 фільтри в один чіткий горизонтальний рядок */
+.support-tabs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
   background: #e2e8f0;
   padding: 3px;
   border-radius: 8px;
 }
 
 .support-tab {
-  flex: 1;
   border: none;
   background: transparent;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 8px 4px;
+  padding: 6px 2px;
   border-radius: 6px;
   cursor: pointer;
   color: #64748b;
   transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .support-tab.active {
   background: #ffffff;
   color: #0f172a;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Окрема контрастна плашка для заблокованих */
+.support-tab-blocked {
+  width: 100%;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.support-tab-blocked:hover {
+  background: #fee2e2;
+}
+
+.support-tab-blocked.active {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
 }
 
 .ticket-list {
@@ -239,4 +272,69 @@
   height: 100%;
   color: #94a3b8;
   font-size: 15px;
+}
+
+
+/* Кнопка блокування в чаті */
+.btn-block-user { 
+  background: #334155 !important; 
+  color: #ffffff !important; 
+}
+.btn-block-user:hover { 
+  background: #0f172a !important; 
+}
+
+/* Оформлення таблиці та списку заблокованих */
+.blocked-users-view {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+.blocked-users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.blocked-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.blocked-table th {
+  background: #f8fafc;
+  color: #475569;
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 700;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.blocked-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+
+.btn-unblock {
+  padding: 6px 12px;
+  background: #f1f5f9;
+  color: #0284c7;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-unblock:hover {
+  background: #e0f2fe;
+  border-color: #0284c7;
 }

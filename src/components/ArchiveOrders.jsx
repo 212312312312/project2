@@ -22,6 +22,35 @@ const driverHistoryIcon = new L.Icon({
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
 });
 
+// Декодер полилинии Google для отрисовки запланированного маршрута поездки
+const decodePolyline = (encoded) => {
+  if (!encoded) return [];
+  const poly = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+    poly.push([lat / 1e5, lng / 1e5]);
+  }
+  return poly;
+};
+
 const getTimelineStatus = (tickTimeStr, order) => {
   if (!tickTimeStr || !order) return { text: 'Дані відсутні', color: '#6c757d' };
   const tickTime = new Date(tickTimeStr);
@@ -87,10 +116,33 @@ const ArchiveOrders = () => {
 
   const [dateFrom, setDateFrom] = useState(getTodayStr());
   const [dateTo, setDateTo] = useState(getTodayStr());
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'COMPLETED' | 'CANCELLED'
 
-  const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 0 });
+const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 0 });
   const [statsModalOpen, setStatsModalOpen] = useState(false);
   const [cancelStatsData, setCancelStatsData] = useState([]);
+
+  // Построение линии маршрута заказа от точки А до точки Б (через остановки)
+  const plannedRoutePositions = React.useMemo(() => {
+    if (!selectedOrder) return [];
+    if (selectedOrder.googleRoutePolyline) {
+      const decoded = decodePolyline(selectedOrder.googleRoutePolyline);
+      if (decoded.length > 0) return decoded;
+    }
+    const pts = [];
+    if (selectedOrder.originLat && selectedOrder.originLng) {
+      pts.push([selectedOrder.originLat, selectedOrder.originLng]);
+    }
+    if (selectedOrder.stops && selectedOrder.stops.length > 0) {
+      selectedOrder.stops.forEach(s => {
+        if (s.lat && s.lng) pts.push([s.lat, s.lng]);
+      });
+    }
+    if (selectedOrder.destLat && selectedOrder.destLng) {
+      pts.push([selectedOrder.destLat, selectedOrder.destLng]);
+    }
+    return pts;
+  }, [selectedOrder]);
 
   useEffect(() => {
     if (selectedOrder) {
@@ -172,7 +224,14 @@ const ArchiveOrders = () => {
       }
     });
     setStats({ completed: comp, cancelled: canc, total: result.length, sum: money });
-  }, [allOrders, searchTerm, dateFrom, dateTo]);
+
+    // Фільтрація за обраним статусом зі списку
+    if (statusFilter !== 'ALL') {
+      result = result.filter(o => o.status === statusFilter);
+    }
+
+    setFilteredOrders(result);
+  }, [allOrders, searchTerm, dateFrom, dateTo, statusFilter]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -275,9 +334,34 @@ const ArchiveOrders = () => {
             </div>
 
             <div className="detail-item" style={{ marginBottom: '12px' }}>
-              <span className="detail-label">Пасажир</span>
-              <span className="detail-value">{selectedOrder.clientName || selectedOrder.client?.fullName || 'Гість'}</span>
-              <span className="text-subtle" style={{ fontSize: '0.85rem' }}>📞 {selectedOrder.clientPhone || selectedOrder.client?.phoneNumber || '—'}</span>
+              <span className="detail-label">Вартість та Оплата</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="font-medium">{selectedOrder.paymentMethod === 'CASH' ? '💵 Готівка' : '💳 Картка'}</span>
+                <span className="text-success" style={{ fontSize: '1.5rem', fontWeight: 800 }}>
+                  {Math.round(selectedOrder.price || 0)} ₴
+                </span>
+              </div>
+
+              {/* Расшифровка: оплата клиентом + доплата сервиса */}
+              {selectedOrder.companyDiscountCompensation > 0 && (
+                <div style={{ marginTop: '8px', padding: '8px 10px', backgroundColor: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', marginBottom: '2px' }}>
+                    <span>Сплачено пасажиром:</span>
+                    <strong>{Math.round(selectedOrder.clientPayAmount ?? (selectedOrder.price - selectedOrder.companyDiscountCompensation))} ₴</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0369a1' }}>
+                    <span>Доплата сервісу:</span>
+                    <strong>+{Math.round(selectedOrder.companyDiscountCompensation)} ₴</strong>
+                  </div>
+                </div>
+              )}
+
+              {selectedOrder.waitingPrice > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>
+                  <span>Платне очікування:</span>
+                  <span>+{Math.round(selectedOrder.waitingPrice)} ₴</span>
+                </div>
+              )}
             </div>
 
             <div className="detail-item" style={{ marginBottom: '12px' }}>
@@ -341,16 +425,40 @@ const ArchiveOrders = () => {
             <div style={{ flex: 1, position: 'relative' }}>
               <MapContainer center={[50.45, 30.52]} zoom={11} style={{ height: '100%', width: '100%' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                
+                {/* Точка А (Звідки) */}
                 {selectedOrder.originLat && (
                   <Marker position={[selectedOrder.originLat, selectedOrder.originLng]} icon={originIcon}>
                     <Popup>Звідки: {selectedOrder.fromAddress}</Popup>
                   </Marker>
                 )}
+                
+                {/* Точка Б (Куди) */}
                 {selectedOrder.destLat && (
                   <Marker position={[selectedOrder.destLat, selectedOrder.destLng]} icon={destIcon}>
                     <Popup>Куди: {selectedOrder.toAddress}</Popup>
                   </Marker>
                 )}
+
+                {/* Промежуточные остановки (если есть) */}
+                {selectedOrder.stops?.map((stop, idx) => stop.lat && stop.lng ? (
+                  <Marker key={idx} position={[stop.lat, stop.lng]}>
+                    <Popup>Зупинка {idx + 1}: {stop.address}</Popup>
+                  </Marker>
+                ) : null)}
+
+                {/* Базовый маршрут поездки между точками (синий пунктир) */}
+                {/* Базовий маршрут поїздки між точками (суцільна чітка лінія) */}
+                {plannedRoutePositions.length > 1 && (
+                  <Polyline 
+                    positions={plannedRoutePositions} 
+                    color="#2563eb" 
+                    weight={6} 
+                    opacity={0.85}
+                  />
+                )}
+
+                {/* Реальный путь перемещения водителя (красная сплошная линия) */}
                 {trackHistory.length > 0 && (
                   <Polyline 
                     positions={trackHistory.slice(0, currentTrackIndex + 1).map(p => [p.latitude ?? p.lat, p.longitude ?? p.lng])} 
@@ -358,6 +466,8 @@ const ArchiveOrders = () => {
                     weight={5} 
                   />
                 )}
+
+                {/* Маркер положения водителя по ползунку */}
                 {trackHistory.length > 0 && trackHistory[currentTrackIndex] && (
                   <Marker 
                     position={[
@@ -365,13 +475,20 @@ const ArchiveOrders = () => {
                       trackHistory[currentTrackIndex].longitude ?? trackHistory[currentTrackIndex].lng
                     ]} 
                     icon={driverHistoryIcon}
-                  />
+                  >
+                    <Popup>
+                      Водій у момент тика {currentTrackIndex + 1}:<br/>
+                      {trackHistory[currentTrackIndex].timestamp ? new Date(trackHistory[currentTrackIndex].timestamp).toLocaleTimeString('uk-UA') : ''}
+                    </Popup>
+                  </Marker>
                 )}
+
                 <MapFocusController order={selectedOrder} trackHistory={trackHistory} />
               </MapContainer>
             </div>
 
-            {trackHistory.length > 0 && (
+            {/* Хронология отображается только при наличии реального трека */}
+            {trackHistory.length > 0 ? (
               <div style={{ padding: '1rem', background: '#f8fafc', borderTop: '1px solid #cbd5e1' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
@@ -394,6 +511,10 @@ const ArchiveOrders = () => {
                   onChange={(e) => setCurrentTrackIndex(Number(e.target.value))}
                   style={{ width: '100%', accentColor: '#0284c7' }}
                 />
+              </div>
+            ) : (
+              <div style={{ padding: '0.85rem 1rem', background: '#f8fafc', borderTop: '1px solid #cbd5e1', color: '#64748b', fontSize: '0.85rem' }}>
+                ℹ️ Трек пересування відсутній {(!selectedOrder.driver && !selectedOrder.isSentToEvos && !selectedOrder.evosDriverCarInfo) ? '(водія не було призначено)' : '(водій не передавав геопозицію під час поїздки)'}
               </div>
             )}
           </div>
@@ -440,27 +561,102 @@ const ArchiveOrders = () => {
               <button className="btn btn-sm btn-close" onClick={() => setDateFilter(-1)}>За весь час</button>
             </div>
 
-            <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px' }}>
-              <input
-                type="text"
-                placeholder="🔍 Пошук (ID, UUID, тел)..."
-                className="input-field search-input"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ flex: 1 }}
-              />
-              <button type="submit" className="btn btn-close">Знайти</button>
-            </form>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="input-field"
+                style={{ width: '190px', cursor: 'pointer', backgroundColor: '#fff', fontWeight: 600 }}
+              >
+                <option value="ALL">📋 Всі замовлення</option>
+                <option value="COMPLETED">✅ Тільки виконані</option>
+                <option value="CANCELLED">❌ Тільки скасовані</option>
+              </select>
+
+              <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '220px' }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Пошук (ID, UUID, тел)..."
+                  className="input-field search-input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <button type="submit" className="btn btn-close">Знайти</button>
+              </form>
+            </div>
           </div>
 
-          <div style={{ flex: 1, minWidth: '220px', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <span className="detail-label" style={{ marginBottom: '8px', display: 'block' }}>Статистика за період</span>
-            <div style={{ fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div>Всього: <strong>{stats.total}</strong></div>
-              <div className="text-success">✅ Виконано: <strong>{stats.completed}</strong></div>
-              <div className="text-danger">❌ Скасовано: <strong>{stats.cancelled}</strong></div>
-              <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '6px', marginTop: '4px', fontSize: '1.1rem' }}>
-                💰 Сума: <strong className="text-primary">{Math.round(stats.sum)} ₴</strong>
+          <div style={{ flex: 1.2, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="detail-label" style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
+                Показники за період
+              </span>
+              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+                Успішність: <strong style={{ color: stats.total > 0 ? '#16a34a' : '#64748b' }}>
+                  {stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%
+                </strong>
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              {/* Касса */}
+              <div style={{
+                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                color: '#ffffff',
+                boxShadow: '0 2px 4px rgba(2, 132, 199, 0.15)'
+              }}>
+                <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 500 }}>Каса (завершено)</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: '2px' }}>
+                  {Math.round(stats.sum).toLocaleString('uk-UA')} ₴
+                </div>
+              </div>
+
+              {/* Всего заказов */}
+              <div style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                padding: '10px 14px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Всього замовлень</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                  {stats.total}
+                </div>
+              </div>
+
+              {/* Выполнено */}
+              <div style={{
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                padding: '10px 14px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 600 }}>Виконано</span>
+                  <span style={{ fontSize: '0.75rem', color: '#16a34a' }}>●</span>
+                </div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#15803d', marginTop: '2px' }}>
+                  {stats.completed}
+                </div>
+              </div>
+
+              {/* Отменено */}
+              <div style={{
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                padding: '10px 14px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#991b1b', fontWeight: 600 }}>Скасовано</span>
+                  <span style={{ fontSize: '0.75rem', color: '#dc2626' }}>●</span>
+                </div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#b91c1c', marginTop: '2px' }}>
+                  {stats.cancelled}
+                </div>
               </div>
             </div>
           </div>

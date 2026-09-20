@@ -20,5 +20,17 @@ export const supportService = {
 
   closeTicket: (ticketId) => {
     return api.post(`/support/admin/tickets/${ticketId}/close`);
+  },
+
+  blockUser: (ticketId, reason) => {
+    return api.post(`/support/admin/tickets/${ticketId}/block`, { reason });
+  },
+
+  getBlockedUsers: () => {
+    return api.get('/support/admin/blocked');
+  },
+
+  unblockUser: (blockedId) => {
+    return api.delete(`/support/admin/blocked/${blockedId}`);
   }
 };
