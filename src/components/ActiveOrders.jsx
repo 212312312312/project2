@@ -9,7 +9,7 @@ import { Client } from '@stomp/stompjs';
 
 import useInterval from '../hooks/useInterval'; 
 
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet'; 
 import polyline from '@mapbox/polyline';
 
@@ -42,6 +42,7 @@ const waypointIcon = new L.Icon({
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', shadowSize: [41, 41]
 });
 
+
 // --- HELPER ---
 const getCoords = (driver) => {
     const lat = driver.latitude ?? driver.lat ?? driver.currentLatitude ?? null;
@@ -52,7 +53,11 @@ const getCoords = (driver) => {
 // 🟢 Вставляем сюда:
 const isPartnerDriver = (driver) => {
     const id = driver.id || driver.driverId;
-    return id === -1 || driver.isPartner === true || Boolean(driver.evosDriverCarInfo);
+    return id === -1 || 
+           driver.isPartner === true || 
+           Boolean(driver.evosDriverCarInfo) || 
+           driver.fullName === 'Партнер' ||
+           driver.fullName?.includes('СОЗ');
 };
 
 const isDriverOnline = (driver) => {
@@ -215,7 +220,7 @@ const calculateBearing = (lat1, lng1, lat2, lng2) => {
 };
 
 // --- КАРТА ---
-const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
+const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack, showPartnerDrivers = true }) => {
   const position = [50.45, 30.52]; 
   
   // Хранилище предыдущих позиций и углов для каждого водителя
@@ -300,6 +305,9 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
     if (lat === null || lng === null || lat === 0 || lng === 0) return null;
     if (driver.searchMode === 'OFFLINE') return null;
 
+    // Скрываем партнеров, если тумблер выключен
+    if (!showPartnerDrivers && isPartnerDriver(driver)) return null;
+
     const rotatedIcon = getRotatedIcon(driver, lat, lng);
 
     return (
@@ -347,6 +355,13 @@ const DriverMap = ({ drivers, selectedOrder, customOnlineIcon, dbTrack }) => {
           <Marker position={[selectedOrder.originLat, selectedOrder.originLng]} icon={originIcon}>
              <Popup>А: {selectedOrder.fromAddress}</Popup>
           </Marker>
+
+          {/* 🎯 РАДАР: Зона быстрой подачи (1 км) вокруг адреса клиента */}
+          <Circle 
+            center={[selectedOrder.originLat, selectedOrder.originLng]} 
+            radius={1000} 
+            pathOptions={{ color: '#7950f2', fillColor: '#7950f2', fillOpacity: 0.08, weight: 1, dashArray: '4, 6' }} 
+          />
           {selectedOrder.stops?.map((stop, i) => (
              <Marker key={i} position={[stop.lat, stop.lng]} icon={waypointIcon}><Popup>{stop.address}</Popup></Marker>
           ))}
@@ -701,6 +716,7 @@ const ActiveOrders = () => {
   const [onlineIcon, setOnlineIcon] = useState(null);
   
   const stompClientRef = useRef(null);
+  const [showPartnerDrivers, setShowPartnerDrivers] = useState(true);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -1102,9 +1118,14 @@ const localDrivers = mapDrivers.filter(d => !isPartnerDriver(d));
               </div>
 
               {partnerDriversCount > 0 && (
-                <div className="driver-pill driver-pill-partner" title="Борти партнерської мережі СОЗ">
+                <div 
+                  className={`driver-pill driver-pill-partner ${!showPartnerDrivers ? 'driver-pill-dimmed' : ''}`} 
+                  title="Натисніть, щоб приховати/показати борти СОЗ на карті"
+                  onClick={() => setShowPartnerDrivers(prev => !prev)}
+                  style={{ cursor: 'pointer', opacity: showPartnerDrivers ? 1 : 0.45 }}
+                >
                   <span className="status-dot dot-partner" />
-                  <span>СОЗ: <strong>{partnerDriversCount}</strong></span>
+                  <span>СОЗ: <strong>{partnerDriversCount}</strong> {showPartnerDrivers ? '👁️' : '🙈'}</span>
                 </div>
               )}
             </div>
@@ -1116,7 +1137,13 @@ const localDrivers = mapDrivers.filter(d => !isPartnerDriver(d));
             </button>
           )}
         </div>
-        <DriverMap drivers={mapDrivers} selectedOrder={selectedOrder} customOnlineIcon={onlineIcon} dbTrack={selectedOrderTrack} />
+        <DriverMap 
+          drivers={mapDrivers} 
+          selectedOrder={selectedOrder} 
+          customOnlineIcon={onlineIcon} 
+          dbTrack={selectedOrderTrack} 
+          showPartnerDrivers={showPartnerDrivers} 
+        />
       </div>
     </div>
   );
