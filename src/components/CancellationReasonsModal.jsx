@@ -10,12 +10,12 @@ const CancellationReasonsModal = ({ onClose, target }) => {
 
     useEffect(() => {
         fetchReasons();
-    }, [target]); // Перезавантажуємо, якщо змінюється target
+    }, [target]);
 
     const fetchReasons = async () => {
         try {
             const data = await getCancellationReasons(target);
-            setReasons(data);
+            setReasons(data || []);
         } catch (e) {
             console.error(e);
         }
@@ -23,10 +23,10 @@ const CancellationReasonsModal = ({ onClose, target }) => {
 
     const handleAdd = async (e) => {
         e.preventDefault();
-        if (!newText) return;
+        if (!newText.trim()) return;
         setLoading(true);
         try {
-            await createCancellationReason(newText, newPenalty, target);
+            await createCancellationReason(newText.trim(), newPenalty, target);
             setNewText('');
             setNewPenalty(50);
             fetchReasons();
@@ -50,15 +50,19 @@ const CancellationReasonsModal = ({ onClose, target }) => {
     const isClient = target === 'CLIENT';
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{ maxWidth: '600px' }}>
-                <div className="modal-header">
-                    <h3>⛔ Причини скасування ({isClient ? 'Клієнти' : 'Водії'})</h3>
-                    <button className="close-button" onClick={onClose}>&times;</button>
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
+            <div className="modal-content" style={{ maxWidth: '580px', width: '100%', boxSizing: 'border-box' }}>
+                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>
+                        ⛔ Причини скасування ({isClient ? 'Клієнти' : 'Водії'})
+                    </h3>
+                    <button className="close-button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
+                        &times;
+                    </button>
                 </div>
                 
-                <div className="modal-body">
-                    <p style={{fontSize: '0.9em', color: '#666', marginBottom: '15px'}}>
+                <div className="modal-body" style={{ padding: 0 }}>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '14px', lineHeight: '1.4' }}>
                         {isClient 
                             ? 'Клієнт зможе обрати одну з цих причин у додатку при скасуванні замовлення. Штрафи для клієнтів не застосовуються.'
                             : 'Водій зможе обрати одну з цих причин при скасуванні замовлення. Якщо штраф > 0, рейтинг водія буде знижено автоматично.'}
@@ -66,70 +70,113 @@ const CancellationReasonsModal = ({ onClose, target }) => {
 
                     {/* Форма додавання */}
                     <form onSubmit={handleAdd} style={{ 
-                        display: 'flex', 
+                        display: 'grid', 
+                        gridTemplateColumns: isClient ? '1fr auto' : '1fr 90px auto', 
                         gap: '10px', 
-                        marginBottom: '20px', 
-                        padding: '15px', 
-                        background: '#f8f9fa', 
+                        alignItems: 'end',
+                        marginBottom: '16px', 
+                        padding: '12px', 
+                        background: '#f8fafc', 
                         borderRadius: '8px',
-                        border: '1px solid #eee'
+                        border: '1px solid #e2e8f0',
+                        boxSizing: 'border-box'
                     }}>
-                        <div style={{ flex: 2 }}>
-                            <label style={{ fontSize: '0.85em', fontWeight: 'bold' }}>Текст причини</label>
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                Текст причини
+                            </label>
                             <input 
                                 type="text" 
-                                className="form-input" 
+                                className="input-field" 
                                 value={newText} 
                                 onChange={e => setNewText(e.target.value)} 
                                 placeholder={isClient ? "Напр: Довго чекати машину" : "Напр: Клієнт не вийшов"}
                                 required
-                                style={{ width: '100%', marginTop: '5px' }}
+                                style={{ margin: 0, width: '100%', boxSizing: 'border-box' }}
                             />
                         </div>
                         
                         {!isClient && (
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '0.85em', fontWeight: 'bold' }}>Штраф (бали)</label>
+                            <div>
+                                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                    Штраф
+                                </label>
                                 <input 
                                     type="number" 
-                                    className="form-input" 
+                                    className="input-field" 
                                     value={newPenalty} 
                                     onChange={e => setNewPenalty(e.target.value)}
-                                    style={{ width: '100%', marginTop: '5px' }}
+                                    style={{ margin: 0, width: '100%', boxSizing: 'border-box', textAlign: 'center' }}
                                 />
                             </div>
                         )}
 
-                        <div style={{ alignSelf: 'flex-end' }}>
-                            <button type="submit" className="btn-primary" disabled={loading} style={{ height: '38px' }}>
-                                {loading ? '...' : '+ Додати'}
-                            </button>
-                        </div>
+                        <button 
+                            type="submit" 
+                            className="btn btn-primary" 
+                            disabled={loading} 
+                            style={{ height: '38px', padding: '0 16px', whiteSpace: 'nowrap', fontWeight: 600 }}
+                        >
+                            {loading ? '...' : '+ Додати'}
+                        </button>
                     </form>
 
-                    {/* Список існуючих причин */}
-                    <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ background: '#eee', position: 'sticky', top: 0 }}>
+                    {/* Таблиця причин (без скролу і з чіткими пропорціями) */}
+                    <div style={{ 
+                        maxHeight: '340px', 
+                        overflowY: 'auto', 
+                        overflowX: 'hidden', 
+                        border: '1px solid #e2e8f0', 
+                        borderRadius: '8px',
+                        boxSizing: 'border-box'
+                    }}>
+                        <table style={{ 
+                            width: '100%', 
+                            minWidth: 'unset', 
+                            maxWidth: '100%', 
+                            tableLayout: 'fixed', 
+                            borderCollapse: 'collapse', 
+                            margin: 0 
+                        }}>
+                            <thead style={{ background: '#f1f5f9', position: 'sticky', top: 0, zIndex: 1 }}>
                                 <tr>
-                                    <th style={{ padding: '10px', textAlign: 'left' }}>Причина</th>
-                                    {!isClient && <th style={{ padding: '10px', textAlign: 'center' }}>Штраф</th>}
-                                    <th style={{ padding: '10px', textAlign: 'right' }}>Дія</th>
+                                    <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '0.8rem', color: '#475569', fontWeight: 700, width: isClient ? '75%' : '58%' }}>
+                                        Причина
+                                    </th>
+                                    {!isClient && (
+                                        <th style={{ padding: '10px 6px', textAlign: 'center', fontSize: '0.8rem', color: '#475569', fontWeight: 700, width: '20%' }}>
+                                            Штраф
+                                        </th>
+                                    )}
+                                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '0.8rem', color: '#475569', fontWeight: 700, width: isClient ? '25%' : '22%' }}>
+                                        Дія
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {reasons.map(r => (
-                                    <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                        <td style={{ padding: '10px' }}>{r.reasonText}</td>
+                                    <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '10px 12px', fontSize: '0.88rem', color: '#0f172a', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: '1.3' }}>
+                                            {r.reasonText}
+                                        </td>
                                         {!isClient && (
-                                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: r.penaltyScore > 0 ? '#d32f2f' : '#388e3c' }}>
+                                            <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, fontSize: '0.88rem', color: r.penaltyScore > 0 ? '#dc2626' : '#16a34a' }}>
                                                 {r.penaltyScore > 0 ? `-${r.penaltyScore}` : '0'}
                                             </td>
                                         )}
-                                        <td style={{ padding: '10px', textAlign: 'right' }}>
+                                        <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                                             <button 
-                                                className="btn-secondary" 
-                                                style={{ padding: '4px 10px', backgroundColor: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2' }}
+                                                style={{ 
+                                                    padding: '5px 10px', 
+                                                    fontSize: '0.78rem', 
+                                                    fontWeight: 600, 
+                                                    border: '1px solid #fecaca', 
+                                                    backgroundColor: '#fef2f2', 
+                                                    color: '#b91c1c', 
+                                                    borderRadius: '6px', 
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
                                                 onClick={() => handleDelete(r.id)}
                                             >
                                                 Видалити
@@ -139,7 +186,7 @@ const CancellationReasonsModal = ({ onClose, target }) => {
                                 ))}
                                 {reasons.length === 0 && (
                                     <tr>
-                                        <td colSpan={isClient ? "2" : "3"} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                                        <td colSpan={isClient ? "2" : "3"} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '0.88rem' }}>
                                             Список порожній. Додайте першу причину.
                                         </td>
                                     </tr>

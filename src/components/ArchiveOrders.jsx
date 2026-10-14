@@ -280,6 +280,7 @@ const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 
   };
 
   // --- ДЕТАЛЬНЫЙ ПРОСМОТР ЗАКАЗА ---
+  // --- ДЕТАЛЬНИЙ ПЕРЕГЛЯД ЗАМОВЛЕННЯ ---
   if (selectedOrder) {
     const isCancelled = selectedOrder.status === 'CANCELLED';
     const isEvos = selectedOrder.isSentToEvos || !!selectedOrder.evosOrderUid;
@@ -293,7 +294,7 @@ const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <h2 style={{ margin: 0 }}>
-              Замовлення #{selectedOrder.id} {isEvos && <span title="Перекинуто в EvoS">🌐</span>}
+              Замовлення #{selectedOrder.idLong || selectedOrder.id} {isEvos && <span title="Перекинуто в EvoS">🌐</span>}
             </h2>
           </div>
 
@@ -304,125 +305,211 @@ const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 
 
         <div style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 160px)' }}>
           
-          <div className="card" style={{ width: '420px', margin: 0, overflowY: 'auto' }}>
+          {/* ЛІВА КОЛОНКА: ДЕТАЛІ ТА РОЗРАХУНОК */}
+          <div className="card" style={{ width: '420px', minWidth: '420px', margin: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px' }}>
             
-            {/* БЛОК ИДЕНТИФИКАТОРОВ */}
-            <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="text-subtle" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>ID замовлення</span>
-                <span className="badge" style={{ backgroundColor: '#0f172a', color: '#fff' }}>
-                  {selectedOrder.tariff || 'Стандарт'}
+            {/* БЛОК ІДЕНТИФІКАТОРІВ ТА ТАРИФУ */}
+            <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Замовлення
+                </span>
+                <span className="badge" style={{ backgroundColor: '#0f172a', color: '#fff', fontSize: '0.8rem', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
+                  {selectedOrder.tariffName || selectedOrder.tariff || 'Стандарт'}
                 </span>
               </div>
-              <h2 style={{ margin: '4px 0 8px 0', color: '#0f172a' }}>
-                #{selectedOrder.id} {isEvos && <span title="Мережа EvoS">🌐</span>}
-              </h2>
+
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.5rem', fontWeight: 800 }}>
+                  #{selectedOrder.idLong || selectedOrder.id?.slice(0, 8)} {isEvos && <span title="Мережа EvoS" style={{ fontSize: '1.1rem' }}>🌐</span>}
+                </h2>
+                {selectedOrder.distanceMeters ? (
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                    🛣️ {(selectedOrder.distanceMeters / 1000).toFixed(1)} км {selectedOrder.durationSeconds ? `(~${Math.round(selectedOrder.durationSeconds / 60)} хв)` : ''}
+                  </span>
+                ) : null}
+              </div>
               
-              {/* Показываем полный системный UUID */}
               {selectedOrder.uuid && (
-                <div style={{ fontSize: '0.8rem', color: '#64748b', wordBreak: 'break-all', backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', wordBreak: 'break-all', backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', marginTop: '8px' }}>
                   <strong style={{ color: '#475569' }}>UUID:</strong> {selectedOrder.uuid}
                 </div>
               )}
 
-              {/* Если заказ перекинут в EvoS — показываем партнерский UID */}
               {selectedOrder.evosOrderUid && (
-                <div style={{ fontSize: '0.8rem', color: '#0284c7', wordBreak: 'break-all', backgroundColor: '#f0f9ff', padding: '6px 8px', borderRadius: '6px', border: '1px solid #bae6fd', marginTop: '6px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#0284c7', wordBreak: 'break-all', backgroundColor: '#f0f9ff', padding: '6px 8px', borderRadius: '6px', border: '1px solid #bae6fd', marginTop: '6px' }}>
                   <strong>EvoS UID:</strong> {selectedOrder.evosOrderUid}
                 </div>
               )}
             </div>
 
-            <div className="detail-item" style={{ marginBottom: '12px' }}>
-              <span className="detail-label">Вартість та Оплата</span>
+            {/* ВАРТІСТЬ ТА ОПЛАТА */}
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '6px' }}>
+                Вартість та Оплата
+              </span>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-medium">{selectedOrder.paymentMethod === 'CASH' ? '💵 Готівка' : '💳 Картка'}</span>
-                <span className="text-success" style={{ fontSize: '1.5rem', fontWeight: 800 }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#1e293b' }}>
+                  {selectedOrder.paymentMethod === 'CASH' ? '💵 Готівка' : '💳 Безготівкова (Картка)'}
+                </span>
+                <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#15803d' }}>
                   {Math.round(selectedOrder.price || 0)} ₴
                 </span>
               </div>
 
-              {/* Расшифровка: оплата клиентом + доплата сервиса */}
               {selectedOrder.companyDiscountCompensation > 0 && (
-                <div style={{ marginTop: '8px', padding: '8px 10px', backgroundColor: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', marginBottom: '2px' }}>
+                <div style={{ marginTop: '8px', padding: '8px 10px', backgroundColor: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', fontSize: '0.82rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', marginBottom: '3px' }}>
                     <span>Сплачено пасажиром:</span>
                     <strong>{Math.round(selectedOrder.clientPayAmount ?? (selectedOrder.price - selectedOrder.companyDiscountCompensation))} ₴</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0369a1' }}>
-                    <span>Доплата сервісу:</span>
+                    <span>Доплата сервісу за знижку:</span>
                     <strong>+{Math.round(selectedOrder.companyDiscountCompensation)} ₴</strong>
                   </div>
                 </div>
               )}
-
-              {selectedOrder.waitingPrice > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>
-                  <span>Платне очікування:</span>
-                  <span>+{Math.round(selectedOrder.waitingPrice)} ₴</span>
-                </div>
-              )}
             </div>
 
-            <div className="detail-item" style={{ marginBottom: '12px' }}>
-              <span className="detail-label">Водій та Авто</span>
+            {/* ТАБЛО РОЗРАХУНКУ ТАРИФУ */}
+            <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Розрахунок тарифу
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Деталізація чека</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.84rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
+                  <span>Базова подача (вкл. км):</span>
+                  <strong>{Math.round(selectedOrder.basePrice || 0)} ₴</strong>
+                </div>
+
+                {selectedOrder.distanceMeters ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
+                    <span>
+                      Дистанція ({(selectedOrder.distanceMeters / 1000).toFixed(1)} км × {selectedOrder.pricePerKm || 0} ₴):
+                    </span>
+                    <strong>
+                      +{Math.round(Math.max(0, ((selectedOrder.distanceMeters / 1000) - 3) * (selectedOrder.pricePerKm || 0)))} ₴
+                    </strong>
+                  </div>
+                ) : null}
+
+                {selectedOrder.stops && selectedOrder.stops.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
+                    <span>Зупинки ({selectedOrder.stops.length} × {selectedOrder.extraWaypointPrice || 0} ₴):</span>
+                    <strong>+{Math.round(selectedOrder.stops.length * (selectedOrder.extraWaypointPrice || 0))} ₴</strong>
+                  </div>
+                )}
+
+                {selectedOrder.services && selectedOrder.services.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
+                    <span>Додаткові послуги ({selectedOrder.services.length}):</span>
+                    <strong>+{Math.round(selectedOrder.services.reduce((acc, s) => acc + (s.price || 0), 0))} ₴</strong>
+                  </div>
+                )}
+
+                {(selectedOrder.boostAdded > 0 || selectedOrder.addedValue > 0) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b45309' }}>
+                    <span>⚡ Підвищений попит / Надбавка:</span>
+                    <strong>+{Math.round(selectedOrder.boostAdded || selectedOrder.addedValue)} ₴</strong>
+                  </div>
+                )}
+
+                {selectedOrder.waitingPrice > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d97706' }}>
+                    <span>⏳ Платне очікування:</span>
+                    <strong>+{Math.round(selectedOrder.waitingPrice)} ₴</strong>
+                  </div>
+                )}
+
+                {(selectedOrder.appliedDiscount > 0 || selectedOrder.companyDiscountCompensation > 0) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534' }}>
+                    <span>🎁 Знижка / Промокод:</span>
+                    <strong>-{Math.round(selectedOrder.appliedDiscount || selectedOrder.companyDiscountCompensation)} ₴</strong>
+                  </div>
+                )}
+
+                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '6px', marginTop: '2px', display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#0f172a' }}>
+                  <span>Разом:</span>
+                  <span style={{ color: '#15803d' }}>{Math.round(selectedOrder.price || 0)} ₴</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ВОДІЙ ТА АВТО */}
+            <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
+                Водій та Авто
+              </span>
               {selectedOrder.driver && selectedOrder.driver.id !== -1 ? (
                 <>
-                  <span className="detail-value">{selectedOrder.driver.fullName}</span>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                    <span className="text-subtle" style={{ fontSize: '0.85rem' }}>📞 {selectedOrder.driver.phoneNumber || '—'}</span>
-                    <span className="badge" style={{ background: '#e2e8f0', color: '#0f172a' }}>
-                      {selectedOrder.driver.carPlateNumber || selectedOrder.carNumber || selectedOrder.driver.carLicensePlate || '—'}
+                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{selectedOrder.driver.fullName}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#0284c7', fontWeight: 600 }}>📞 {selectedOrder.driver.phoneNumber || '—'}</span>
+                    <span className="badge" style={{ background: '#0f172a', color: '#ffffff', fontWeight: 700, letterSpacing: '0.05em' }}>
+                      {selectedOrder.driver.carPlateNumber || selectedOrder.carPlate || selectedOrder.driver.carLicensePlate || '—'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#475569', marginTop: '4px' }}>
                     🚗 {selectedOrder.driver.carModel} {selectedOrder.driver.carColor ? `(${selectedOrder.driver.carColor})` : ''}
                   </div>
                 </>
               ) : (selectedOrder.isSentToEvos || selectedOrder.evosDriverCarInfo || (selectedOrder.driver && selectedOrder.driver.id === -1)) ? (
-                <div style={{ backgroundColor: '#f8f0fc', padding: '8px 10px', borderRadius: '6px', border: '1px solid #eebefa' }}>
+                <div style={{ backgroundColor: '#fdf4ff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #f0abfc' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: 700, color: '#862e9c', fontSize: '0.9rem' }}>🤝 Водій СОЗ (EvoS)</span>
-                    <span className="badge" style={{ background: '#e599f7', color: '#3b0764', fontSize: '0.75rem' }}>
+                    <span className="badge" style={{ background: '#e599f7', color: '#3b0764', fontSize: '0.75rem', fontWeight: 700 }}>
                       {selectedOrder.driver?.carPlateNumber || selectedOrder.evosDriverCarInfo?.split(',')[0] || 'ПАРТНЕР'}
                     </span>
                   </div>
-                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1e293b', marginTop: '3px' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1e293b', marginTop: '4px' }}>
                     🚗 {selectedOrder.driver?.carModel || selectedOrder.evosDriverCarInfo || 'Партнерське авто'}
                   </div>
                   {(selectedOrder.driver?.phoneNumber || selectedOrder.evosDriverPhone) && (
-                    <div className="text-subtle" style={{ fontSize: '0.85rem', marginTop: '2px', color: '#0284c7' }}>
+                    <div style={{ fontSize: '0.85rem', marginTop: '3px', color: '#0284c7', fontWeight: 600 }}>
                       📞 {selectedOrder.driver?.phoneNumber || selectedOrder.evosDriverPhone}
                     </div>
                   )}
                 </div>
               ) : (
-                <span className="text-subtle" style={{ fontStyle: 'italic' }}>
+                <span className="text-subtle" style={{ fontStyle: 'italic', fontSize: '0.85rem' }}>
                   Водія не було призначено
                 </span>
               )}
             </div>
 
-            <div className="detail-item" style={{ marginBottom: '12px' }}>
-              <span className="detail-label">Маршрут</span>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#16a34a' }}>🟢 {selectedOrder.fromAddress}</div>
+            {/* МАРШРУТ */}
+            <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
+                Маршрут
+              </span>
+              <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#16a34a', display: 'flex', gap: '6px' }}>
+                <span>🟢</span> <span>{selectedOrder.fromAddress}</span>
+              </div>
               {selectedOrder.stops?.map((stop, index) => (
-                <div key={index} style={{ fontSize: '0.85rem', color: '#475569', paddingLeft: '12px' }}>• {stop.address}</div>
+                <div key={index} style={{ fontSize: '0.82rem', color: '#475569', padding: '3px 0 3px 20px', borderLeft: '2px solid #e2e8f0', marginLeft: '6px' }}>
+                  • {stop.address}
+                </div>
               ))}
-              <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#dc2626' }}>🔴 {selectedOrder.toAddress}</div>
+              <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#dc2626', display: 'flex', gap: '6px', marginTop: '3px' }}>
+                <span>🔴</span> <span>{selectedOrder.toAddress}</span>
+              </div>
+
+              {selectedOrder.comment && (
+                <div style={{ marginTop: '8px', padding: '6px 8px', backgroundColor: '#fffbeb', borderRadius: '6px', border: '1px solid #fef3c7', fontSize: '0.8rem', color: '#92400e' }}>
+                  💬 <strong>Коментар:</strong> {selectedOrder.comment}
+                </div>
+              )}
             </div>
 
-            <div className="detail-item" style={{ marginBottom: '12px' }}>
-              <span className="detail-label">Вартість та Оплата</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-medium">{selectedOrder.paymentMethod === 'CASH' ? '💵 Готівка' : '💳 Картка'}</span>
-                <span className="text-success" style={{ fontSize: '1.5rem', fontWeight: 800 }}>{Math.round(selectedOrder.price || 0)} ₴</span>
-              </div>
-            </div>
           </div>
 
-          <div className="table-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, position: 'relative' }}>
+          {/* ПРАВА КОЛОНКА: КАРТА ТА ХРОНОЛОГІЯ МАРШРУТУ */}
+          <div className="table-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '500px', overflow: 'hidden' }}>
+            <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', minHeight: '400px' }}>
               <MapContainer center={[50.45, 30.52]} zoom={11} style={{ height: '100%', width: '100%' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 
@@ -440,15 +527,14 @@ const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 
                   </Marker>
                 )}
 
-                {/* Промежуточные остановки (если есть) */}
+                {/* Проміжні зупинки */}
                 {selectedOrder.stops?.map((stop, idx) => stop.lat && stop.lng ? (
                   <Marker key={idx} position={[stop.lat, stop.lng]}>
                     <Popup>Зупинка {idx + 1}: {stop.address}</Popup>
                   </Marker>
                 ) : null)}
 
-                {/* Базовый маршрут поездки между точками (синий пунктир) */}
-                {/* Базовий маршрут поїздки між точками (суцільна чітка лінія) */}
+                {/* Базовий маршрут поїздки */}
                 {plannedRoutePositions.length > 1 && (
                   <Polyline 
                     positions={plannedRoutePositions} 
@@ -458,7 +544,7 @@ const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 
                   />
                 )}
 
-                {/* Реальный путь перемещения водителя (красная сплошная линия) */}
+                {/* Реальний трек поїздки */}
                 {trackHistory.length > 0 && (
                   <Polyline 
                     positions={trackHistory.slice(0, currentTrackIndex + 1).map(p => [p.latitude ?? p.lat, p.longitude ?? p.lng])} 
@@ -467,7 +553,7 @@ const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 
                   />
                 )}
 
-                {/* Маркер положения водителя по ползунку */}
+                {/* Маркер авто за хронологією */}
                 {trackHistory.length > 0 && trackHistory[currentTrackIndex] && (
                   <Marker 
                     position={[
@@ -487,7 +573,7 @@ const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 
               </MapContainer>
             </div>
 
-            {/* Хронология отображается только при наличии реального трека */}
+            {/* Панель хронології */}
             {trackHistory.length > 0 ? (
               <div style={{ padding: '1rem', background: '#f8fafc', borderTop: '1px solid #cbd5e1' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -518,6 +604,7 @@ const [stats, setStats] = useState({ completed: 0, cancelled: 0, total: 0, sum: 
               </div>
             )}
           </div>
+
         </div>
       </div>
     );
