@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
@@ -24,7 +24,7 @@ import ClientInfoPage from './ClientInfoPage';
 import FinancePage from './FinancePage';
 import PhotoControl from './PhotoControl';
 import DriverPhotoUploadWebView from './DriverPhotoUploadWebView';
-import SupportPage from './SupportPage'; // 👈 Додано сторінку підтримки
+import SupportPage from './SupportPage';
 
 const sosStyle = {
   backgroundColor: '#ff4d4d',
@@ -40,34 +40,43 @@ const DashboardLayout = () => {
   const isAdmin = user && user.role === 'ADMINISTRATOR';
   
   const location = useLocation();
-  const navigate = useNavigate();
+  const pathnameRef = useRef(location.pathname);
 
   // Стан для SOS
   const [sosAlert, setSosAlert] = useState(false);
   const [sosList, setSosList] = useState([]);
 
-  // --- WEBSOCKET CONNECTION ---
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+    if (location.pathname === '/news') {
+      setSosAlert(false);
+    }
+  }, [location.pathname]);
+
+  // --- WEBSOCKET CONNECTION (одне стабільне з'єднання без перепідключення при зміні вкладок) ---
   useEffect(() => {
     const wsUrl = window.location.hostname === 'localhost' 
       ? 'http://localhost:8080/ws-taxi' 
       : 'https://api.unitua.com/ws-taxi';
-    const socket = new SockJS(wsUrl);
-    
-    const token = localStorage.getItem('token');
 
     const stompClient = new Client({
-      webSocketFactory: () => socket,
-      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+      // ВАЖЛИВО: Створюємо новий SockJS при кожній спробі з'єднання, щоб працював авто-реконект!
+      webSocketFactory: () => new SockJS(wsUrl),
+      reconnectDelay: 5000,
+      beforeConnect: () => {
+        const currentToken = localStorage.getItem('token');
+        stompClient.connectHeaders = currentToken ? { Authorization: `Bearer ${currentToken}` } : {};
+      },
       onConnect: () => {
-        console.log('WS Connected (Global)');
+        console.log('WS Connected (Global SOS)');
         
         stompClient.subscribe('/topic/admin/sos', (message) => {
           const newSos = JSON.parse(message.body);
-          console.log("SOS RECEIVED:", newSos);
+          console.log('SOS RECEIVED:', newSos);
           
           setSosList(prev => [newSos, ...prev]);
 
-          if (location.pathname !== '/news') {
+          if (pathnameRef.current !== '/news') {
             setSosAlert(true);
           }
         });
@@ -80,14 +89,7 @@ const DashboardLayout = () => {
     stompClient.activate();
 
     return () => stompClient.deactivate();
-  }, [location.pathname]);
-
-  // Скидання алерту при переході на сторінку новин
-  useEffect(() => {
-    if (location.pathname === '/news') {
-      setSosAlert(false);
-    }
-  }, [location.pathname]);
+  }, []);
 
   return (
     <div className="dashboard-layout">
@@ -177,6 +179,7 @@ const DashboardLayout = () => {
               <Route path="/sectors" element={<Navigate to="/" replace />} />
               <Route path="/car-requests" element={<Navigate to="/" replace />} />
               <Route path="/driver-requests" element={<Navigate to="/" replace />} />
+              <Route path="/finance" element={<Navigate to="/" replace />} />
               <Route path="/settings" element={<Navigate to="/" replace />} />
             </>
           )}

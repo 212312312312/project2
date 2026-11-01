@@ -14,6 +14,9 @@ const SupportPage = () => {
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [blockedSearchTerm, setBlockedSearchTerm] = useState('');
   const messagesEndRef = useRef(null);
+  const stompClientRef = useRef(null);
+  const activeTicketSubRef = useRef(null);
+  const activeTicketIdRef = useRef(null);
 
   const loadBlockedUsers = async () => {
     try {
@@ -49,6 +52,20 @@ const SupportPage = () => {
     }
   };
 
+  const subscribeToActiveTicket = (client, ticketId) => {
+    if (activeTicketSubRef.current) {
+      activeTicketSubRef.current.unsubscribe();
+      activeTicketSubRef.current = null;
+    }
+    if (!client || !client.connected || !ticketId) return;
+
+    activeTicketSubRef.current = client.subscribe(`/topic/support/messages/${ticketId}`, (msg) => {
+      const newMsg = JSON.parse(msg.body);
+      setMessages((prev) => [...prev, newMsg]);
+    });
+  };
+
+  // Одне стабільне STOMP-з'єднання для списку тікетів і повідомлень активного чату
   useEffect(() => {
     loadTickets();
     loadBlockedUsers();
@@ -56,48 +73,50 @@ const SupportPage = () => {
     const wsUrl = window.location.hostname === 'localhost'
       ? 'http://localhost:8080/ws-taxi'
       : 'https://api.unitua.com/ws-taxi';
-    const socket = new SockJS(wsUrl);
-    const token = localStorage.getItem('token');
 
     const stompClient = new Client({
-      webSocketFactory: () => socket,
-      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+      webSocketFactory: () => new SockJS(wsUrl),
+      reconnectDelay: 5000,
+      beforeConnect: () => {
+        const currentToken = localStorage.getItem('token');
+        stompClient.connectHeaders = currentToken ? { Authorization: `Bearer ${currentToken}` } : {};
+      },
       onConnect: () => {
         stompClient.subscribe('/topic/support/tickets', () => {
           loadTickets();
         });
+        if (activeTicketIdRef.current) {
+          subscribeToActiveTicket(stompClient, activeTicketIdRef.current);
+        }
       }
     });
 
     stompClient.activate();
-    return () => stompClient.deactivate();
+    stompClientRef.current = stompClient;
+
+    return () => {
+      if (activeTicketSubRef.current) {
+        activeTicketSubRef.current.unsubscribe();
+        activeTicketSubRef.current = null;
+      }
+      stompClient.deactivate();
+    };
   }, []);
 
   useEffect(() => {
-    if (!activeTicket) return;
+    activeTicketIdRef.current = activeTicket?.id || null;
+
+    if (!activeTicket) {
+      if (activeTicketSubRef.current) {
+        activeTicketSubRef.current.unsubscribe();
+        activeTicketSubRef.current = null;
+      }
+      return;
+    }
 
     loadMessages(activeTicket.id);
-
-    const wsUrl = window.location.hostname === 'localhost'
-      ? 'http://localhost:8080/ws-taxi'
-      : 'https://api.unitua.com/ws-taxi';
-    const socket = new SockJS(wsUrl);
-    const token = localStorage.getItem('token');
-
-    const stompClient = new Client({
-      webSocketFactory: () => socket,
-      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
-      onConnect: () => {
-        stompClient.subscribe(`/topic/support/messages/${activeTicket.id}`, (msg) => {
-          const newMsg = JSON.parse(msg.body);
-          setMessages((prev) => [...prev, newMsg]);
-        });
-      }
-    });
-
-    stompClient.activate();
-    return () => stompClient.deactivate();
-  }, [activeTicket]);
+    subscribeToActiveTicket(stompClientRef.current, activeTicket.id);
+  }, [activeTicket?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

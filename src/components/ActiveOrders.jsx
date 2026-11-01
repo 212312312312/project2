@@ -96,7 +96,7 @@ const formatTime = (isoString) => {
     return date.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
-// --- КОМПОНЕНТ ПЛАВНОГО МАРКЕРА ВОДИТЕЛЯ ---
+// --- КОМПОНЕНТ ПЛАВНОГО МАРКЕРА ВОДИТЕЛЯ (С ОЧИСТКОЙ RAF!) ---
 const SmoothDriverMarker = ({ position, icon, children }) => {
   const markerRef = useRef(null);
   const prevPositionRef = useRef(position);
@@ -113,6 +113,7 @@ const SmoothDriverMarker = ({ position, icon, children }) => {
     }
 
     let startTime = null;
+    let animFrameId = null;
     const duration = 2500;
 
     const animate = (timestamp) => {
@@ -126,15 +127,18 @@ const SmoothDriverMarker = ({ position, icon, children }) => {
       marker.setLatLng([currentLat, currentLng]);
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        animFrameId = requestAnimationFrame(animate);
       } else {
         prevPositionRef.current = endPos;
       }
     };
 
-    requestAnimationFrame(animate);
+    animFrameId = requestAnimationFrame(animate);
 
     return () => {
+      if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+      }
       if (marker && marker.getLatLng) {
         const currentLatLng = marker.getLatLng();
         prevPositionRef.current = [currentLatLng.lat, currentLatLng.lng];
@@ -700,6 +704,15 @@ const ActiveOrders = () => {
     } catch (err) {}
   };
 
+  const fetchInitialDrivers = async () => {
+    try {
+      const drivers = await getOnlineDriversForMap();
+      if (Array.isArray(drivers)) {
+        setMapDrivers(drivers);
+      }
+    } catch (err) {}
+  };
+
   useEffect(() => {
     if (selectedOrder) {
       const targetUuid = selectedOrder.id;
@@ -789,19 +802,21 @@ const ActiveOrders = () => {
   }, [selectedOrder]);
 
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
+    fetchActiveOrders();
+    fetchInitialDrivers();
+
     const wsUrl = window.location.hostname === 'localhost' 
       ? 'http://localhost:8080/ws-taxi' 
       : 'https://api.unitua.com/ws-taxi';
     
-    const socket = new SockJS(wsUrl);
-    const token = localStorage.getItem('token');
-    
     const client = new Client({
-        webSocketFactory: () => socket,
-        connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+        // ВАЖЛИВО: Створюємо новий SockJS при кожній спробі з'єднання, щоб працював авто-реконект!
+        webSocketFactory: () => new SockJS(wsUrl),
         reconnectDelay: 5000,
+        beforeConnect: () => {
+          const currentToken = localStorage.getItem('token');
+          client.connectHeaders = currentToken ? { Authorization: `Bearer ${currentToken}` } : {};
+        },
         onConnect: () => {
           console.log('Connected to Dispatcher WebSocket');
           fetchActiveOrders(); 
@@ -811,6 +826,7 @@ const ActiveOrders = () => {
               handleSocketMessage(msg);
           });
 
+          // Батч координат водіїв (раз на 3 секунди) — оптимізовано під High-Load (500+ авто без фризів браузера)
           client.subscribe('/topic/admin/drivers-location', (message) => {
               const driverBatch = JSON.parse(message.body);
               if (Array.isArray(driverBatch)) {
@@ -837,11 +853,7 @@ const ActiveOrders = () => {
               }
           });
 
-          client.subscribe('/topic/admin/drivers/locations', (message) => {
-              const driverData = JSON.parse(message.body);
-              updateDriverOnMap(driverData);
-          });
-
+          // Миттєві зміни статусів водіїв (вихід на лінію / офлайн)
           client.subscribe('/topic/admin/drivers', (message) => {
               const driverData = JSON.parse(message.body);
               updateDriverOnMap(driverData);

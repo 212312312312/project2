@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllNews, createNews, deleteNews } from '../services/newsService';
+import { getImageUrl } from '../services/api';
 import Modal from '../components/Modal';
 import NewsForm from '../components/NewsForm';
 import '../assets/NewsPage.css';
@@ -9,8 +10,6 @@ const NewsPage = ({ sosList, setSosList }) => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const API_BASE_URL = 'http://localhost:8080';
 
   const fetchNews = async () => {
     try {
@@ -103,7 +102,7 @@ const NewsPage = ({ sosList, setSosList }) => {
                     <tr><td colSpan="6" className="text-center text-subtle py-8">Завантаження новин...</td></tr>
                   ) : newsList.length > 0 ? (
                     newsList.map((item) => {
-                      const fullImgUrl = item.imageUrl ? (item.imageUrl.startsWith('http') ? item.imageUrl : `${API_BASE_URL}${item.imageUrl}`) : null;
+                      const fullImgUrl = item.imageUrl ? getImageUrl(item.imageUrl) : null;
                       return (
                         <tr key={item.id}>
                           <td className="text-subtle text-sm">{item.date}</td>

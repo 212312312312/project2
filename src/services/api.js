@@ -1,30 +1,31 @@
 import axios from 'axios';
 
-// 0. Динамический адрес: берет текущий хост и порт (localhost, 192.168.x.x или домен)
-const SERVER_URL = typeof window !== 'undefined' && window.location.origin 
-  ? window.location.origin 
+// 0. Динамический адрес: берет текущий хост и порт (localhost, 192.168.x.x или прод-домен)
+const SERVER_URL = typeof window !== 'undefined' && window.location.origin
+  ? (window.location.hostname === 'localhost' ? 'http://localhost:8080' : window.location.origin)
   : 'http://localhost:8080';
 
 // 1. Создаем экземпляр axios с относительным baseURL
 const api = axios.create({
-  baseURL: '/api/v1', // Относительный путь работает везде автоматически
+  baseURL: '/api/v1',
   withCredentials: true
 });
 
-// 2. Создаем "Перехватчик Запросов"
+// 2. Перехватчик Запросов
 api.interceptors.request.use(
   (config) => {
-    let token = localStorage.getItem('token');
-    
-    if (!token) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlToken = urlParams.get('token');
-      if (urlToken) {
-        token = urlToken;
-        localStorage.setItem('token', urlToken);
-      }
-    }
-    
+    const currentPath = window.location.pathname;
+    const isWebViewRoute =
+      currentPath.includes('/add-car') ||
+      currentPath.includes('/driver/photo-upload') ||
+      currentPath.includes('/photo-control');
+
+    // Для мобильных WebView-маршрутов берем токен из ?token=... (не затирая токен админа в localStorage)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+
+    const token = (isWebViewRoute && urlToken) ? urlToken : localStorage.getItem('token');
+
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -33,7 +34,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 5. Перехватчик Ответов
+// 3. Перехватчик Ответов (Бесшовное обновление токена каждые 15 минут)
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -51,19 +52,29 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     const currentPath = window.location.pathname;
-    const isPublicOrWebView = 
+    const isPublicOrWebView =
       currentPath.includes('/driver-registration') ||
       currentPath.includes('/driver-register') ||
       currentPath.includes('/driver/photo-upload') ||
       currentPath.includes('/photo-control') ||
       currentPath.includes('/add-car');
 
-    if (!isPublicOrWebView && error.response && error.response.status === 401 && !originalRequest._retry) {
+    // Не перехватываем 401 на самом запросе /auth/refresh или /auth/login
+    const isAuthEndpoint =
+      originalRequest?.url?.includes('/auth/refresh') ||
+      originalRequest?.url?.includes('/auth/login');
+
+    if (!isPublicOrWebView && !isAuthEndpoint && error.response && error.response.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(() => api(originalRequest))
+          .then((newToken) => {
+            if (newToken) {
+              originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            }
+            return api(originalRequest);
+          })
           .catch((err) => Promise.reject(err));
       }
 
@@ -71,16 +82,34 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+        const savedRefreshToken = localStorage.getItem('refreshToken');
+        const refreshResponse = await axios.post(
+          '/api/v1/auth/refresh',
+          savedRefreshToken ? { refreshToken: savedRefreshToken } : {},
+          { withCredentials: true }
+        );
 
-        processQueue(null);
+        const newAccessToken = refreshResponse.data?.token;
+        const newRefreshToken = refreshResponse.data?.refreshToken;
+
+        if (newAccessToken) {
+          localStorage.setItem('token', newAccessToken);
+          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+        }
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
+
+        processQueue(null, newAccessToken);
         isRefreshing = false;
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError);
+        processQueue(refreshError, null);
         isRefreshing = false;
-        localStorage.clear();
-        
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+
         if (!isPublicOrWebView) {
           window.location.href = '/login';
         }
@@ -89,7 +118,7 @@ api.interceptors.response.use(
     }
 
     if (error.response && error.response.status === 403) {
-      console.error("Критическая ошибка прав доступа (Forbidden).");
+      console.error('Критическая ошибка прав доступа (Forbidden).');
     }
 
     return Promise.reject(error);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { photoControlService } from '../services/photoControlService';
+import imageCompression from 'browser-image-compression';
 
 // --- ДИЗАЙН-СИСТЕМА ТА СТИЛІ З УРАХУВАННЯМ SAFE AREA (NOTCH / HOME BAR) ---
 const colors = {
@@ -236,9 +237,6 @@ const DriverPhotoUploadWebView = () => {
     const handleFileChange = (e, fieldName) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            if (file.size > 15 * 1024 * 1024) {
-                return setError('Файл занадто великий (макс. 15 МБ)');
-            }
             setFiles(prev => ({ ...prev, [fieldName]: file }));
             setError('');
         }
@@ -273,13 +271,22 @@ const DriverPhotoUploadWebView = () => {
         setError('');
 
         try {
+            const compressionOptions = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
+            const compressPhoto = async (rawFile, fallbackName) => {
+                const compressedBlob = await imageCompression(rawFile, compressionOptions);
+                const safeName = rawFile.name && rawFile.name.includes('.') ? rawFile.name : `${fallbackName}.jpg`;
+                return new File([compressedBlob], safeName, {
+                    type: compressedBlob.type || rawFile.type || 'image/jpeg'
+                });
+            };
+
             const formData = new FormData();
-            formData.append('front', files.carFront);
-            formData.append('back', files.carBack);
-            formData.append('left', files.carLeft);
-            formData.append('right', files.carRight);
-            formData.append('interiorFront', files.carInteriorFront);
-            formData.append('interiorBack', files.carInteriorBack);
+            formData.append('front', await compressPhoto(files.carFront, 'front'));
+            formData.append('back', await compressPhoto(files.carBack, 'back'));
+            formData.append('left', await compressPhoto(files.carLeft, 'left'));
+            formData.append('right', await compressPhoto(files.carRight, 'right'));
+            formData.append('interiorFront', await compressPhoto(files.carInteriorFront, 'interiorFront'));
+            formData.append('interiorBack', await compressPhoto(files.carInteriorBack, 'interiorBack'));
 
             await photoControlService.submitPhotos(photoControlId, driverId, formData);
             setStep(3);

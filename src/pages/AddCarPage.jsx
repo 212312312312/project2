@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getCities, getCarBrands, getCarModels, evaluateCarTariffs } from '../services/publicService';
+import imageCompression from 'browser-image-compression';
 
 // --- СТИЛИ И ЦВЕТА (1 в 1 как в DriverRegistrationPage.jsx) ---
 const colors = {
@@ -354,7 +355,7 @@ const Layout = ({ title, subtitle, btnText, onNext, children, showBack = true, o
 // --- ГЛАВНЫЙ КОМПОНЕНТ ---
 const AddCarPage = () => {
   const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('token');
+  const token = urlParams.get('token') || localStorage.getItem('token');
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -397,20 +398,10 @@ const AddCarPage = () => {
 
   const colorsList = ['Чорний', 'Білий', 'Сірий', 'Сріблястий', 'Синій', 'Червоний', 'Зелений', 'Коричневий', 'Жовтий', 'Інший'];
   const carTypesList = ['Седан', 'Хетчбек', 'Універсал', 'Кросовер / Позашляховик', 'Мікроавтобус / Мінівен', 'Купе'];
-  useEffect(() => {
-  // 1. Сохраняем токен из URL в localStorage для Axios (api.js)
-  if (token) {
-    localStorage.setItem('token', token);
-  }
-
-  // 2. Загружаем справочники
-  getCities().then(res => setCities(res)).catch(err => console.error("City error:", err));
-  getCarBrands().then(res => setBrands(res)).catch(err => console.error("Brand error:", err));
-}, [token]);
 
   useEffect(() => {
-    getCities().then(res => setCities(res)).catch(() => {});
-    getCarBrands().then(res => setBrands(res)).catch(() => {});
+    getCities().then(res => setCities(res)).catch(err => console.error("City error:", err));
+    getCarBrands().then(res => setBrands(res)).catch(err => console.error("Brand error:", err));
   }, []);
 
   useEffect(() => {
@@ -442,10 +433,10 @@ const AddCarPage = () => {
   }, [formData.city, formData.modelId, formData.year]);
 
   const handleChange = (e) => {
-  const { name, value } = e.target;
-  if (name === 'plate_number') {
-    setFormData(prev => ({ ...prev, [name]: value.toUpperCase().trim() }));
-  } else if (name === 'brandId') {
+    const { name, value } = e.target;
+    if (name === 'plate_number') {
+      setFormData(prev => ({ ...prev, [name]: value.toUpperCase().trim() }));
+    } else if (name === 'brandId') {
       const selectedBrand = brands.find(b => b.id === Number(value));
       setFormData(prev => ({
         ...prev,
@@ -537,6 +528,7 @@ const AddCarPage = () => {
     setError('');
 
     try {
+      const compressionOptions = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
       const bodyData = new FormData();
       const jsonPayload = {
         make: formData.brand,
@@ -550,9 +542,17 @@ const AddCarPage = () => {
 
       bodyData.append('data', JSON.stringify(jsonPayload));
 
-      Object.keys(files).forEach(key => {
-        if (files[key]) bodyData.append(key, files[key]);
-      });
+      // Стискаємо всі 10 фото перед відправкою (замість 80-100 МБ відправляється ~3-5 МБ)
+      for (const [key, rawFile] of Object.entries(files)) {
+        if (rawFile) {
+          const compressedBlob = await imageCompression(rawFile, compressionOptions);
+          const safeFileName = rawFile.name && rawFile.name.includes('.') ? rawFile.name : `${key}.jpg`;
+          const compressedFile = new File([compressedBlob], safeFileName, {
+            type: compressedBlob.type || rawFile.type || 'image/jpeg'
+          });
+          bodyData.append(key, compressedFile);
+        }
+      }
 
       const response = await fetch('/api/v1/driver/cars/add', {
         method: 'POST',
@@ -777,7 +777,6 @@ const AddCarPage = () => {
       Диспетчер перевірить фото та документи найближчим часом.
     </p>
     
-    {/* 🛠️ ИСПРАВЛЕНИЕ: Перенаправляем на /add-car-success, чтобы WebViewActivity.kt поймал "success" и закрыл экран */}
     <button 
       onClick={() => window.location.href = '/add-car-success'} 
       style={{ ...fixedBottomBtnStyle, position: 'relative', marginTop: '40px', borderRadius: '16px', width: '100%' }}
