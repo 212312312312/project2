@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   getAllTariffs,
   createTariff,
@@ -14,6 +15,7 @@ import {
   toggleWeatherSurge,
   updateWeatherSurgeRule
 } from '../services/tariffService';
+import { getImageUrl } from '../services/api';
 
 import Modal from '../components/Modal';
 import TariffForm from '../components/TariffForm';
@@ -28,9 +30,64 @@ const DAYS_MAP = [
   { key: 'SUNDAY', label: 'Нд' }
 ];
 
+// Безпечне відображення іконки тарифу (без розірваного alt-тексту при відсутності картинки)
+const TariffIconBox = ({ imageUrl, name }) => {
+  const [imgError, setImgError] = useState(false);
+  const fullUrl = getImageUrl(imageUrl);
+
+  return (
+    <div
+      style={{
+        width: '44px',
+        height: '44px',
+        borderRadius: '8px',
+        background: '#f3f4f6',
+        border: '1px solid #e5e7eb',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: '0 auto',
+        padding: '4px',
+        fontSize: '1.1rem',
+        fontWeight: '700',
+        color: '#374151'
+      }}
+      title={name}
+    >
+      {fullUrl && !imgError ? (
+        <img
+          src={fullUrl}
+          alt=""
+          onError={() => setImgError(true)}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+        />
+      ) : (
+        <span>🚕</span>
+      )}
+    </div>
+  );
+};
+
 const TariffsPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // --- Вкладки (Тарифи / Коефіцієнти) ---
-  const [activeTab, setActiveTab] = useState('TARIFFS');
+  const [activeTab, setActiveTab] = useState(() =>
+    searchParams.get('tab') === 'surge' ? 'SURGE' : 'TARIFFS'
+  );
+
+  useEffect(() => {
+    setActiveTab(searchParams.get('tab') === 'surge' ? 'SURGE' : 'TARIFFS');
+  }, [searchParams]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'SURGE') {
+      setSearchParams({ tab: 'surge' });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   // --- Базові стани тарифів ---
   const [tariffs, setTariffs] = useState([]);
@@ -44,7 +101,7 @@ const TariffsPage = () => {
   const [minDistance, setMinDistance] = useState(3.0);
   const [isSavingDistance, setIsSavingDistance] = useState(false);
 
-  // --- Динамічні коефіцієнти ---
+  // --- Динамічні коефіцієнтів ---
   const [surgeConfig, setSurgeConfig] = useState(null);
   const [isTimeRuleModalOpen, setIsTimeRuleModalOpen] = useState(false);
   const [timeRuleForm, setTimeRuleForm] = useState({
@@ -240,18 +297,17 @@ const TariffsPage = () => {
             </span>
           </div>
 
-          {/* ПЕРЕМИКАЧ ЗЛІВА У СТИЛІ DRIVERSPAGE */}
           <div className="toggle-group">
             <button 
               type="button"
-              onClick={() => setActiveTab('TARIFFS')}
+              onClick={() => handleTabChange('TARIFFS')}
               className={`toggle-btn ${activeTab === 'TARIFFS' ? 'active' : ''}`}
             >
               Тарифи
             </button>
             <button 
               type="button"
-              onClick={() => setActiveTab('SURGE')}
+              onClick={() => handleTabChange('SURGE')}
               className={`toggle-btn ${activeTab === 'SURGE' ? 'active' : ''}`}
             >
               Коефіцієнти
@@ -262,9 +318,19 @@ const TariffsPage = () => {
         <div className="header-actions">
           {activeTab === 'TARIFFS' ? (
             <>
-              {/* Блок налаштування мінімалки */}
-              <div className="toggle-group" style={{ padding: '4px 8px', gap: '8px', alignItems: 'center' }}>
-                <span className="text-subtle font-medium" style={{ fontSize: '0.85rem' }}>Мінімалка (км):</span>
+              {/* Компактний блок налаштування мінімалки */}
+              <div
+                className="toggle-group"
+                style={{
+                  padding: '4px 10px',
+                  gap: '8px',
+                  alignItems: 'center',
+                  background: '#ffffff'
+                }}
+              >
+                <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#374151', whiteSpace: 'nowrap' }}>
+                  Мінімалка (км):
+                </span>
                 <input 
                   type="number" 
                   step="0.1" 
@@ -272,7 +338,7 @@ const TariffsPage = () => {
                   className="input-field"
                   value={minDistance} 
                   onChange={(e) => setMinDistance(parseFloat(e.target.value) || 0)}
-                  style={{ width: '70px', padding: '0.3rem 0.5rem', textAlign: 'center', fontWeight: 'bold' }}
+                  style={{ width: '72px', textAlign: 'center', fontWeight: '700' }}
                 />
                 <button 
                   className="btn btn-sm btn-secondary" 
@@ -307,14 +373,14 @@ const TariffsPage = () => {
         }}>
           {/* КАРТКА 1: ПОГОДНІ КОЕФІЦІЄНТИ */}
           <div className="table-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color, rgba(0,0,0,0.06))', paddingBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.75rem' }}>
               <div>
-                <strong style={{ fontSize: '1rem', display: 'block', color: 'var(--text-main, #1e293b)' }}>Погодні коефіцієнти</strong>
-                <span className="text-subtle" style={{ fontSize: '0.75rem' }}>Автоматичний розрахунок за даними Open-Meteo</span>
+                <strong style={{ fontSize: '1rem', display: 'block', color: '#111827' }}>Погодні коефіцієнти</strong>
+                <span className="text-subtle" style={{ fontSize: '0.78rem' }}>Автоматичний розрахунок за даними Open-Meteo</span>
               </div>
               <button 
                 className={`btn btn-sm ${surgeConfig?.weatherSurgeEnabled ? 'btn-success' : 'btn-secondary'}`}
-                style={{ fontWeight: '500' }}
+                style={{ fontWeight: '700' }}
                 onClick={handleToggleWeatherMaster}
               >
                 {surgeConfig?.weatherSurgeEnabled ? '● Увімкнено' : '○ Вимкнено'}
@@ -323,16 +389,16 @@ const TariffsPage = () => {
 
             {/* Live віджет погоди */}
             <div style={{
-              background: 'var(--bg-card-hover, #f8fafc)',
+              background: '#f9fafb',
               borderRadius: '8px',
               padding: '0.75rem 1rem',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              border: '1px solid var(--border-color, #e2e8f0)'
+              border: '1px solid #e5e7eb'
             }}>
               <div>
-                <div style={{ fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-main, #0f172a)' }}>
+                <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#111827' }}>
                   {surgeConfig?.currentWeather?.location}: {surgeConfig?.currentWeather?.currentTemperature !== null && surgeConfig?.currentWeather?.currentTemperature !== undefined ? `${surgeConfig?.currentWeather?.currentTemperature}°C` : '...'}
                 </div>
                 <div className="text-subtle" style={{ fontSize: '0.82rem', marginTop: '2px' }}>
@@ -340,12 +406,12 @@ const TariffsPage = () => {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div className="text-subtle" style={{ fontSize: '0.72rem', marginBottom: '3px' }}>Поточний множник</div>
+                <div className="text-subtle" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>Поточний множник</div>
                 <span className="badge" style={{ 
-                  backgroundColor: (surgeConfig?.currentWeather?.activeMultiplier || 1.0) > 1 ? '#ef4444' : '#10b981',
+                  backgroundColor: (surgeConfig?.currentWeather?.activeMultiplier || 1.0) > 1 ? '#dc2626' : '#16a34a',
                   color: '#fff',
                   fontSize: '0.85rem',
-                  fontWeight: '600',
+                  fontWeight: '700',
                   padding: '0.25rem 0.6rem'
                 }}>
                   ×{surgeConfig?.currentWeather?.activeMultiplier ? surgeConfig.currentWeather.activeMultiplier.toFixed(2) : '1.00'}
@@ -365,8 +431,8 @@ const TariffsPage = () => {
                   alignItems: 'center',
                   padding: '0.45rem 0.6rem',
                   borderRadius: '6px',
-                  background: wRule.isActive ? 'transparent' : 'rgba(0,0,0,0.02)',
-                  border: '1px solid var(--border-color, rgba(0,0,0,0.05))'
+                  background: wRule.isActive ? '#ffffff' : '#f9fafb',
+                  border: '1px solid #e5e7eb'
                 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
                     <input 
@@ -375,7 +441,7 @@ const TariffsPage = () => {
                       checked={wRule.isActive} 
                       onChange={() => handleWeatherActiveToggle(wRule)}
                     />
-                    <span style={{ fontSize: '0.88rem', fontWeight: wRule.isActive ? '500' : 'normal', color: wRule.isActive ? 'inherit' : 'var(--text-muted, #94a3b8)' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: wRule.isActive ? '600' : 'normal', color: wRule.isActive ? '#111827' : '#6b7280' }}>
                       {wRule.name}
                     </span>
                   </label>
@@ -388,7 +454,7 @@ const TariffsPage = () => {
                       max="3.0"
                       defaultValue={wRule.multiplier}
                       onBlur={(e) => handleWeatherMultiplierChange(wRule, e.target.value)}
-                      style={{ width: '60px', padding: '0.2rem 0.4rem', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}
+                      style={{ width: '64px', padding: '0.25rem 0.4rem', textAlign: 'center', fontSize: '0.85rem', fontWeight: '700' }}
                       className="input-field"
                     />
                   </div>
@@ -399,10 +465,10 @@ const TariffsPage = () => {
 
           {/* КАРТКА 2: ГОДИНИ ПІК (РОЗКЛАД) */}
           <div className="table-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color, rgba(0,0,0,0.06))', paddingBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.75rem' }}>
               <div>
-                <strong style={{ fontSize: '1rem', display: 'block', color: 'var(--text-main, #1e293b)' }}>Години пік (Розклад)</strong>
-                <span className="text-subtle" style={{ fontSize: '0.75rem' }}>Підвищений попит за встановленим розкладом і днями</span>
+                <strong style={{ fontSize: '1rem', display: 'block', color: '#111827' }}>Години пік (Розклад)</strong>
+                <span className="text-subtle" style={{ fontSize: '0.78rem' }}>Підвищений попит за встановленим розкладом і днями</span>
               </div>
             </div>
 
@@ -412,36 +478,36 @@ const TariffsPage = () => {
                   <div key={rule.id} style={{
                     padding: '0.65rem 0.8rem',
                     borderRadius: '8px',
-                    border: '1px solid var(--border-color, rgba(0,0,0,0.08))',
+                    border: '1px solid #e5e7eb',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    background: rule.isActive ? 'var(--bg-card, #ffffff)' : 'rgba(0,0,0,0.02)',
+                    background: rule.isActive ? '#ffffff' : '#f9fafb',
                     opacity: rule.isActive ? 1 : 0.65
                   }}>
                     <div>
-                      <div style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-main, #0f172a)' }}>{rule.name}</div>
-                      <div className="text-subtle" style={{ fontSize: '0.78rem', marginTop: '2px' }}>
-                        <span style={{ fontWeight: '500', color: 'var(--text-main, #334155)' }}>{rule.startTime} – {rule.endTime}</span>
+                      <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#111827' }}>{rule.name}</div>
+                      <div className="text-subtle" style={{ fontSize: '0.8rem', marginTop: '2px' }}>
+                        <span style={{ fontWeight: '600', color: '#374151' }}>{rule.startTime} – {rule.endTime}</span>
                         <span style={{ margin: '0 6px' }}>•</span>
                         {rule.daysOfWeek?.map((d) => DAYS_MAP.find((m) => m.key === d)?.label).join(', ')}
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="badge badge-danger" style={{ fontSize: '0.8rem', fontWeight: 'bold', padding: '0.2rem 0.5rem' }}>
+                      <span className="badge badge-danger" style={{ fontSize: '0.8rem', fontWeight: '700', padding: '0.2rem 0.5rem' }}>
                         ×{rule.multiplier?.toFixed(2)}
                       </span>
                       <button 
                         className={`btn btn-sm ${rule.isActive ? 'btn-ghost' : 'btn-secondary'}`}
-                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.78rem' }}
                         onClick={() => handleToggleTimeRuleClick(rule.id)}
                       >
                         {rule.isActive ? 'Вимкнути' : 'Увімкнути'}
                       </button>
                       <button 
                         className="btn btn-sm btn-ghost-danger" 
-                        style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem' }}
+                        style={{ padding: '0.25rem 0.45rem', fontSize: '0.8rem' }}
                         onClick={() => handleDeleteTimeRuleClick(rule.id)}
                         title="Видалити правило"
                       >
@@ -467,8 +533,8 @@ const TariffsPage = () => {
             <table className="main-table">
               <thead>
                 <tr>
-                  <th className="text-center" style={{ width: '70px' }}>Іконка</th>
-                  <th className="text-center" style={{ width: '50px' }}>ID</th>
+                  <th className="text-center">Іконка</th>
+                  <th className="text-center">ID</th>
                   <th>Назва</th>
                   <th className="text-center">Статус</th>
                   <th className="text-center">База (₴)</th>
@@ -477,7 +543,7 @@ const TariffsPage = () => {
                   <th className="text-center">Точка (₴)</th>
                   <th className="text-center">Очікування</th>
                   <th className="text-center">Очік. (₴/хв)</th>
-                  <th className="text-center" style={{ width: '210px' }}>Дії</th>
+                  <th className="text-center">Дії</th>
                 </tr>
               </thead>
               <tbody>
@@ -488,69 +554,50 @@ const TariffsPage = () => {
                       style={{ opacity: tariff.isUnavailable ? 0.5 : 1 }}
                     >
                       <td className="text-center">
-                        {tariff.imageUrl ? (
-                          <div style={{
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '6px',
-                            background: 'rgba(0,0,0,0.03)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto',
-                            padding: '2px'
-                          }}>
-                            <img 
-                              src={tariff.imageUrl} 
-                              alt={tariff.name} 
-                              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-subtle">—</span>
-                        )}
+                        <TariffIconBox imageUrl={tariff.imageUrl} name={tariff.name} />
                       </td>
                       <td className="text-center text-subtle">#{tariff.id}</td>
                       
                       <td>
-                        <strong className="font-medium">{tariff.name}</strong>
-                        {tariff.bodyType && (
-                          <span 
-                            className="badge" 
-                            style={{ 
-                              padding: '0.15rem 0.4rem', 
-                              fontSize: '0.7rem', 
-                              marginLeft: '6px', 
-                              backgroundColor: '#8b5cf6', 
-                              color: '#fff',
-                              borderRadius: '4px'
-                            }}
-                          >
-                            {tariff.bodyType === 'UNIVERSAL' ? 'Універсал' : tariff.bodyType === 'MINIBUS' ? 'Мікроавтобус' : tariff.bodyType}
-                          </span>
-                        )}
-                        {tariff.evosTariffName && (
-                          <span 
-                            className="badge" 
-                            style={{ 
-                              padding: '0.15rem 0.4rem', 
-                              fontSize: '0.7rem', 
-                              marginLeft: '6px', 
-                              backgroundColor: '#2563eb', 
-                              color: '#fff',
-                              borderRadius: '4px'
-                            }}
-                          >
-                            EvoS: {tariff.evosTariffName}
-                          </span>
-                        )}
-                        {tariff.isBeta && (
-                          <span className="badge badge-danger ml-2" style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem', marginLeft: '6px' }}>
-                            BETA
-                          </span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                          <strong style={{ fontWeight: 700, color: '#111827' }}>{tariff.name}</strong>
+                          {tariff.bodyType && (
+                            <span 
+                              className="badge" 
+                              style={{ 
+                                padding: '0.2rem 0.45rem', 
+                                fontSize: '0.72rem', 
+                                backgroundColor: '#f3f4f6', 
+                                color: '#111827',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '5px'
+                              }}
+                            >
+                              {tariff.bodyType === 'UNIVERSAL' ? 'Універсал' : tariff.bodyType === 'MINIBUS' ? 'Мікроавтобус' : tariff.bodyType}
+                            </span>
+                          )}
+                          {tariff.evosTariffName && (
+                            <span 
+                              className="badge" 
+                              style={{ 
+                                padding: '0.2rem 0.5rem', 
+                                fontSize: '0.72rem', 
+                                backgroundColor: '#18181b', 
+                                color: '#ffffff',
+                                borderRadius: '5px'
+                              }}
+                            >
+                              EvoS: {tariff.evosTariffName}
+                            </span>
+                          )}
+                          {tariff.isBeta && (
+                            <span className="badge badge-danger" style={{ padding: '0.2rem 0.45rem', fontSize: '0.72rem' }}>
+                              BETA
+                            </span>
+                          )}
+                        </div>
                         {tariff.isUnavailable && (
-                          <div className="text-subtle text-xs" style={{ fontSize: '0.75rem' }}>
+                          <div className="text-subtle text-xs" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
                             Недоступний
                           </div>
                         )}
@@ -572,12 +619,12 @@ const TariffsPage = () => {
                       <td className="text-center font-medium">{tariff.pricePerWaitingMinute.toFixed(2)} ₴</td>
                       <td className="text-center">
                         <div className="btn-group justify-center">
-                          <div className="btn-group" style={{ gap: '2px' }}>
+                          <div className="btn-group" style={{ gap: '3px' }}>
                             <button 
                               onClick={() => handleReorder(tariff.id, 'UP')}
                               className="btn btn-sm btn-outline"
                               title="Перемістити вгору"
-                              style={{ padding: '0.2rem 0.4rem' }}
+                              style={{ padding: '0.25rem 0.45rem' }}
                             >
                               ↑
                             </button>
@@ -585,7 +632,7 @@ const TariffsPage = () => {
                               onClick={() => handleReorder(tariff.id, 'DOWN')}
                               className="btn btn-sm btn-outline"
                               title="Перемістити вниз"
-                              style={{ padding: '0.2rem 0.4rem' }}
+                              style={{ padding: '0.25rem 0.45rem' }}
                             >
                               ↓
                             </button>

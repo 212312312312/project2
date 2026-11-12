@@ -1,23 +1,55 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getAllSettings, saveTextSettings, getCompanyBalance, getAllTransactions } from '../services/settingsService';
+import { getAllDrivers } from '../services/driverService';
 import { DriverPayoutsPanel } from '../components/DriverPayoutsPanel';
 import '../assets/FinancePage.css';
 
 const FinancePage = () => {
-    const [activeTab, setActiveTab] = useState('ANALYTICS'); // 'ANALYTICS' или 'PAYOUTS'
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    const getTabFromUrl = (params) => {
+        const t = (params.get('tab') || '').toLowerCase();
+        if (t === 'payouts') return 'PAYOUTS';
+        if (t === 'debtors') return 'DEBTORS';
+        return 'ANALYTICS';
+    };
+
+    const [activeTab, setActiveTab] = useState(() => getTabFromUrl(searchParams)); // 'ANALYTICS' | 'PAYOUTS' | 'DEBTORS'
     const [commission, setCommission] = useState('10');
     const [companyBalance, setCompanyBalance] = useState(0.0);
     const [loading, setLoading] = useState(false);
 
-    // Стейт для таблицы транзакций
+    // Стейт для таблиці транзакцій
     const [transactions, setTransactions] = useState([]);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [loadingTx, setLoadingTx] = useState(false);
 
+    // Стейт для списку водіїв-боржників (balance < 0)
+    const [debtors, setDebtors] = useState([]);
+    const [loadingDebtors, setLoadingDebtors] = useState(false);
+
+    useEffect(() => {
+        setActiveTab(getTabFromUrl(searchParams));
+    }, [searchParams]);
+
+    const handleTabSwitch = (nextTab) => {
+        setActiveTab(nextTab);
+        if (nextTab === 'PAYOUTS') {
+            setSearchParams({ tab: 'payouts' });
+        } else if (nextTab === 'DEBTORS') {
+            setSearchParams({ tab: 'debtors' });
+        } else {
+            setSearchParams({});
+        }
+    };
+
     useEffect(() => {
         loadSettingsAndBalance();
         loadTransactions(0);
+        loadDebtors();
     }, []);
 
     const loadSettingsAndBalance = async () => {
@@ -46,6 +78,21 @@ const FinancePage = () => {
             console.error("Помилка завантаження транзакцій:", error);
         } finally {
             setLoadingTx(false);
+        }
+    };
+
+    const loadDebtors = async () => {
+        setLoadingDebtors(true);
+        try {
+            const allDrivers = await getAllDrivers();
+            const debtorList = (Array.isArray(allDrivers) ? allDrivers : [])
+                .filter((d) => (d.balance || 0) < 0)
+                .sort((a, b) => (a.balance || 0) - (b.balance || 0));
+            setDebtors(debtorList);
+        } catch (error) {
+            console.error("Помилка завантаження боржників:", error);
+        } finally {
+            setLoadingDebtors(false);
         }
     };
 
@@ -83,7 +130,10 @@ const FinancePage = () => {
     const handleRefreshAll = () => {
         loadSettingsAndBalance();
         loadTransactions(0);
+        loadDebtors();
     };
+
+    const totalDebtSum = debtors.reduce((acc, d) => acc + Math.abs(d.balance || 0), 0);
 
     return (
         <div className="page-wrapper">
@@ -91,30 +141,34 @@ const FinancePage = () => {
                 <div className="header-title-group">
                     <h1>Фінанси компанії</h1>
                 </div>
-                {activeTab === 'ANALYTICS' && (
-                    <button className="btn btn-secondary" onClick={handleRefreshAll}>
-                        Оновити
-                    </button>
-                )}
+                <button className="btn btn-secondary" onClick={handleRefreshAll}>
+                    Оновити дані
+                </button>
             </header>
 
-            {/* ПЕРЕКЛЮЧАТЕЛЬ ВЕРХНИХ ТАБОВ */}
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+            {/* ПЕРЕМИКАЧ ЗАЛЕЖНИХ ФІНАНСОВИХ РОЗДІЛІВ */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
                 <button
                     className={`payouts-subtab-btn ${activeTab === 'ANALYTICS' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('ANALYTICS')}
+                    onClick={() => handleTabSwitch('ANALYTICS')}
                 >
                     📊 Загальна фінансова статистика
                 </button>
                 <button
                     className={`payouts-subtab-btn ${activeTab === 'PAYOUTS' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('PAYOUTS')}
+                    onClick={() => handleTabSwitch('PAYOUTS')}
                 >
-                    💸 Розрахунки з водіями (Борги)
+                    💸 Виплати водіям (Борги компанії)
+                </button>
+                <button
+                    className={`payouts-subtab-btn ${activeTab === 'DEBTORS' ? 'active' : ''}`}
+                    onClick={() => handleTabSwitch('DEBTORS')}
+                >
+                    ⚠️ Заборгованість водіїв ({debtors.length})
                 </button>
             </div>
 
-            {activeTab === 'ANALYTICS' ? (
+            {activeTab === 'ANALYTICS' && (
                 <>
                     {/* ВЕРХНІ КАРТКИ: КОМІСІЯ ТА БАЛАНС */}
                     <div className="finance-grid-top mb-4">
@@ -245,8 +299,93 @@ const FinancePage = () => {
                         )}
                     </div>
                 </>
-            ) : (
+            )}
+
+            {activeTab === 'PAYOUTS' && (
                 <DriverPayoutsPanel />
+            )}
+
+            {activeTab === 'DEBTORS' && (
+                <div className="table-card">
+                    <div className="table-card-header">
+                        <div>
+                            <h3 className="table-title">Водії з від’ємним балансом гаманця ({debtors.length})</h3>
+                            <span className="text-subtle" style={{ fontSize: '0.85rem' }}>
+                                Сумарна заборгованість перед сервісом: <strong className="text-danger">{totalDebtSum.toFixed(2)} ₴</strong>
+                            </span>
+                        </div>
+                        <button className="btn btn-sm btn-secondary" onClick={loadDebtors}>
+                            Оновити список
+                        </button>
+                    </div>
+
+                    <div className="table-responsive">
+                        <table className="main-table">
+                            <thead>
+                                <tr>
+                                    <th className="text-center" style={{ width: '70px' }}>ID</th>
+                                    <th>ПІБ Водія</th>
+                                    <th>Телефон</th>
+                                    <th className="text-center">Автомобіль</th>
+                                    <th className="text-center">Статус</th>
+                                    <th className="text-center">Поточний борг</th>
+                                    <th className="text-center" style={{ width: '190px' }}>Дія</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loadingDebtors ? (
+                                    <tr>
+                                        <td colSpan="7" className="text-center text-subtle py-8">
+                                            Завантаження списку боржників...
+                                        </td>
+                                    </tr>
+                                ) : debtors.length > 0 ? (
+                                    debtors.map((driver) => (
+                                        <tr key={driver.id}>
+                                            <td className="text-center text-subtle">#{driver.id}</td>
+                                            <td className="font-medium">{driver.fullName}</td>
+                                            <td>
+                                                <a href={`tel:${driver.phoneNumber}`} className="phone-link">
+                                                    {driver.phoneNumber || '—'}
+                                                </a>
+                                            </td>
+                                            <td className="text-center">
+                                                {driver.car
+                                                    ? `${driver.car.make} ${driver.car.model} (${driver.car.plateNumber || '—'})`
+                                                    : '—'}
+                                            </td>
+                                            <td className="text-center">
+                                                {driver.isBlocked ? (
+                                                    <span className="badge badge-danger">Заблоковано</span>
+                                                ) : (
+                                                    <span className="badge badge-info">Активний</span>
+                                                )}
+                                            </td>
+                                            <td className="text-center font-medium text-danger">
+                                                {(driver.balance || 0).toFixed(2)} ₴
+                                            </td>
+                                            <td className="text-center">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-primary"
+                                                    onClick={() => navigate(`/drivers?openId=${driver.id}&wallet=1`)}
+                                                >
+                                                    Відкрити гаманець
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="7" className="text-center text-subtle py-8">
+                                            Немає водіїв із заборгованістю по балансу
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             )}
         </div>
     );

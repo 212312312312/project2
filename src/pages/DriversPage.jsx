@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   getAllDrivers, 
   getPendingDeletionDrivers,
@@ -13,12 +14,13 @@ import {
   manualBalanceUpdate
 } from '../services/driverService';
 import { getAllTariffs } from '../services/tariffService';
+import { getImageUrl } from '../services/api';
 import '../assets/DriversPage.css';
 import { photoControlService } from '../services/photoControlService';
 import Modal from '../components/Modal';
 import DriverForm from '../components/DriverForm';
 
-// --- ХЕЛПЕР СТАТУСА АКТИВНОСТИ ---
+// --- ХЕЛПЕР СТАТУСУ АКТИВНОСТІ ---
 const getActivityBadge = (score) => {
   const s = score !== undefined && score !== null ? score : 1000;
   if (s >= 701) return { className: 'badge-success', label: 'Високий' };
@@ -27,7 +29,31 @@ const getActivityBadge = (score) => {
   return { className: 'badge-muted', label: 'Заблоковано' };
 };
 
-// --- КОМПОНЕНТ ФИНАНСОВ ---
+// --- КОМПОНЕНТ АВАТАРА ВОДІЯ З FALLBACK (БЕЗ БИТОГО ALT-ТЕКСТУ) ---
+const DriverAvatar = ({ url, name, className = 'table-avatar' }) => {
+  const [imgError, setImgError] = useState(false);
+  const fullUrl = getImageUrl(url);
+  const initial = (name || 'В').trim().charAt(0).toUpperCase();
+
+  if (!fullUrl || imgError) {
+    return (
+      <div className={`${className} avatar-placeholder`} title={name || 'Водій'}>
+        {initial}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={fullUrl}
+      alt=""
+      className={className}
+      onError={() => setImgError(true)}
+    />
+  );
+};
+
+// --- КОМПОНЕНТ ФІНАНСІВ ---
 const WalletEditor = ({ driverId, currentBalance, onUpdate }) => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -173,7 +199,7 @@ const handleRequestPhotoControl = async (driverId) => {
   }
 };
 
-// --- КОМПОНЕНТ КОРРЕКТИРОВКИ БАЛЛОВ ---
+// --- КОМПОНЕНТ КОРИГУВАННЯ БАЛІВ ---
 const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
   const [points, setPoints] = useState('');
   const [reason, setReason] = useState('');
@@ -224,21 +250,24 @@ const ActivityEditor = ({ driverId, currentScore, onUpdate }) => {
   );
 };
 
-// --- БЛОК ФОТОГРАФИИ ---
-const PhotoBlock = ({ label, url }) => (
-  <div className="photo-card">
-    <div className="photo-card-label">{label}</div>
-    {url ? (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="photo-card-link">
-        <img src={url} alt={label} className="photo-card-img" />
-      </a>
-    ) : (
-      <div className="photo-card-placeholder">Відсутнє</div>
-    )}
-  </div>
-);
+// --- БЛОК ФОТОГРАФІЇ ---
+const PhotoBlock = ({ label, url }) => {
+  const fullUrl = getImageUrl(url);
+  return (
+    <div className="photo-card">
+      <div className="photo-card-label">{label}</div>
+      {fullUrl ? (
+        <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="photo-card-link">
+          <img src={fullUrl} alt={label} className="photo-card-img" />
+        </a>
+      ) : (
+        <div className="photo-card-placeholder">Відсутнє</div>
+      )}
+    </div>
+  );
+};
 
-// --- МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ ВОДИТЕЛЯ ---
+// --- МОДАЛЬНЕ ВІКНО ДЕТАЛЕЙ ВОДІЯ ---
 const DriverDetailsModal = ({ 
   driver, 
   isOpen, 
@@ -248,10 +277,15 @@ const DriverDetailsModal = ({
   onDeleteClick,
   onBlockTemp,
   onBlockPerm,
-  onUnblock
+  onUnblock,
+  defaultExpandWallet = false
 }) => {
   const [isCarsExpanded, setIsCarsExpanded] = useState(false);
-  const [isWalletExpanded, setIsWalletExpanded] = useState(false);
+  const [isWalletExpanded, setIsWalletExpanded] = useState(defaultExpandWallet);
+
+  useEffect(() => {
+    setIsWalletExpanded(defaultExpandWallet);
+  }, [defaultExpandWallet, driver?.id]);
 
   if (!isOpen || !driver) return null;
 
@@ -270,14 +304,10 @@ const DriverDetailsModal = ({
 
       <div className="details-content">
         
-        {/* 1. ГЛАВНЫЙ ПРОФИЛЬ */}
+        {/* 1. ГОЛОВНИЙ ПРОФІЛЬ */}
         <div className="card profile-hero-card">
           <div className="avatar-section">
-            {driver.photoUrl ? (
-              <img src={driver.photoUrl} alt="Avatar" className="avatar-large" />
-            ) : (
-              <div className="avatar-large avatar-placeholder">—</div>
-            )}
+            <DriverAvatar url={driver.photoUrl} name={driver.fullName} className="avatar-large" />
             <span className={`badge ${driver.isOnline ? 'badge-success' : 'badge-muted'} avatar-status-badge`}>
               {driver.isOnline ? 'ONLINE' : 'OFFLINE'}
             </span>
@@ -327,7 +357,7 @@ const DriverDetailsModal = ({
           </div>
         </div>
 
-        {/* ПАНЕЛЬ УПРАВЛЕНИЯ И ДЕЙСТВИЙ (ДОБАВЛЕНО В КАРТОЧКУ ВОДИТЕЛЯ) */}
+        {/* ПАНЕЛЬ УПРАВЛІННЯ ТА ДІЙ */}
         <div className="card driver-actions-card">
           <h3 className="card-title" style={{ marginBottom: '1rem' }}>Управління та Дії</h3>
           <div className="driver-modal-actions-bar">
@@ -355,7 +385,7 @@ const DriverDetailsModal = ({
           </div>
         </div>
 
-        {/* 2. РЕЙТИНГ И АКТИВНОСТЬ */}
+        {/* 2. РЕЙТИНГ ТА АКТИВНІСТЬ */}
         <div className="grid-2col">
           <div className="card metric-card">
             <span className="card-subtitle">Рейтинг водія</span>
@@ -380,7 +410,7 @@ const DriverDetailsModal = ({
           </div>
         </div>
 
-        {/* 3. ТАРИФЫ И ОСОБЛИВОСТІ */}
+        {/* 3. ТАРИФИ ТА ОСОБЛИВОСТІ */}
         <div className="grid-2col-equal">
           <div className="card static-panel">
             <h3 className="card-title">Дозволені тарифи</h3>
@@ -438,7 +468,7 @@ const DriverDetailsModal = ({
           </div>
         </div>
 
-        {/* 4. ГАМАНЕЦЬ И ТРАНЗАКЦИИ */}
+        {/* 4. ГАМАНЕЦЬ ТА ТРАНЗАКЦІЇ */}
         <div className="card collapsible-card">
           <div className="card-title-collapsible" onClick={() => setIsWalletExpanded(!isWalletExpanded)}>
             <h3 className="card-title" style={{ margin: 0 }}>Гаманець та транзакції</h3>
@@ -528,21 +558,43 @@ const DriverDetailsModal = ({
   );
 };
 
-// --- ОСНОВНАЯ СТРАНИЦА ВОДИТЕЛЕЙ ---
+// --- ОСНОВНА СТОРІНКА ВОДІЇВ ---
 const DriversPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [drivers, setDrivers] = useState([]); 
   const [loading, setLoading] = useState(true); 
   const [error, setError] = useState(''); 
   const [searchTerm, setSearchTerm] = useState('');
   
   const [availableTariffs, setAvailableTariffs] = useState([]);
-  const [viewMode, setViewMode] = useState('ALL'); // 'ALL', 'BLOCKED', 'PENDING_DELETE'
+  const [viewMode, setViewMode] = useState(() => {
+    const v = searchParams.get('view');
+    return ['ALL', 'BLOCKED', 'DEBTORS', 'PENDING_DELETE'].includes(v) ? v : 'ALL';
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState(null); 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [detailsDriver, setDetailsDriver] = useState(null);
+
+  useEffect(() => {
+    const v = searchParams.get('view');
+    if (v && ['ALL', 'BLOCKED', 'DEBTORS', 'PENDING_DELETE'].includes(v)) {
+      setViewMode(v);
+    } else if (!v && viewMode !== 'ALL') {
+      setViewMode('ALL');
+    }
+  }, [searchParams]);
+
+  const handleViewChange = (mode) => {
+    setViewMode(mode);
+    if (mode === 'ALL') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ view: mode });
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -570,14 +622,13 @@ const DriversPage = () => {
 
   useEffect(() => {
     if (drivers.length > 0) {
-      const params = new URLSearchParams(window.location.search);
-      const openId = params.get('openId');
+      const openId = searchParams.get('openId');
       if (openId) {
         const targetDriver = drivers.find(d => d.id.toString() === openId.toString());
         if (targetDriver) setDetailsDriver(targetDriver);
       }
     }
-  }, [drivers]);
+  }, [drivers, searchParams]);
 
   const filteredDrivers = useMemo(() => {
     return drivers.filter((driver) => {
@@ -587,6 +638,9 @@ const DriversPage = () => {
 
       if (viewMode === 'BLOCKED') {
         return matchesSearch && (driver.isBlocked || !!driver.tempBlockExpiresAt);
+      }
+      if (viewMode === 'DEBTORS') {
+        return matchesSearch && (driver.balance || 0) < 0;
       }
       return matchesSearch;
     });
@@ -694,19 +748,25 @@ const DriversPage = () => {
         <div className="header-actions">
           <div className="toggle-group">
             <button 
-              onClick={() => setViewMode('ALL')}
+              onClick={() => handleViewChange('ALL')}
               className={`toggle-btn ${viewMode === 'ALL' ? 'active' : ''}`}
             >
               Всі водії
             </button>
             <button 
-              onClick={() => setViewMode('BLOCKED')}
+              onClick={() => handleViewChange('DEBTORS')}
+              className={`toggle-btn ${viewMode === 'DEBTORS' ? 'active' : ''}`}
+            >
+              Боржники (&lt; 0 ₴)
+            </button>
+            <button 
+              onClick={() => handleViewChange('BLOCKED')}
               className={`toggle-btn ${viewMode === 'BLOCKED' ? 'active' : ''}`}
             >
               Заблоковані
             </button>
             <button 
-              onClick={() => setViewMode('PENDING_DELETE')}
+              onClick={() => handleViewChange('PENDING_DELETE')}
               className={`toggle-btn ${viewMode === 'PENDING_DELETE' ? 'active' : ''}`}
             >
               На видалення
@@ -715,7 +775,7 @@ const DriversPage = () => {
 
           <input
             type="text"
-            placeholder="Пошук..."
+            placeholder="Пошук за ПІБ або телефоном..."
             className="input-field search-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -757,11 +817,7 @@ const DriversPage = () => {
                   >
                     <td className="text-center text-subtle">{driver.id}</td>
                     <td className="text-center">
-                      {driver.photoUrl ? (
-                        <img src={driver.photoUrl} alt="Driver" className="table-avatar" />
-                      ) : (
-                        <div className="table-avatar avatar-placeholder">—</div>
-                      )}
+                      <DriverAvatar url={driver.photoUrl} name={driver.fullName} />
                     </td>
                     <td className="font-medium">{driver.fullName}</td>
                     <td>{driver.phoneNumber}</td>
@@ -801,8 +857,8 @@ const DriversPage = () => {
                     <td className="text-center">
                       <div className="btn-group justify-center">
                         <button className="btn btn-sm btn-outline" onClick={(e) => handleBlockTemp(driver.id, e)} title="Тимчасово">Т</button>
-                        <button className="btn-sm btn-outline-danger" onClick={(e) => handleBlockPerm(driver.id, e)} title="Назавжди">П</button>
-                        <button className="btn-sm btn-outline-success" onClick={(e) => handleUnblock(driver.id, e)} title="Розблокувати">Р</button>
+                        <button className="btn btn-sm btn-outline-danger" onClick={(e) => handleBlockPerm(driver.id, e)} title="Назавжди">П</button>
+                        <button className="btn btn-sm btn-outline-success" onClick={(e) => handleUnblock(driver.id, e)} title="Розблокувати">Р</button>
                       </div>
                     </td>
                   </tr>
@@ -841,6 +897,7 @@ const DriversPage = () => {
         onBlockTemp={handleBlockTemp}
         onBlockPerm={handleBlockPerm}
         onUnblock={handleUnblock}
+        defaultExpandWallet={searchParams.get('wallet') === '1'}
       />
     </div>
   );
